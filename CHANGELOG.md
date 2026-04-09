@@ -1,5 +1,11 @@
 # @bookedsolid/reagent
 
+## 0.6.0
+
+### Minor Changes
+
+- 756ca1d: v0.6.0: 8 new security hooks, GitHub PM repo scaffolding, and Projects v2 sync
+
 ## 0.5.0
 
 ### Minor Changes

@@ -6,6 +6,7 @@
   "huskyPreCommit": true,
   "huskyPrePush": true,
   "cursorRules": ["001-no-hallucination", "002-verify-before-act", "003-attribution"],
+  "blockedPaths": [".reagent/", ".github/workflows/", ".env", ".env.*"],
   "gitignoreEntries": [".claude/agents/", ".claude/hooks/", ".claude/settings.json", "RESTART.md"],
   "claudeMd": {
     "preflightCmd": "pnpm preflight",

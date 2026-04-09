@@ -141,8 +141,22 @@ jobs:
         if: steps.changesets.outputs.published == 'true'
         run: |
           VERSION=$(node -p "require('./package.json').version" | tr -cd '0-9a-zA-Z._-')
-          npx discord-ops@latest run send_message --args "{\"project\":\"reagent\",\"channel\":\"dev\",\"content\":\"📦 **@bookedsolid/reagent v${VERSION}** published to npm\"}"
+          npm install --no-save discord-ops@latest
+          node --input-type=module -e "
+            import { loadConfig, DiscordClient, allTools } from 'discord-ops';
+            const config = await loadConfig();
+            const discord = new DiscordClient();
+            const ctx = { discord, config };
+            const tool = allTools.find(t => t.name === 'send_message');
+            await tool.handle({
+              project: 'reagent',
+              channel: 'dev',
+              content: '📦 **@bookedsolid/reagent v$VERSION** published to npm'
+            }, ctx);
+            await discord.destroy();
+          "
         env:
+          VERSION: ${{ steps.changesets.outputs.publishedPackages && fromJSON(steps.changesets.outputs.publishedPackages)[0].version || 'unknown' }}
           BOOKED_DISCORD_BOT_TOKEN: ${{ secrets.BOOKED_DISCORD_BOT_TOKEN }}
           DISCORD_OPS_CONFIG: ${{ secrets.DISCORD_OPS_CONFIG }}
 
@@ -151,22 +165,28 @@ jobs:
         if: steps.changesets.outputs.published == 'true'
         run: |
           VERSION=$(node -p "require('./package.json').version" | tr -cd '0-9a-zA-Z._-')
-          npx discord-ops@latest run send_template --args "{
-            \"project\": \"reagent\",
-            \"channel\": \"releases\",
-            \"template\": \"release\",
-            \"vars\": {
-              \"name\": \"@bookedsolid/reagent\",
-              \"version\": \"v${VERSION}\",
-              \"author_name\": \"Booked Solid Technology\",
-              \"highlights\": \"Zero-trust agentic framework update\",
-              \"npm\": \"@bookedsolid/reagent@latest\",
-              \"npm_url\": \"https://www.npmjs.com/package/@bookedsolid/reagent\",
-              \"link\": \"https://github.com/bookedsolidtech/reagent/releases/tag/@bookedsolid/reagent@${VERSION}\",
-              \"footer\": \"Published via CI\"
-            }
-          }"
+          npm install --no-save discord-ops@latest
+          node --input-type=module -e "
+            import { loadConfig, DiscordClient, allTools } from 'discord-ops';
+            const config = await loadConfig();
+            const discord = new DiscordClient();
+            const ctx = { discord, config };
+            const tool = allTools.find(t => t.name === 'send_embed');
+            await tool.handle({
+              project: 'reagent',
+              channel: 'releases',
+              title: '📦 @bookedsolid/reagent v$VERSION',
+              description: 'Zero-trust agentic framework update',
+              fields: [
+                { name: 'npm', value: '@bookedsolid/reagent@latest' },
+                { name: 'Install', value: 'npm i @bookedsolid/reagent@$VERSION' }
+              ],
+              url: 'https://github.com/bookedsolidtech/reagent/releases/tag/@bookedsolid/reagent@$VERSION',
+              footer: 'Published via CI'
+            }, ctx);
+            await discord.destroy();
+          "
         env:
+          VERSION: ${{ steps.changesets.outputs.publishedPackages && fromJSON(steps.changesets.outputs.publishedPackages)[0].version || 'unknown' }}
           BOOKED_DISCORD_BOT_TOKEN: ${{ secrets.BOOKED_DISCORD_BOT_TOKEN }}
           DISCORD_OPS_CONFIG: ${{ secrets.DISCORD_OPS_CONFIG }}
-          PUBLISHED_PACKAGES_JSON: ${{ steps.changesets.outputs.publishedPackages }}

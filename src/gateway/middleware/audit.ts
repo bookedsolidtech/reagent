@@ -40,9 +40,12 @@ export function createAuditMiddleware(baseDir: string, policy?: Policy): Middlew
     }
 
     // Build audit record — always runs, even after exceptions.
-    // SECURITY: autonomy_level comes from the authoritative policy object, not mutable ctx.metadata.
+    // SECURITY: autonomy_level from ctx.metadata reflects the hot-reloaded policy (set by policy
+    // middleware inside next()). Falls back to the startup policy if metadata was not set (e.g.,
+    // kill-switch denied before policy middleware ran).
     const duration_ms = Date.now() - ctx.start_time;
-    const autonomyLevel = policy?.autonomy_level ?? 'unknown';
+    const autonomyLevel =
+      (ctx.metadata.autonomy_level as string) ?? policy?.autonomy_level ?? 'unknown';
 
     // Serialize audit writes via a queue to maintain hash chain linearity under concurrency.
     // Each write awaits the previous one before computing its hash, ensuring a linear chain.

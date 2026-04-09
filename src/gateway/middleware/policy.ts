@@ -45,7 +45,7 @@ export function createPolicyMiddleware(
         policy = loadPolicy(baseDir);
         lastGoodPolicy = policy; // Cache successful parse
       } catch {
-        // Use last known good policy if re-read fails
+        // Fail-safe: use last successfully parsed policy if re-read fails
       }
     }
 

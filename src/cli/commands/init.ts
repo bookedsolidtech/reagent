@@ -526,20 +526,22 @@ function installGatewayConfig(targetDir: string, dryRun: boolean): InstallResult
 
 version: "1"
 
+# To add a server, replace "servers: {}" with:
+#
+# servers:
+#   my-server:
+#     command: npx
+#     args: ['-y', 'my-mcp-server@latest']
+#     env:
+#       API_KEY: '\${MY_API_KEY}'
+#     tool_overrides:
+#       dangerous_action:
+#         tier: destructive
+#       admin_delete:
+#         tier: destructive
+#         blocked: true
+
 servers: {}
-  # Example: uncomment and configure a downstream MCP server
-  #
-  # my-server:
-  #   command: npx
-  #   args: ['-y', 'my-mcp-server@latest']
-  #   env:
-  #     API_KEY: '\${MY_API_KEY}'
-  #   tool_overrides:
-  #     dangerous_action:
-  #       tier: destructive
-  #     admin_delete:
-  #       tier: destructive
-  #       blocked: true
 `;
     fs.writeFileSync(gatewayPath, content, 'utf8');
   }

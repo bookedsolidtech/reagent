@@ -51,7 +51,7 @@ CONSTRAINTS:
 2. **Never trust LLM memory** — Verify current state via tools, git, and file reads. Programmatic project memory (`.claude/MEMORY.md`, `.reagent/`) is OK
 3. **Verify before claiming** — Check actual state (build output, test results, git status) before reporting status
 4. **Validate dependencies** — Verify packages exist (`npm view`) before installing; check version compatibility
-5. **Graduated autonomy** — Respect reagent L0-L4 levels from `.reagent/policy.yaml`
+5. **Graduated autonomy** — Respect reagent L0-L3 levels from `.reagent/policy.yaml`
 6. **HALT compliance** — Check `.reagent/HALT` before any action; if present, stop immediately
 7. **Audit awareness** — All tool invocations may be logged; behave as if every action is observed
 

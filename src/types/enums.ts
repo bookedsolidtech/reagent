@@ -11,11 +11,6 @@ export enum AutonomyLevel {
   L3 = 'L3',
 }
 
-export enum KillSwitchState {
-  Active = 'active',
-  Inactive = 'inactive',
-}
-
 export enum InvocationStatus {
   Allowed = 'allowed',
   Denied = 'denied',

@@ -139,9 +139,10 @@ jobs:
       # ── Discord: dev channel ──────────────────────────────────────────────
       - name: Notify Discord dev channel
         if: steps.changesets.outputs.published == 'true'
+        continue-on-error: true
         run: |
           VERSION=$(node -p "require('./package.json').version" | tr -cd '0-9a-zA-Z._-')
-          npm install --no-save discord-ops@latest
+          npm install --no-save discord-ops@0.21.1
           node --input-type=module -e "
             import { loadConfig, DiscordClient, allTools } from 'discord-ops';
             const config = await loadConfig();
@@ -163,9 +164,10 @@ jobs:
       # ── Discord: releases channel ─────────────────────────────────────────
       - name: Notify Discord releases channel
         if: steps.changesets.outputs.published == 'true'
+        continue-on-error: true
         run: |
           VERSION=$(node -p "require('./package.json').version" | tr -cd '0-9a-zA-Z._-')
-          npm install --no-save discord-ops@latest
+          npm install --no-save discord-ops@0.21.1
           node --input-type=module -e "
             import { loadConfig, DiscordClient, allTools } from 'discord-ops';
             const config = await loadConfig();

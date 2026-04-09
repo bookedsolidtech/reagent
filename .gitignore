@@ -19,6 +19,9 @@ sbom.json
 # TypeScript build output
 dist/
 
+# Test artifacts
+src/__tests__/gateway/_mock-downstream.mjs
+
 # reagent runtime (HALT is committed when active; policy.yaml is committed)
 # .reagent/ itself is committed — do not ignore it
 .reagent/tasks.jsonl

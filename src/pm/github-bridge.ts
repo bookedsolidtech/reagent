@@ -4,6 +4,30 @@ import type { TaskView } from './types.js';
 
 export type GitHubMode = 'gh-cli' | 'local-only';
 
+export interface RepoScaffoldOptions {
+  description?: string;
+  homepage?: string;
+  topics?: string[];
+  labels?: Array<{ name: string; color: string; description: string }>;
+  milestones?: string[];
+}
+
+export interface RepoScaffoldResult {
+  description_set: boolean;
+  topics_added: string[];
+  labels_created: string[];
+  labels_skipped: string[];
+  milestones_created: string[];
+}
+
+export interface ProjectSyncResult {
+  project_id: number | null;
+  project_url: string | null;
+  items_added: number;
+  items_skipped: number;
+  error?: string;
+}
+
 export interface GitHubBridgeOptions {
   baseDir: string;
   label?: string;
@@ -158,6 +182,230 @@ export class GitHubBridge {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Scaffold GitHub repo metadata: description, topics, labels, milestones.
+   */
+  scaffoldRepo(options: RepoScaffoldOptions): RepoScaffoldResult {
+    const result: RepoScaffoldResult = {
+      description_set: false,
+      topics_added: [],
+      labels_created: [],
+      labels_skipped: [],
+      milestones_created: [],
+    };
+
+    if (this.mode !== 'gh-cli') {
+      return result;
+    }
+
+    // Set description and homepage
+    if (options.description || options.homepage) {
+      const editArgs = ['repo', 'edit'];
+      if (options.description) {
+        editArgs.push('--description', options.description);
+      }
+      if (options.homepage) {
+        editArgs.push('--homepage', options.homepage);
+      }
+      try {
+        execFileSync('gh', editArgs, { encoding: 'utf8', timeout: 10000, stdio: 'pipe' });
+        result.description_set = true;
+      } catch {
+        result.description_set = false;
+      }
+    }
+
+    // Add topics
+    if (options.topics?.length) {
+      for (const topic of options.topics) {
+        try {
+          execFileSync('gh', ['repo', 'edit', '--add-topic', topic], {
+            encoding: 'utf8',
+            timeout: 10000,
+            stdio: 'pipe',
+          });
+          result.topics_added.push(topic);
+        } catch {
+          // Topic may already exist or be invalid — skip silently
+        }
+      }
+    }
+
+    // Create labels (idempotent)
+    const labelsToCreate = options.labels ?? [];
+    for (const label of labelsToCreate) {
+      try {
+        execFileSync(
+          'gh',
+          [
+            'label',
+            'create',
+            label.name,
+            '--color',
+            label.color,
+            '--description',
+            label.description,
+          ],
+          { encoding: 'utf8', timeout: 10000, stdio: 'pipe' }
+        );
+        result.labels_created.push(label.name);
+      } catch (err) {
+        // Already exists error — treat as skipped
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('already exists') || msg.includes('Unprocessable Entity')) {
+          result.labels_skipped.push(label.name);
+        }
+        // Other errors — skip silently
+      }
+    }
+
+    // Create milestones
+    if (options.milestones?.length) {
+      for (const milestone of options.milestones) {
+        try {
+          // Get current repo owner/name for the API call
+          const repoInfo = execFileSync('gh', ['repo', 'view', '--json', 'owner,name'], {
+            encoding: 'utf8',
+            timeout: 10000,
+            stdio: 'pipe',
+          });
+          const { owner, name } = JSON.parse(repoInfo) as {
+            owner: { login: string };
+            name: string;
+          };
+          execFileSync(
+            'gh',
+            [
+              'api',
+              `repos/${owner.login}/${name}/milestones`,
+              '-X',
+              'POST',
+              '-f',
+              `title=${milestone}`,
+            ],
+            { encoding: 'utf8', timeout: 10000, stdio: 'pipe' }
+          );
+          result.milestones_created.push(milestone);
+        } catch {
+          // May already exist — skip silently
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Sync tasks with GitHub issues to a GitHub Projects v2 board.
+   * Finds or creates a project board named projectTitle, then adds all
+   * tasks that have a github_issue and are not yet on the board.
+   */
+  syncToProject(projectTitle = 'reagent'): ProjectSyncResult {
+    const result: ProjectSyncResult = {
+      project_id: null,
+      project_url: null,
+      items_added: 0,
+      items_skipped: 0,
+    };
+
+    if (this.mode !== 'gh-cli') {
+      result.error = 'GitHub CLI not available. Install gh and run: gh auth login';
+      return result;
+    }
+
+    try {
+      // Get current repo owner
+      const repoInfo = execFileSync('gh', ['repo', 'view', '--json', 'owner,name,url'], {
+        encoding: 'utf8',
+        timeout: 10000,
+        stdio: 'pipe',
+      });
+      const repo = JSON.parse(repoInfo) as {
+        owner: { login: string };
+        name: string;
+        url: string;
+      };
+      const owner = repo.owner.login;
+
+      // List projects for the owner
+      let projectId: number | null = null;
+      let projectUrl: string | null = null;
+
+      try {
+        const projectsOutput = execFileSync(
+          'gh',
+          ['project', 'list', '--owner', owner, '--format', 'json'],
+          { encoding: 'utf8', timeout: 10000, stdio: 'pipe' }
+        );
+        const projectsData = JSON.parse(projectsOutput) as {
+          projects: Array<{ id: number; title: string; url: string }>;
+        };
+        const existing = projectsData.projects?.find(
+          (p) => p.title.toLowerCase() === projectTitle.toLowerCase()
+        );
+        if (existing) {
+          projectId = existing.id;
+          projectUrl = existing.url;
+        }
+      } catch {
+        // project list may fail if no projects exist — continue to create
+      }
+
+      // Create project if not found
+      if (!projectId) {
+        try {
+          const createOutput = execFileSync(
+            'gh',
+            ['project', 'create', '--owner', owner, '--title', projectTitle, '--format', 'json'],
+            { encoding: 'utf8', timeout: 15000, stdio: 'pipe' }
+          );
+          const created = JSON.parse(createOutput) as { id: number; url: string };
+          projectId = created.id;
+          projectUrl = created.url;
+        } catch (err) {
+          result.error = `Failed to create project: ${err instanceof Error ? err.message : String(err)}`;
+          return result;
+        }
+      }
+
+      result.project_id = projectId;
+      result.project_url = projectUrl;
+
+      // Sync tasks with GitHub issues to the project board
+      const tasks = this.store.listTasks();
+      for (const task of tasks) {
+        if (!task.github_issue) {
+          result.items_skipped++;
+          continue;
+        }
+
+        try {
+          // Build the issue URL for this task
+          const issueUrl = `${repo.url}/issues/${task.github_issue}`;
+          execFileSync(
+            'gh',
+            ['project', 'item-add', String(projectId), '--owner', owner, '--url', issueUrl],
+            { encoding: 'utf8', timeout: 10000, stdio: 'pipe' }
+          );
+          result.items_added++;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          // "already exists" means the item is already on the board
+          if (msg.includes('already exists') || msg.includes('already on')) {
+            result.items_skipped++;
+          } else {
+            result.items_skipped++;
+          }
+        }
+      }
+
+      return result;
+    } catch (err) {
+      result.error = `syncToProject failed: ${err instanceof Error ? err.message : String(err)}`;
+      return result;
     }
   }
 }

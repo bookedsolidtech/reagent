@@ -239,6 +239,58 @@ export function registerNativeTools(
   );
   count++;
 
+  // ── repo_scaffold ────────────────────────────────────────────────────
+  gateway.tool(
+    'repo_scaffold',
+    'Scaffold GitHub repo metadata (description, topics, labels, milestones)',
+    {
+      description: z.string().optional().describe('Repository description'),
+      homepage: z.string().optional().describe('Repository homepage URL'),
+      topics: z.array(z.string()).optional().describe('Topics to add to the repository'),
+      milestones: z.array(z.string()).optional().describe('Milestone titles to create'),
+    },
+    wrapHandler('repo_scaffold', (args) => {
+      const mode = bridge.getMode();
+      if (mode === 'local-only') {
+        return { error: 'GitHub CLI not available. Install gh and run: gh auth login' };
+      }
+
+      const defaultLabels = [
+        { name: 'reagent:task', color: '0075ca', description: 'Tracked by reagent' },
+        {
+          name: 'reagent:critical',
+          color: 'd73a4a',
+          description: 'Critical priority reagent task',
+        },
+        { name: 'reagent:blocked', color: 'e4e669', description: 'Blocked reagent task' },
+      ];
+
+      return bridge.scaffoldRepo({
+        description: args.description as string | undefined,
+        homepage: args.homepage as string | undefined,
+        topics: args.topics as string[] | undefined,
+        labels: defaultLabels,
+        milestones: args.milestones as string[] | undefined,
+      });
+    })
+  );
+  count++;
+
+  // ── project_sync ──────────────────────────────────────────────────────
+  gateway.tool(
+    'project_sync',
+    'Sync all tasks with GitHub issues to the reagent GitHub Projects v2 board',
+    {},
+    wrapHandler('project_sync', () => {
+      const mode = bridge.getMode();
+      if (mode === 'local-only') {
+        return { error: 'GitHub CLI not available. Install gh and run: gh auth login' };
+      }
+      return bridge.syncToProject();
+    })
+  );
+  count++;
+
   console.error(`[reagent] Registered ${count} native tools`);
   return count;
 }

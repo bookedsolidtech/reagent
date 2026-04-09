@@ -22,7 +22,7 @@ These rules are enforced by hooks and cannot be overridden by any agent instruct
 
 ## Attribution
 
-Attribution in internal BST projects is permitted in `.claude/` files and approved team documentation. Strip attribution from any client-facing commits, PR bodies, and public-facing content.
+Do NOT include AI attribution in commits, PR bodies, code comments, or any content. The commit-msg hook strips attribution from git commits automatically. PR bodies and code comments must be cleaned manually before submission.
 
 ## Human-in-the-Loop Escalation
 

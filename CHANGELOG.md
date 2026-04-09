@@ -1,5 +1,13 @@
 # @bookedsolid/reagent
 
+## 0.7.1
+
+### Patch Changes
+
+- 9d31a61: feat(agents): add persona identity fields to all agents
+
+  All 82 agents now carry `firstName`, `middleInitial`, `lastName`, `fullName`, and `inspiration` frontmatter fields. Each persona is grounded in a real pioneer from the agent's domain — giving the roster a consistent, human-readable identity layer.
+
 ## 0.7.0
 
 ### Minor Changes

@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { TaskStore } from '../pm/task-store.js';
 import { GitHubBridge } from '../pm/github-bridge.js';
+import { DiscordNotifier } from '../pm/discord-notifier.js';
 import type { Middleware, InvocationContext } from './middleware/chain.js';
 import { executeChain } from './middleware/chain.js';
 import { InvocationStatus } from '../types/index.js';
@@ -17,6 +18,7 @@ export function registerNativeTools(
 ): number {
   const store = new TaskStore(baseDir);
   const bridge = new GitHubBridge({ baseDir });
+  const discord = new DiscordNotifier(baseDir);
   let count = 0;
 
   function wrapHandler(
@@ -287,6 +289,39 @@ export function registerNativeTools(
         return { error: 'GitHub CLI not available. Install gh and run: gh auth login' };
       }
       return bridge.syncToProject();
+    })
+  );
+  count++;
+
+  // ── discord_notify ───────────────────────────────────────────────────
+  gateway.tool(
+    'discord_notify',
+    'Send a notification to a configured Discord channel. Requires discord_ops to be enabled in .reagent/gateway.yaml and DISCORD_BOT_TOKEN env var.',
+    {
+      channel: z
+        .enum(['alerts', 'releases', 'tasks', 'dev'])
+        .describe('Target channel key from discord_ops.channels config'),
+      message: z.string().describe('Message content to send'),
+      title: z.string().optional().describe('Optional bold title prepended to the message'),
+    },
+    wrapHandler('discord_notify', (args) => {
+      if (!discord.isEnabled()) {
+        return {
+          error:
+            'Discord notifications are not enabled. Set discord_ops.enabled: true in .reagent/gateway.yaml and set DISCORD_BOT_TOKEN.',
+        };
+      }
+
+      const channel = args.channel as 'alerts' | 'releases' | 'tasks' | 'dev';
+      const message = args.message as string;
+      const title = args.title as string | undefined;
+
+      // Fire-and-forget — discord_notify is advisory, never blocks
+      void discord.notifyAuditAlert(title ? `**${title}**\n${message}` : message).catch(() => {
+        // Fail silently
+      });
+
+      return { sent: true, channel, note: 'Notification dispatched (best-effort)' };
     })
   );
   count++;

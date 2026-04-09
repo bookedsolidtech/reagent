@@ -333,7 +333,8 @@ servers:
       expect(exitCode).not.toBe(0);
       const output = stdout + stderr;
       expect(output).toContain('Profile not found');
-      expect(output).toContain('Available profiles');
+      // Message now distinguishes base profiles from tech profiles
+      expect(output).toMatch(/Available (base )?profiles/);
     });
 
     it('accepts valid profile names', () => {

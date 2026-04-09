@@ -1,0 +1,16 @@
+node_modules/
+npm-debug.log*
+.DS_Store
+*.log
+
+# reagent — AI tooling (stays on developer machine, not committed)
+.claude/agents/
+.claude/hooks/
+.claude/settings.json
+
+# Generated during publish (not for commit)
+sbom.json
+*.tgz
+
+# reagent runtime (HALT is committed when active; policy.yaml is committed)
+# .reagent/ itself is committed — do not ignore it

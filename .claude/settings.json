@@ -1,0 +1,43 @@
+{
+  "env": {
+    "ENABLE_TOOL_SEARCH": "auto:5"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/dangerous-bash-interceptor.sh",
+            "timeout": 10000,
+            "statusMessage": "Checking command safety..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/env-file-protection.sh",
+            "timeout": 5000,
+            "statusMessage": "Checking for .env file reads..."
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/attribution-advisory.sh",
+            "timeout": 5000,
+            "statusMessage": "Checking for AI attribution..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/secret-scanner.sh",
+            "timeout": 15000,
+            "statusMessage": "Scanning for credentials..."
+          }
+        ]
+      }
+    ]
+  }
+}

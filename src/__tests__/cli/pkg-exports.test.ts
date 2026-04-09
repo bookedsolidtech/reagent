@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
@@ -7,6 +7,16 @@ const PROJECT_ROOT = path.resolve(import.meta.dirname, '..', '..', '..');
 
 describe('package.json exports and packaging', () => {
   const pkgJson = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, 'package.json'), 'utf8'));
+
+  // Run npm pack once and share output across tests to avoid concurrent pack collisions
+  let packOutput: string;
+  beforeAll(() => {
+    packOutput = execSync('npm pack --dry-run 2>&1', {
+      cwd: PROJECT_ROOT,
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+  });
 
   it('"type" is set to "module"', () => {
     expect(pkgJson.type).toBe('module');
@@ -30,36 +40,19 @@ describe('package.json exports and packaging', () => {
   });
 
   it('npm pack --dry-run includes dist/ files', () => {
-    const output = execSync('npm pack --dry-run 2>&1', {
-      cwd: PROJECT_ROOT,
-      encoding: 'utf8',
-      timeout: 30_000,
-    });
-    // npm pack --dry-run lists files to be included
-    expect(output).toContain('dist/cli/index.js');
-    expect(output).toContain('dist/cli/utils.js');
+    expect(packOutput).toContain('dist/cli/index.js');
+    expect(packOutput).toContain('dist/cli/utils.js');
   });
 
   it('npm pack --dry-run includes profiles/', () => {
-    const output = execSync('npm pack --dry-run 2>&1', {
-      cwd: PROJECT_ROOT,
-      encoding: 'utf8',
-      timeout: 30_000,
-    });
-    expect(output).toContain('profiles/');
+    expect(packOutput).toContain('profiles/');
   });
 
   it('npm pack --dry-run includes templates/', () => {
-    const output = execSync('npm pack --dry-run 2>&1', {
-      cwd: PROJECT_ROOT,
-      encoding: 'utf8',
-      timeout: 30_000,
-    });
-    expect(output).toContain('templates/');
+    expect(packOutput).toContain('templates/');
   });
 
   it('no stale bin/ directory reference in package.json', () => {
-    // The old CJS entry was bin/init.js — make sure it is gone
     const binValues = Object.values(pkgJson.bin || {}) as string[];
     for (const binPath of binValues) {
       expect(binPath).not.toMatch(/^bin\//);
@@ -68,7 +61,6 @@ describe('package.json exports and packaging', () => {
 
   it('no stale bin/ directory on disk', () => {
     const oldBinDir = path.join(PROJECT_ROOT, 'bin');
-    // If bin/ exists, it should not contain init.js (the old CJS entry)
     if (fs.existsSync(oldBinDir)) {
       expect(fs.existsSync(path.join(oldBinDir, 'init.js'))).toBe(false);
     }

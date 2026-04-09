@@ -2,11 +2,13 @@
 
 Zero-trust MCP gateway and agentic infrastructure for AI-assisted development.
 
-Reagent is two things:
+Reagent is three things:
 
 1. **MCP Gateway** (`reagent serve`) -- a proxy server that sits between your AI assistant (Claude Code, Cursor, etc.) and downstream MCP tool servers. Every tool call flows through a zero-trust middleware chain: policy enforcement, tier classification, blocked path enforcement, secret redaction, and hash-chained audit logging.
 
-2. **Config Scaffolder** (`reagent init`) -- installs safety hooks, behavioral policies, and developer tooling into any project.
+2. **Config Scaffolder** (`reagent init`) -- installs safety hooks, behavioral policies, quality gates, and developer tooling into any project.
+
+3. **Project Management Layer** -- lightweight task tracking with JSONL event store, native MCP tools, GitHub issue sync, and a product-owner agent for task planning.
 
 ## Why Reagent?
 
@@ -19,6 +21,9 @@ AI coding assistants are powerful but unconstrained. Reagent adds the missing go
 - **Audit trail** -- every tool invocation is logged as hash-chained JSONL with serialized writes for chain integrity
 - **Tool blocking** -- individual tools can be permanently blocked regardless of autonomy level
 - **Tier downgrade protection** -- `tool_overrides` cannot lower a tool's tier below its static or convention-based classification
+- **Security hooks** -- 11 Claude Code hooks enforce settings protection, secret scanning, dangerous command interception, blocked path enforcement, and more
+- **Quality gates** -- commit and push review gates with triage scoring, review caching, and agent-spawned code review
+- **Task management** -- native MCP tools for task CRUD, GitHub issue sync, and a product-owner agent with guardrails
 
 ## Quick Start
 
@@ -72,6 +77,9 @@ npx @bookedsolid/reagent init --dry-run
 | `reagent check`                 | Verify what reagent components are installed      |
 | `reagent freeze --reason "..."` | Create `.reagent/HALT` -- suspends all tool calls |
 | `reagent unfreeze`              | Remove `.reagent/HALT` -- resumes tool calls      |
+| `reagent cache check <sha>`     | Check review cache for a file SHA                 |
+| `reagent cache set <sha> <res>` | Store a review result (pass/fail/advisory)        |
+| `reagent cache clear`           | Clear all cached review results                   |
 | `reagent help`                  | Show usage help                                   |
 
 ### `reagent init` Options
@@ -86,6 +94,31 @@ npx @bookedsolid/reagent init --dry-run
 | Flag              | Description                        | Default         |
 | ----------------- | ---------------------------------- | --------------- |
 | `--reason <text>` | Reason for freeze (stored in HALT) | `Manual freeze` |
+
+### `reagent cache` Subcommands
+
+The review cache stores code review results to avoid redundant agent reviews on unchanged code.
+
+```bash
+# Check if a file has a cached review
+reagent cache check abc123 --branch main --base def456
+
+# Store a review result
+reagent cache set abc123 pass --branch main --reviewer code-reviewer --findings 0 --ttl 86400
+
+# Clear all cache entries
+reagent cache clear
+```
+
+| Flag                | Description               | Default   |
+| ------------------- | ------------------------- | --------- |
+| `--branch <name>`   | Branch name for cache key | `""`      |
+| `--base <commit>`   | Base commit for cache key | `""`      |
+| `--reviewer <name>` | Reviewer agent name       | `unknown` |
+| `--findings <n>`    | Number of findings        | `0`       |
+| `--ttl <seconds>`   | Cache entry TTL           | `86400`   |
+
+Cache file: `.reagent/review-cache.json`, keyed on `${branch}:${baseCommit}:${fileSHA256}`.
 
 ## MCP Gateway
 
@@ -112,6 +145,12 @@ AI Assistant (Claude Code, Cursor, etc.)
 |  |  8. [Execute]          | |
 |  +------------------------+ |
 |                             |
+|  Native Tools:              |
+|    task_create, task_update |
+|    task_list, task_get      |
+|    task_delete              |
+|    task_sync_github         |
+|                             |
 +----------+------------------+
            |  stdio (MCP protocol)
            v
@@ -124,8 +163,22 @@ The gateway:
 1. Connects to all downstream MCP servers defined in `.reagent/gateway.yaml`
 2. Discovers their tools via MCP `tools/list`
 3. Re-registers each tool on the gateway with namespace prefixes (`servername__toolname`)
-4. Wraps every tool call in the middleware chain
-5. Listens on stdio for incoming MCP requests from the AI assistant
+4. Registers native first-party tools (task management) through the same middleware chain
+5. Wraps every tool call in the middleware chain
+6. Listens on stdio for incoming MCP requests from the AI assistant
+
+### Native MCP Tools
+
+Reagent registers 6 first-party tools directly on the gateway. These go through the same middleware chain (audit, policy, blocked paths, redaction) as proxied tools.
+
+| Tool               | Description                                          |
+| ------------------ | ---------------------------------------------------- |
+| `task_create`      | Create a new task in `.reagent/tasks.jsonl`          |
+| `task_update`      | Update a task's status, title, urgency, or fields    |
+| `task_list`        | List tasks with optional status/urgency/phase filter |
+| `task_get`         | Get a single task by ID (T-NNN format)               |
+| `task_delete`      | Cancel a task (soft delete via cancelled event)      |
+| `task_sync_github` | Sync local tasks to GitHub issues (requires `gh`)    |
 
 ### Gateway Configuration
 
@@ -246,7 +299,7 @@ Classifies the tool into one of three tiers using a layered approach:
 | `delete_`, `drop_`, `purge_`, `remove_`, `destroy_`, `ban_`, `kick_`, `revoke_`, `truncate_`                 | `destructive` |
 | Everything else                                                                                              | `write`       |
 
-**Tier tiers:**
+**Tier levels:**
 
 | Tier          | Description                     | Examples                                         |
 | ------------- | ------------------------------- | ------------------------------------------------ |
@@ -296,6 +349,138 @@ Redaction uses `redactDeep` to walk object structures in-place with a circular r
 - **Per-tool timeout** -- each downstream tool call has a 30-second timeout with timer cleanup to prevent leaks
 - **Graceful shutdown** -- `process.exitCode = 0` (not `process.exit(0)`) to allow event loop drain
 
+## Claude Code Hooks
+
+Reagent installs 11 Claude Code hooks that enforce security, quality, and project management policies. Hooks are shell scripts that run as PreToolUse or PostToolUse interceptors.
+
+### Hook Architecture
+
+Hooks use a shared library (`hooks/_lib/common.sh`) providing:
+
+| Function       | Purpose                                               |
+| -------------- | ----------------------------------------------------- |
+| `reagent_root` | Find the `.reagent/` directory by walking up from cwd |
+| `check_halt`   | Exit with code 2 if `.reagent/HALT` exists            |
+| `require_jq`   | Verify jq is available                                |
+| `json_output`  | Build structured JSON response (block/allow/advisory) |
+| `triage_score` | Score a diff as trivial/standard/significant          |
+
+### Exit Code Convention
+
+| Code | Meaning             |
+| ---- | ------------------- |
+| `0`  | Allow the tool call |
+| `2`  | Block the tool call |
+
+### Security Hooks
+
+#### `settings-protection.sh` (PreToolUse: Write, Edit)
+
+**P0 Critical.** Prevents agents from modifying their own safety rails. Blocks writes to:
+
+- `.claude/settings.json`, `.claude/settings.local.json`
+- `.claude/hooks/*`
+- `.husky/*`
+- `.reagent/policy.yaml`, `.reagent/HALT`, `.reagent/review-cache.json`
+
+Includes case-insensitive bypass detection and URL-decode normalization to prevent encoding attacks.
+
+#### `blocked-paths-enforcer.sh` (PreToolUse: Write, Edit)
+
+**P0 Critical.** Reads `blocked_paths` from `.reagent/policy.yaml` and blocks writes to matching paths. Handles both inline YAML arrays (`[a, b]`) and block sequences. Supports directory prefix matching, glob patterns, and exact match.
+
+#### `dangerous-bash-interceptor.sh` (PreToolUse: Bash)
+
+Intercepts dangerous shell commands before execution:
+
+| Detection | Blocked Command Pattern                                                             |
+| --------- | ----------------------------------------------------------------------------------- |
+| H1        | `git push --force` / `-f` to protected branches (main, master, staging, production) |
+| H2        | `rm -rf /` or `rm -rf ~`                                                            |
+| H3        | `chmod 777`                                                                         |
+| H4        | `curl \| sh`, `wget \| sh` (pipe-to-shell)                                          |
+| H5        | `> /dev/sda` (disk overwrite)                                                       |
+| H6        | `:(){ :\|:& };:` (fork bomb)                                                        |
+| H7        | `mkfs` (disk format)                                                                |
+| H8        | `dd if=` (disk copy)                                                                |
+| H9        | `.env` file access via cat/less/head/tail                                           |
+| H10       | `shutdown`, `reboot`, `halt`, `poweroff`                                            |
+| H11       | `kill -9`, `killall`, `pkill`                                                       |
+| H12       | `iptables` / `ufw` (firewall modification)                                          |
+| H13       | `git push --no-verify`                                                              |
+| H14       | `git -c core.hooksPath=` (hook path override)                                       |
+| H15       | `REAGENT_BYPASS` environment variable                                               |
+| H16       | Alias/function definitions containing bypass strings                                |
+
+#### `secret-scanner.sh` (PreToolUse: Write, Edit)
+
+Scans file content being written for secrets:
+
+- AWS Access Keys (`AKIA...`)
+- PEM private key headers (RSA, EC, DSA)
+- GitHub PATs (`ghp_`, `gho_`, `ghs_`, `ghu_`, `ghr_` with 36+ chars)
+- Stripe live keys (`sk_live_`)
+- Generic `SECRET=`/`PASSWORD=`/`TOKEN=`/`API_KEY=` assignments with real values
+
+Allows placeholders (`<your_key_here>`, `changeme`, `xxx`), `process.env` references, and `.env.example` files.
+
+#### `env-file-protection.sh` (PreToolUse: Write, Edit)
+
+Blocks writes to `.env` files (`.env`, `.env.local`, `.env.production`, etc.). Allows `.env.example` and `.env.template` files.
+
+#### `attribution-advisory.sh` (PreToolUse: Bash)
+
+When `block_ai_attribution` is enabled in policy.yaml, blocks `gh pr create`, `gh pr edit`, and `git commit` commands containing AI attribution patterns:
+
+- `Co-Authored-By` with AI names (Claude, Copilot, GPT, Cursor, etc.)
+- `Generated with [Tool]` footers
+- `AI-generated` markers
+
+### Quality Gate Hooks
+
+#### `commit-review-gate.sh` (PreToolUse: Bash)
+
+Intercepts `git commit` commands and applies triage-based review:
+
+| Triage Level    | Criteria                              | Action                                         |
+| --------------- | ------------------------------------- | ---------------------------------------------- |
+| **Trivial**     | <20 changed lines, no sensitive paths | Pass immediately                               |
+| **Standard**    | 20-200 changed lines                  | Check review cache; pass if cached             |
+| **Significant** | >200 lines OR sensitive paths         | Block; instruct agent to spawn `code-reviewer` |
+
+Sensitive paths: `.reagent/`, `.claude/`, `.env`, `auth`, `security`, `.github/workflows`.
+
+Returns `additionalContext` instructing the agent to spawn a `code-reviewer` specialist agent when blocked.
+
+#### `push-review-gate.sh` (PreToolUse: Bash)
+
+Intercepts `git push` commands. Analyzes the full diff against the target branch:
+
+1. Computes triage score of all commits being pushed
+2. Checks review cache for cached results
+3. On cache miss for standard/significant changes: blocks with instructions to spawn `code-reviewer` and `security-engineer` agents
+
+#### `architecture-review-gate.sh` (PostToolUse: Write, Edit)
+
+**Advisory only (never blocks).** Flags writes to architecture-sensitive paths:
+
+- `src/types/`, `src/gateway/`, `src/config/`
+- `src/cli/commands/init/`
+- `package.json`, `tsconfig*.json`
+- `.github/workflows/`
+
+Returns a stderr advisory suggesting the agent consider architectural implications.
+
+### Project Management Hook
+
+#### `task-link-gate.sh` (PreToolUse: Bash)
+
+**Opt-in** (requires `task_link_gate: true` in policy.yaml). Intercepts `git commit` commands and checks that the commit message contains a task ID reference (`T-NNN` format). Allows merge commits, version bumps, and `chore:`/`style:`/`ci:` prefixed commits without task references.
+
+#### `dependency-audit-gate.sh` (PreToolUse: Bash)
+
+Intercepts `npm install`, `pnpm add`, `yarn add`, and `npx` commands. Extracts package names and verifies each exists in the npm registry via `npm view` before allowing the install.
+
 ## Policy File
 
 `.reagent/policy.yaml` controls agent behavior:
@@ -303,7 +488,7 @@ Redaction uses `redactDeep` to walk object structures in-place with a circular r
 ```yaml
 version: '1'
 profile: bst-internal
-installed_by: 'reagent@0.3.0'
+installed_by: 'reagent@0.5.0'
 installed_at: '2026-04-09T00:00:00.000Z'
 autonomy_level: L1
 max_autonomy_level: L2
@@ -314,6 +499,7 @@ blocked_paths:
   - '.env'
   - '.env.*'
 notification_channel: ''
+task_link_gate: false
 ```
 
 | Field                               | Type       | Description                                                    |
@@ -328,8 +514,92 @@ notification_channel: ''
 | `block_ai_attribution`              | `boolean`  | When true, commit-msg hook rejects AI attribution markers      |
 | `blocked_paths`                     | `string[]` | Paths the agent must never modify (`.reagent/` always added)   |
 | `notification_channel`              | `string`   | Optional notification channel identifier                       |
+| `task_link_gate`                    | `boolean`  | When true, commits must reference a task ID (T-NNN)            |
 
 The `max_autonomy_level` field is enforced at config load time: if `autonomy_level` exceeds `max_autonomy_level`, it is clamped down with a warning.
+
+## Project Management
+
+Reagent includes a lightweight project management layer for tracking tasks alongside code.
+
+### Task Store
+
+Tasks are stored as an append-only event log in `.reagent/tasks.jsonl`. Each line is a JSON event:
+
+```json
+{"id":"T-001","type":"created","title":"Implement review cache","urgency":"normal","phase":"Phase 2","timestamp":"2026-04-09T12:00:00.000Z"}
+{"id":"T-001","type":"started","title":"Implement review cache","timestamp":"2026-04-09T13:00:00.000Z"}
+{"id":"T-001","type":"completed","title":"Implement review cache","commit_refs":["abc123"],"timestamp":"2026-04-09T14:00:00.000Z"}
+```
+
+The current state of each task is materialized by replaying events -- the latest event for each task ID determines its status. This append-only design means no data is ever lost and concurrent writes are safe with advisory file locking.
+
+#### Task Schema
+
+| Field          | Type                                              | Required | Description                   |
+| -------------- | ------------------------------------------------- | -------- | ----------------------------- |
+| `id`           | `string` (T-NNN)                                  | Yes      | Auto-incrementing task ID     |
+| `type`         | `created\|started\|completed\|blocked\|cancelled` | Yes      | Event type                    |
+| `title`        | `string` (1-200 chars)                            | Yes      | Task title                    |
+| `description`  | `string`                                          | No       | Detailed description          |
+| `urgency`      | `critical\|normal\|low`                           | No       | Defaults to `normal`          |
+| `phase`        | `string`                                          | No       | Project phase                 |
+| `milestone`    | `string`                                          | No       | Milestone reference           |
+| `assignee`     | `string`                                          | No       | Assigned agent or person      |
+| `parent_id`    | `string` (T-NNN)                                  | No       | Parent task for hierarchy     |
+| `commit_refs`  | `string[]`                                        | No       | Related commit SHAs           |
+| `pr_ref`       | `string`                                          | No       | Related PR reference          |
+| `blocked_by`   | `string`                                          | No       | What's blocking this task     |
+| `github_issue` | `number`                                          | No       | Linked GitHub issue number    |
+| `timestamp`    | `string` (ISO 8601)                               | Yes      | Event timestamp               |
+| `session_id`   | `string`                                          | No       | Agent session that created it |
+
+All fields are validated with Zod on read. Malformed lines are skipped with a stderr warning.
+
+### GitHub Bridge
+
+The GitHub bridge syncs local tasks to GitHub issues:
+
+- **Detection:** checks for `gh` CLI with `gh auth status`. Falls back to `local-only` mode if unavailable.
+- **Sync scope:** only creates issues with the `reagent:` label. Never imports all repository issues.
+- **Rate limiting:** 300-second cooldown between sync operations.
+- **Conflict resolution:** local JSONL is the source of truth; GitHub is the display layer.
+- **Auto-close:** when a task is marked completed and has a linked `github_issue`, the corresponding issue is closed via `gh issue close`.
+
+### MCP Tools
+
+The 6 native task management tools are registered directly on the gateway and go through the full middleware chain:
+
+```
+task_create    -- Create a task: title (required), description, urgency, phase, milestone, assignee, parent_id
+task_update    -- Update a task: id (required), type (started|completed|blocked|cancelled), plus any updatable fields
+task_list      -- List tasks: optional filters for status, urgency, phase
+task_get       -- Get one task by ID (T-NNN format)
+task_delete    -- Soft-delete (cancelled event) a task by ID
+task_sync_github -- Trigger GitHub issue sync (requires gh CLI)
+```
+
+### Product Owner Agent
+
+The `product-owner` agent (`agents/product-owner.md`) manages the task backlog with built-in guardrails:
+
+| Guardrail         | Rule                                                     |
+| ----------------- | -------------------------------------------------------- |
+| Anti-duplication  | Must call `task_list` before any `task_create`           |
+| Rate limit        | Max 10 task creations per invocation                     |
+| Critical urgency  | Cannot set `urgency: critical` without human approval    |
+| Scope boundary    | Cannot modify policy, hooks, or agent definitions        |
+| Parent grouping   | Must use `parent_id` when creating 5+ tasks for one goal |
+| Evidence required | Cannot auto-close tasks without commit ref or sign-off   |
+
+### Slash Commands
+
+| Command      | Description                                                      |
+| ------------ | ---------------------------------------------------------------- |
+| `/tasks`     | Render a markdown table of current tasks from tasks.jsonl        |
+| `/plan-work` | Invoke the product-owner agent to propose tasks for a goal       |
+| `/restart`   | Session handoff command for agent continuity                     |
+| `/rea`       | Invoke the REA (Reactive Execution Agent) for team orchestration |
 
 ## Config Scaffolder
 
@@ -337,29 +607,33 @@ The `max_autonomy_level` field is enforced at config load time: if `autonomy_lev
 
 - **Git hooks** -- commit-msg validation, pre-commit checks, and pre-push quality gates (via Husky)
 - **Cursor rules** -- AI behavioral constraints for Cursor IDE (no-hallucination, verify-before-act, attribution)
-- **Claude hooks** -- dangerous command interception, env file protection, secret scanning, attribution advisory
+- **Claude hooks** -- 11 safety and quality hooks (see [Claude Code Hooks](#claude-code-hooks) section)
 - **Claude settings** -- permission boundaries for Claude Code (`.claude/settings.json`)
 - **Policy file** -- `.reagent/policy.yaml` with graduated autonomy levels
 - **CLAUDE.md** -- project-level AI agent instructions (managed block with markers)
 - **Agent definitions** -- AI agent team definitions (`.claude/agents/`)
-- **Commands** -- `/restart` (session handoff) and `/rea` (AI team orchestration)
+- **Commands** -- `/restart`, `/rea`, `/tasks`, `/plan-work` slash commands
+- **Gateway config** -- `.reagent/gateway.yaml` template for MCP server configuration
+- **Task store** -- `.reagent/tasks.jsonl` (empty, gitignored) for project management
 
 ### What Gets Installed
 
-| Path                    | Committed       | Purpose                              |
-| ----------------------- | --------------- | ------------------------------------ |
-| `.reagent/policy.yaml`  | Yes             | Autonomy levels and agent policy     |
-| `.reagent/gateway.yaml` | Yes             | MCP gateway downstream server config |
-| `.reagent/audit/`       | No (gitignored) | Hash-chained JSONL audit logs        |
-| `.cursor/rules/`        | Yes             | Cursor IDE behavioral rules          |
-| `.husky/commit-msg`     | Yes             | Git commit message validation        |
-| `.husky/pre-commit`     | Yes             | Pre-commit checks                    |
-| `.husky/pre-push`       | Yes             | Pre-push quality gates               |
-| `.claude/hooks/`        | No (gitignored) | Claude Code safety hooks             |
-| `.claude/settings.json` | No (gitignored) | Claude Code permissions              |
-| `.claude/agents/`       | No (gitignored) | Agent team definitions               |
-| `.claude/commands/`     | Yes             | Slash commands (restart, rea)        |
-| `CLAUDE.md`             | Yes             | AI agent project instructions        |
+| Path                         | Committed       | Purpose                              |
+| ---------------------------- | --------------- | ------------------------------------ |
+| `.reagent/policy.yaml`       | Yes             | Autonomy levels and agent policy     |
+| `.reagent/gateway.yaml`      | Yes             | MCP gateway downstream server config |
+| `.reagent/audit/`            | No (gitignored) | Hash-chained JSONL audit logs        |
+| `.reagent/tasks.jsonl`       | No (gitignored) | Task event store                     |
+| `.reagent/review-cache.json` | No (gitignored) | Review cache for quality gates       |
+| `.cursor/rules/`             | Yes             | Cursor IDE behavioral rules          |
+| `.husky/commit-msg`          | Yes             | Git commit message validation        |
+| `.husky/pre-commit`          | Yes             | Pre-commit checks                    |
+| `.husky/pre-push`            | Yes             | Pre-push quality gates               |
+| `.claude/hooks/`             | No (gitignored) | Claude Code safety hooks             |
+| `.claude/settings.json`      | No (gitignored) | Claude Code permissions              |
+| `.claude/agents/`            | No (gitignored) | Agent team definitions               |
+| `.claude/commands/`          | Yes             | Slash commands                       |
+| `CLAUDE.md`                  | Yes             | AI agent project instructions        |
 
 ### Profiles
 
@@ -368,7 +642,22 @@ The `max_autonomy_level` field is enforced at config load time: if `autonomy_lev
 | `client-engagement` | Client consulting projects | L1 / max L2      | `.reagent/`, `.github/workflows/`, `.env`, `.env.*` |
 | `bst-internal`      | BST's own repositories     | L1 / max L2      | `.reagent/`, `.env`                                 |
 
-Both profiles install the full hook suite (dangerous-bash-interceptor, env-file-protection, secret-scanner, attribution-advisory), Cursor rules, and Claude commands.
+Both profiles install the full hook suite, quality gates, Cursor rules, and Claude commands. Profile configuration includes:
+
+```json
+{
+  "qualityGates": {
+    "commitReview": { "enabled": true, "trivialThreshold": 20, "significantThreshold": 200 },
+    "pushReview": { "enabled": true },
+    "architectureAdvisory": { "enabled": true }
+  },
+  "pm": {
+    "enabled": true,
+    "taskLinkGate": false,
+    "maxOpenTasks": 50
+  }
+}
+```
 
 ### Idempotent
 
@@ -388,6 +677,7 @@ To remove reagent from a project:
 # Remove reagent-managed files
 rm -rf .cursor/rules/ .claude/hooks/ .claude/settings.json .claude/agents/
 rm -rf .claude/commands/restart.md .claude/commands/rea.md
+rm -rf .claude/commands/tasks.md .claude/commands/plan-work.md
 rm -rf .reagent/
 
 # Remove the reagent-managed block from CLAUDE.md (between the marker comments)
@@ -400,35 +690,78 @@ rm -f .husky/commit-msg .husky/pre-commit .husky/pre-push
 ```
 @bookedsolid/reagent
 ├── src/
-│   ├── cli/                    # CLI entry point and commands
-│   │   ├── index.ts            # ESM entry point, routes to commands
-│   │   ├── commands/           # init, check, freeze, unfreeze, serve
-│   │   └── utils.ts            # Shared CLI utilities
-│   ├── config/                 # Configuration loaders
-│   │   ├── policy-loader.ts    # Zod-validated policy.yaml parser
-│   │   ├── gateway-config.ts   # Zod-validated gateway.yaml parser
-│   │   └── tier-map.ts         # Tool tier classification (static + convention)
-│   ├── gateway/                # MCP gateway core
-│   │   ├── server.ts           # Gateway orchestrator (startup, shutdown)
-│   │   ├── client-manager.ts   # Downstream MCP server connections
-│   │   ├── tool-proxy.ts       # Tool discovery, namespacing, registration
-│   │   └── middleware/         # Middleware chain
-│   │       ├── chain.ts        # Onion-style middleware executor
-│   │       ├── session.ts      # Session ID attachment
-│   │       ├── kill-switch.ts  # HALT file check
-│   │       ├── tier.ts         # Tier classification
-│   │       ├── policy.ts       # Autonomy level enforcement
-│   │       ├── blocked-paths.ts # Blocked path enforcement
-│   │       ├── redact.ts       # Secret pattern redaction (pre + post)
-│   │       └── audit.ts        # Hash-chained JSONL logging
-│   └── types/                  # TypeScript type definitions
-├── profiles/                   # Init profiles (bst-internal, client-engagement)
-├── templates/                  # Template files for scaffolding
-├── hooks/                      # Shell hook scripts
-├── husky/                      # Husky git hook scripts
-├── cursor/                     # Cursor IDE rules
-├── agents/                     # Agent definitions
-└── commands/                   # Claude slash commands (restart, rea)
+│   ├── cli/                           # CLI entry point and commands
+│   │   ├── index.ts                   # ESM entry point, routes to commands
+│   │   ├── commands/
+│   │   │   ├── init/                  # Modular init step-runner
+│   │   │   │   ├── index.ts           # Step sequencer
+│   │   │   │   ├── types.ts           # InstallResult, ProfileConfig
+│   │   │   │   ├── gitignore.ts       # .gitignore entries
+│   │   │   │   ├── cursor-rules.ts    # Cursor IDE rules
+│   │   │   │   ├── husky-hooks.ts     # Git hooks (Husky)
+│   │   │   │   ├── claude-hooks.ts    # Claude Code hooks + settings.json
+│   │   │   │   ├── claude-md.ts       # CLAUDE.md template
+│   │   │   │   ├── policy.ts          # policy.yaml generation
+│   │   │   │   ├── gateway-config.ts  # gateway.yaml generation
+│   │   │   │   ├── agents.ts          # Agent file installation
+│   │   │   │   ├── commands.ts        # Slash command installation
+│   │   │   │   └── pm.ts             # Task store scaffolding
+│   │   │   ├── cache.ts               # Review cache CLI (check/set/clear)
+│   │   │   ├── check.ts               # Installation verification
+│   │   │   ├── freeze.ts              # Kill switch (freeze/unfreeze)
+│   │   │   └── serve.ts               # Gateway server launcher
+│   │   └── utils.ts                   # Shared CLI utilities
+│   ├── config/                        # Configuration loaders
+│   │   ├── policy-loader.ts           # Zod-validated policy.yaml parser
+│   │   ├── gateway-config.ts          # Zod-validated gateway.yaml parser
+│   │   └── tier-map.ts               # Tool tier classification
+│   ├── gateway/                       # MCP gateway core
+│   │   ├── server.ts                  # Gateway orchestrator (startup, shutdown)
+│   │   ├── client-manager.ts          # Downstream MCP server connections
+│   │   ├── tool-proxy.ts              # Tool discovery, namespacing, registration
+│   │   ├── native-tools.ts            # First-party task management MCP tools
+│   │   └── middleware/                # Middleware chain
+│   │       ├── chain.ts               # Onion-style middleware executor
+│   │       ├── session.ts             # Session ID attachment
+│   │       ├── kill-switch.ts         # HALT file check
+│   │       ├── tier.ts                # Tier classification
+│   │       ├── policy.ts              # Autonomy level enforcement
+│   │       ├── blocked-paths.ts       # Blocked path enforcement
+│   │       ├── redact.ts              # Secret pattern redaction
+│   │       └── audit.ts               # Hash-chained JSONL logging
+│   ├── pm/                            # Project management layer
+│   │   ├── types.ts                   # Zod task schema (single source of truth)
+│   │   ├── task-store.ts              # JSONL event store with advisory locking
+│   │   └── github-bridge.ts           # GitHub CLI integration
+│   └── types/                         # TypeScript type definitions
+├── hooks/                             # Claude Code hook scripts
+│   ├── _lib/
+│   │   └── common.sh                 # Shared hook library
+│   ├── settings-protection.sh         # P0: Settings/hook modification guard
+│   ├── blocked-paths-enforcer.sh      # P0: Policy blocked_paths enforcement
+│   ├── dangerous-bash-interceptor.sh  # Dangerous command interception (16 rules)
+│   ├── secret-scanner.sh              # Secret detection in file writes
+│   ├── env-file-protection.sh         # .env file write protection
+│   ├── attribution-advisory.sh        # AI attribution blocking
+│   ├── commit-review-gate.sh          # Commit-time review with triage scoring
+│   ├── push-review-gate.sh            # Push-time review gate
+│   ├── architecture-review-gate.sh    # Architecture advisory (PostToolUse)
+│   ├── dependency-audit-gate.sh       # Package install verification
+│   └── task-link-gate.sh              # Opt-in task ID in commits
+├── profiles/                          # Init profiles (bst-internal, client-engagement)
+├── templates/                         # Template files for scaffolding
+├── husky/                             # Husky git hook scripts
+├── cursor/                            # Cursor IDE rules
+├── agents/                            # Agent definitions
+│   ├── product-owner.md               # Task management agent with guardrails
+│   ├── reagent-orchestrator.md        # Team orchestration agent
+│   ├── engineering/                   # Engineering specialist agents
+│   └── ai-platforms/                  # AI platform specialist agents
+└── commands/                          # Claude slash commands
+    ├── restart.md                     # Session handoff
+    ├── rea.md                         # REA orchestration
+    ├── tasks.md                       # Task table view
+    └── plan-work.md                   # Guided task planning
 ```
 
 ## Package Exports
@@ -445,6 +778,8 @@ rm -f .husky/commit-msg .husky/pre-commit .husky/pre-push
 
 - Node.js >= 22
 - Git repository (for hooks and init)
+- `jq` (for hook scripts that parse JSON)
+- `gh` CLI (optional, for GitHub issue sync)
 
 ## Dependencies
 
@@ -457,10 +792,28 @@ rm -f .husky/commit-msg .husky/pre-commit .husky/pre-push
 ## Testing
 
 ```bash
-npm test
+pnpm test
 ```
 
-153 tests across 20 test files covering CLI commands, middleware chain, tier classification, policy enforcement, blocked paths, secret redaction, audit logging, and end-to-end gateway smoke tests.
+309 tests across 30 test files covering:
+
+- CLI commands (init step-runner, cache, check, freeze)
+- Middleware chain (session, kill-switch, tier, policy, blocked-paths, redact, audit)
+- Tier classification (static map, convention-based, overrides)
+- Policy enforcement (autonomy levels, blocked tools, max clamping)
+- Secret redaction (AWS, GitHub, PEM, Discord, generic patterns)
+- Hook scripts (settings-protection, blocked-paths, dangerous-bash, dependency-audit, secret-scanner, env-file, attribution)
+- Project management (task store CRUD, event materialization, advisory locking)
+- End-to-end gateway smoke tests (native + proxied tools)
+
+Quality gates (run via `pnpm preflight`):
+
+1. Secret scan (gitleaks)
+2. Format check (prettier)
+3. Lint (eslint)
+4. Type check (tsc --noEmit)
+5. Tests (vitest)
+6. Pack dry-run (npm pack)
 
 ## Scope
 

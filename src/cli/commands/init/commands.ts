@@ -12,6 +12,13 @@ export function installClaudeCommands(targetDir: string, dryRun: boolean): Insta
   }
 
   if (!dryRun) {
+    // Remove stale symlink if present (e.g. from a retired .clarity submodule)
+    try {
+      const stat = fs.lstatSync(commandsDestDir);
+      if (stat.isSymbolicLink()) fs.unlinkSync(commandsDestDir);
+    } catch {
+      /* doesn't exist yet — fine */
+    }
     fs.mkdirSync(commandsDestDir, { recursive: true });
   }
 

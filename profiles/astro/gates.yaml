@@ -1,0 +1,15 @@
+gates:
+  - name: astro-check
+    command: npx astro check
+    description: Astro type checking must pass (catches SSR/component errors)
+    on_failure: block
+
+  - name: astro-build
+    command: npx astro build
+    description: Astro production build must succeed
+    on_failure: block
+
+  - name: astro-type-check
+    command: npx tsc --noEmit
+    description: TypeScript must compile without errors
+    on_failure: block

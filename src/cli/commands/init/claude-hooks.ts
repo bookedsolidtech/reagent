@@ -10,6 +10,16 @@ export function installClaudeHooks(
 ): InstallResult[] {
   const claudeHooksDir = path.join(targetDir, '.claude', 'hooks');
   if (!dryRun) {
+    // If a stale symlink exists (e.g. from a retired .clarity submodule), remove it first.
+    // mkdirSync with recursive:true cannot replace a symlink — it will throw ENOENT.
+    try {
+      const stat = fs.lstatSync(claudeHooksDir);
+      if (stat.isSymbolicLink()) {
+        fs.unlinkSync(claudeHooksDir);
+      }
+    } catch {
+      // Path doesn't exist yet — that's fine, mkdirSync will create it
+    }
     fs.mkdirSync(claudeHooksDir, { recursive: true });
   }
 
@@ -140,6 +150,14 @@ function getHookTimeout(hookName: string): number {
     'push-review-gate': 30000,
     'architecture-review-gate': 10000,
     'task-link-gate': 5000,
+    'output-validation': 10000,
+    'file-size-guard': 5000,
+    'symlink-guard': 5000,
+    'ci-config-protection': 5000,
+    'git-config-guard': 5000,
+    'import-guard': 5000,
+    'network-exfil-guard': 10000,
+    'rate-limit-guard': 5000,
   };
   return timeouts[hookName] || 10000;
 }
@@ -157,6 +175,14 @@ function getHookStatusMessage(hookName: string): string {
     'push-review-gate': 'Running push review gate...',
     'architecture-review-gate': 'Checking architecture impact...',
     'task-link-gate': 'Checking task reference...',
+    'output-validation': 'Scanning output for credentials...',
+    'file-size-guard': 'Checking file size...',
+    'symlink-guard': 'Checking for symlink traversal...',
+    'ci-config-protection': 'Checking CI workflow safety...',
+    'git-config-guard': 'Checking git config safety...',
+    'import-guard': 'Checking for dangerous imports...',
+    'network-exfil-guard': 'Checking network destinations...',
+    'rate-limit-guard': 'Checking rate limits...',
   };
   return messages[hookName] || `Running ${hookName}...`;
 }

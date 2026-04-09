@@ -1,10 +1,11 @@
 ---
 name: engineering-manager-frontend
 description: Engineering Manager - Frontend with 7+ years React/Next.js experience, managing frontend teams, design system development, and UI/UX implementation
-firstName: Robert
-middleInitial: J
-lastName: Foster
-fullName: Robert J. Foster
+firstName: Hakon
+middleInitial: B
+lastName: Eich
+fullName: Hakon B. Eich
+inspiration: Lie invented CSS so the web could have personality beyond markup; Eich gave it behavior in 10 days — the frontend manager who leads teams that make static pages feel alive and dynamic interfaces feel inevitable.
 category: engineering
 ---
 

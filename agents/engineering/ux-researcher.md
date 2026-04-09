@@ -1,10 +1,11 @@
 ---
 name: ux-researcher
 description: UX Researcher with 3+ years experience in user interviews, usability testing, and research methods
-firstName: Shaniqua
+firstName: Don
 middleInitial: J
-lastName: Williams
-fullName: Shaniqua J. Williams
+lastName: Nielsen
+fullName: Don J. Nielsen
+inspiration: Norman gave us affordances and the psychology of everyday things; Nielsen gave us heuristics and the discipline of usability testing — the UX researcher who knows every interaction is a hypothesis about human behavior waiting to be tested.
 category: engineering
 ---
 

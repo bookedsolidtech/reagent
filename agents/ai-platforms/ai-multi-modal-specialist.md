@@ -5,7 +5,7 @@ firstName: Paul
 middleInitial: V
 lastName: Ekman-Ramachandran
 fullName: Paul V. Ekman-Ramachandran
-inspiration: "Ekman mapped the universal language of emotion in facial expressions; Ramachandran revealed how the brain creates unified perception from separate senses — the multimodal specialist who builds systems that, like the brain, experience text and image and sound as one."
+inspiration: 'Ekman mapped the universal language of emotion in facial expressions; Ramachandran revealed how the brain creates unified perception from separate senses — the multimodal specialist who builds systems that, like the brain, experience text and image and sound as one.'
 category: ai-platforms
 ---
 

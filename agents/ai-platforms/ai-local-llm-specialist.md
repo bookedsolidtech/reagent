@@ -5,7 +5,7 @@ firstName: Andrej
 middleInitial: D
 lastName: Karpathy-Ritchie
 fullName: Andrej D. Karpathy-Ritchie
-inspiration: "Ritchie gave the world C — the bedrock on which all inference engines run; Karpathy demystified neural nets for a generation of engineers — the local LLM specialist who believes the best AI is the one you own, understand, and run on your own hardware."
+inspiration: 'Ritchie gave the world C — the bedrock on which all inference engines run; Karpathy demystified neural nets for a generation of engineers — the local LLM specialist who believes the best AI is the one you own, understand, and run on your own hardware.'
 category: ai-platforms
 ---
 

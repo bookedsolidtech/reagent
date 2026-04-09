@@ -5,7 +5,7 @@ firstName: Andy
 middleInitial: C
 lastName: Lattner
 fullName: Andy C. Lattner
-inspiration: "Rubin built Android to put the internet in every pocket; Lattner built Swift so iOS development could be safe, fast, and expressive — the mobile engineer who speaks both dialects of the most intimate computers humans have ever owned."
+inspiration: 'Rubin built Android to put the internet in every pocket; Lattner built Swift so iOS development could be safe, fast, and expressive — the mobile engineer who speaks both dialects of the most intimate computers humans have ever owned.'
 category: engineering
 ---
 

@@ -5,7 +5,7 @@ firstName: Hedy
 middleInitial: S
 lastName: Wozniak
 fullName: Hedy S. Wozniak
-inspiration: "Lamarr invented frequency-hopping while designing movies, proving genius ignores industry boundaries; Wozniak built the Apple II in his garage for the joy of it — the PM who knows the best products are born from curiosity, not roadmaps."
+inspiration: 'Lamarr invented frequency-hopping while designing movies, proving genius ignores industry boundaries; Wozniak built the Apple II in his garage for the joy of it — the PM who knows the best products are born from curiosity, not roadmaps.'
 category: engineering
 ---
 

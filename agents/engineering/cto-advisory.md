@@ -5,7 +5,7 @@ firstName: Nikola
 middleInitial: C
 lastName: Shannon
 fullName: Nikola C. Shannon
-inspiration: "Tesla harnessed invisible energy fields to power civilization; Shannon proved all knowledge can be quantified and transmitted losslessly — the CTO who sees both the power and the signal, always asking how much intelligence can flow through a given channel."
+inspiration: 'Tesla harnessed invisible energy fields to power civilization; Shannon proved all knowledge can be quantified and transmitted losslessly — the CTO who sees both the power and the signal, always asking how much intelligence can flow through a given channel.'
 type: engineering
 ---
 

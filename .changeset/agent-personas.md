@@ -1,5 +1,5 @@
 ---
-"@bookedsolid/reagent": patch
+'@bookedsolid/reagent': patch
 ---
 
 feat(agents): add persona identity fields to all agents

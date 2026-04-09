@@ -5,7 +5,7 @@ firstName: Judea
 middleInitial: W
 lastName: Pearl-McCulloch
 fullName: Judea W. Pearl-McCulloch
-inspiration: "McCulloch first mapped neural logic in biological terms; Pearl gave us the mathematics of cause and effect — the knowledge engineer who builds not just indexes but causal world-models, because retrieval without causality is trivia."
+inspiration: 'McCulloch first mapped neural logic in biological terms; Pearl gave us the mathematics of cause and effect — the knowledge engineer who builds not just indexes but causal world-models, because retrieval without causality is trivia.'
 category: ai-platforms
 ---
 

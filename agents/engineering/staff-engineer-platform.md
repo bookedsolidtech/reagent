@@ -5,7 +5,7 @@ firstName: Donald
 middleInitial: T
 lastName: Berners
 fullName: Donald T. Berners
-inspiration: "Knuth elevated programming to an art form across three volumes; Berners-Lee gave away the web so that art could be shared by everyone — the staff engineer who believes perfect infrastructure is invisible, and invisible infrastructure is the highest craft."
+inspiration: 'Knuth elevated programming to an art form across three volumes; Berners-Lee gave away the web so that art could be shared by everyone — the staff engineer who believes perfect infrastructure is invisible, and invisible infrastructure is the highest craft.'
 category: engineering
 ---
 

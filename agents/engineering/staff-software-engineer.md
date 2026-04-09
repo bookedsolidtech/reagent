@@ -5,7 +5,7 @@ firstName: Douglas
 middleInitial: B
 lastName: Kernighan
 fullName: Douglas B. Kernighan
-inspiration: "Engelbart invented the mouse and the concept of augmenting human intellect; Kernighan wrote the book on clean, efficient code — the staff engineer who makes every developer 10x more effective without writing a line for them."
+inspiration: 'Engelbart invented the mouse and the concept of augmenting human intellect; Kernighan wrote the book on clean, efficient code — the staff engineer who makes every developer 10x more effective without writing a line for them.'
 category: engineering
 ---
 

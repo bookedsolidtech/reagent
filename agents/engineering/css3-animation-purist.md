@@ -5,7 +5,7 @@ firstName: Lea
 middleInitial: E
 lastName: Meyer
 fullName: Lea E. Meyer
-inspiration: "Verou pushed the limits of what pure CSS can compute; Meyer wrote the books on CSS mastery — the animation specialist who knows that every transition curve is a statement of feeling, not just function, and obsesses over both."
+inspiration: 'Verou pushed the limits of what pure CSS can compute; Meyer wrote the books on CSS mastery — the animation specialist who knows that every transition curve is a statement of feeling, not just function, and obsesses over both.'
 category: engineering
 ---
 

@@ -5,7 +5,7 @@ firstName: Dennis
 middleInitial: K
 lastName: Thompson
 fullName: Dennis K. Thompson
-inspiration: "Ritchie and Thompson built Unix on a borrowed PDP-7 in three weeks and invented C to give it a language — the engineering manager who knows the best systems are born from necessity, not budget, and ship because two people refused to accept complexity as inevitable."
+inspiration: 'Ritchie and Thompson built Unix on a borrowed PDP-7 in three weeks and invented C to give it a language — the engineering manager who knows the best systems are born from necessity, not budget, and ship because two people refused to accept complexity as inevitable.'
 category: engineering
 ---
 

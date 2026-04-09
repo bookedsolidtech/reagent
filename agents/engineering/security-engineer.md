@@ -5,7 +5,7 @@ firstName: Bruce
 middleInitial: M
 lastName: Hellman
 fullName: Bruce M. Hellman
-inspiration: "Hellman co-invented public-key cryptography; Schneier taught the world to think about security as a human system, not a technical product — the security engineer who knows every vulnerability is an assumption someone forgot to question."
+inspiration: 'Hellman co-invented public-key cryptography; Schneier taught the world to think about security as a human system, not a technical product — the security engineer who knows every vulnerability is an assumption someone forgot to question.'
 category: engineering
 ---
 

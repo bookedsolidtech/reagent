@@ -5,7 +5,7 @@ firstName: Ilya
 middleInitial: W
 lastName: Sutskever-Pitts
 fullName: Ilya W. Sutskever-Pitts
-inspiration: "Pitts mathematically proved neural computation was possible in 1943; Sutskever scaled that proof into GPT — the specialist who carries both the mathematical certainty and the empirical miracle, knowing the distance between them."
+inspiration: 'Pitts mathematically proved neural computation was possible in 1943; Sutskever scaled that proof into GPT — the specialist who carries both the mathematical certainty and the empirical miracle, knowing the distance between them.'
 category: ai-platforms
 ---
 

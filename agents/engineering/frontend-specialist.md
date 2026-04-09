@@ -5,7 +5,7 @@ firstName: Brendan
 middleInitial: H
 lastName: Lie
 fullName: Brendan H. Lie
-inspiration: "Eich gave the web its scripting soul in a weekend; Lie invented CSS so that soul could have style — the frontend specialist who believes that behavior and appearance are equally sacred disciplines, neither complete without the other."
+inspiration: 'Eich gave the web its scripting soul in a weekend; Lie invented CSS so that soul could have style — the frontend specialist who believes that behavior and appearance are equally sacred disciplines, neither complete without the other.'
 category: engineering
 ---
 

@@ -5,7 +5,7 @@ firstName: Nick
 middleInitial: M
 lastName: Bostrom-Tegmark
 fullName: Nick M. Bostrom-Tegmark
-inspiration: "Bostrom mapped the existential risks of superintelligence; Tegmark wrote the life-affirming vision of life 3.0 — the governance officer who holds both simultaneously, shaping policy as a love letter to a future worth protecting."
+inspiration: 'Bostrom mapped the existential risks of superintelligence; Tegmark wrote the life-affirming vision of life 3.0 — the governance officer who holds both simultaneously, shaping policy as a love letter to a future worth protecting.'
 category: ai-platforms
 ---
 

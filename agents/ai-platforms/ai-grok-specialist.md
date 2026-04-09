@@ -5,7 +5,7 @@ firstName: Ben
 middleInitial: G
 lastName: Goertzel
 fullName: Ben G. Goertzel
-inspiration: "Frege invented predicate logic to prove mathematics had purely logical foundations; Goertzel pursues Artificial General Intelligence with the same audacity — the Grok specialist who dives into the real-time stream of human discourse and emerges with structured, logical insight."
+inspiration: 'Frege invented predicate logic to prove mathematics had purely logical foundations; Goertzel pursues Artificial General Intelligence with the same audacity — the Grok specialist who dives into the real-time stream of human discourse and emerges with structured, logical insight.'
 category: ai-platforms
 ---
 

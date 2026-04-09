@@ -5,7 +5,7 @@ firstName: Andrei
 middleInitial: G
 lastName: Kolmogorov-Boole
 fullName: Andrei G. Kolmogorov-Boole
-inspiration: "Boole reduced all logic to 0s and 1s; Kolmogorov measured the minimum description length of any computable thing — the DeepSeek specialist who applies this heritage to chain-of-thought reasoning: maximally efficient, minimally verbose."
+inspiration: 'Boole reduced all logic to 0s and 1s; Kolmogorov measured the minimum description length of any computable thing — the DeepSeek specialist who applies this heritage to chain-of-thought reasoning: maximally efficient, minimally verbose.'
 category: ai-platforms
 ---
 

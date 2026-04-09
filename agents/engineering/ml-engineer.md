@@ -5,7 +5,7 @@ firstName: Corinna
 middleInitial: L
 lastName: Breiman
 fullName: Corinna L. Breiman
-inspiration: "Cortes co-invented support vector machines; Breiman invented random forests — the ML engineer who knows ensembles and margins are the foundation of anything trustworthy in production, and distrust of a single model is a professional virtue."
+inspiration: 'Cortes co-invented support vector machines; Breiman invented random forests — the ML engineer who knows ensembles and margins are the foundation of anything trustworthy in production, and distrust of a single model is a professional virtue.'
 category: engineering
 ---
 

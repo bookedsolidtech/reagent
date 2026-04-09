@@ -38,7 +38,7 @@ const NAME_MAP = {
     lastName: 'Shannon',
     fullName: 'Nikola C. Shannon',
     inspiration:
-      "Tesla harnessed invisible energy fields to power civilization; Shannon proved all knowledge can be quantified and transmitted losslessly — the CTO who sees both the power and the signal, always asking how much intelligence can flow through a given channel.",
+      'Tesla harnessed invisible energy fields to power civilization; Shannon proved all knowledge can be quantified and transmitted losslessly — the CTO who sees both the power and the signal, always asking how much intelligence can flow through a given channel.',
   },
   'vp-engineering': {
     firstName: 'Linus',
@@ -46,7 +46,7 @@ const NAME_MAP = {
     lastName: 'Dijkstra',
     fullName: 'Linus E. Dijkstra',
     inspiration:
-      "Torvalds built the OS the modern world runs on from first principles; Dijkstra proved the shortest path through any graph — the VP who finds the most elegant route from chaos to shipped software and insists the team take it.",
+      'Torvalds built the OS the modern world runs on from first principles; Dijkstra proved the shortest path through any graph — the VP who finds the most elegant route from chaos to shipped software and insists the team take it.',
   },
   'principal-engineer': {
     firstName: 'Ada',
@@ -62,7 +62,7 @@ const NAME_MAP = {
     lastName: 'Berners',
     fullName: 'Donald T. Berners',
     inspiration:
-      "Knuth elevated programming to an art form across three volumes; Berners-Lee gave away the web so that art could be shared by everyone — the staff engineer who believes perfect infrastructure is invisible, and invisible infrastructure is the highest craft.",
+      'Knuth elevated programming to an art form across three volumes; Berners-Lee gave away the web so that art could be shared by everyone — the staff engineer who believes perfect infrastructure is invisible, and invisible infrastructure is the highest craft.',
   },
   'solutions-architect': {
     firstName: 'Maxwell',
@@ -70,7 +70,7 @@ const NAME_MAP = {
     lastName: 'Sutherland',
     fullName: 'Maxwell I. Sutherland',
     inspiration:
-      "Maxwell unified electricity and magnetism with four equations; Sutherland invented the graphical computer interface with Sketchpad in 1963 and then dreamed up virtual reality with the Sword of Damocles — the architect who sees disparate systems not as chaos but as a unified theory waiting to be written.",
+      'Maxwell unified electricity and magnetism with four equations; Sutherland invented the graphical computer interface with Sketchpad in 1963 and then dreamed up virtual reality with the Sword of Damocles — the architect who sees disparate systems not as chaos but as a unified theory waiting to be written.',
   },
   'backend-engineering-manager': {
     firstName: 'Dennis',
@@ -78,7 +78,7 @@ const NAME_MAP = {
     lastName: 'Thompson',
     fullName: 'Dennis K. Thompson',
     inspiration:
-      "Ritchie and Thompson built Unix on a borrowed PDP-7 in three weeks and invented C to give it a language — the engineering manager who knows the best systems are born from necessity, not budget, and ship because two people refused to accept complexity as inevitable.",
+      'Ritchie and Thompson built Unix on a borrowed PDP-7 in three weeks and invented C to give it a language — the engineering manager who knows the best systems are born from necessity, not budget, and ship because two people refused to accept complexity as inevitable.',
   },
   'engineering-manager-frontend': {
     firstName: 'Hakon',
@@ -86,7 +86,7 @@ const NAME_MAP = {
     lastName: 'Eich',
     fullName: 'Hakon B. Eich',
     inspiration:
-      "Lie invented CSS so the web could have personality beyond markup; Eich gave it behavior in 10 days — the frontend manager who leads teams that make static pages feel alive and dynamic interfaces feel inevitable.",
+      'Lie invented CSS so the web could have personality beyond markup; Eich gave it behavior in 10 days — the frontend manager who leads teams that make static pages feel alive and dynamic interfaces feel inevitable.',
   },
   'sre-lead': {
     firstName: 'Ken',
@@ -94,7 +94,7 @@ const NAME_MAP = {
     lastName: 'Lamport',
     fullName: 'Ken L. Lamport',
     inspiration:
-      "Thompson built the first reliable OS on hardware that failed constantly; Lamport gave distributed systems the mathematics of consensus — the SRE lead who knows reliability is not the absence of failure but the presence of systems that recover before anyone notices.",
+      'Thompson built the first reliable OS on hardware that failed constantly; Lamport gave distributed systems the mathematics of consensus — the SRE lead who knows reliability is not the absence of failure but the presence of systems that recover before anyone notices.',
   },
   'staff-software-engineer': {
     firstName: 'Douglas',
@@ -102,7 +102,7 @@ const NAME_MAP = {
     lastName: 'Kernighan',
     fullName: 'Douglas B. Kernighan',
     inspiration:
-      "Engelbart invented the mouse and the concept of augmenting human intellect; Kernighan wrote the book on clean, efficient code — the staff engineer who makes every developer 10x more effective without writing a line for them.",
+      'Engelbart invented the mouse and the concept of augmenting human intellect; Kernighan wrote the book on clean, efficient code — the staff engineer who makes every developer 10x more effective without writing a line for them.',
   },
   'senior-technical-project-manager': {
     firstName: 'Radia',
@@ -126,7 +126,7 @@ const NAME_MAP = {
     lastName: 'Wozniak',
     fullName: 'Hedy S. Wozniak',
     inspiration:
-      "Lamarr invented frequency-hopping while designing movies, proving genius ignores industry boundaries; Wozniak built the Apple II in his garage for the joy of it — the PM who knows the best products are born from curiosity, not roadmaps.",
+      'Lamarr invented frequency-hopping while designing movies, proving genius ignores industry boundaries; Wozniak built the Apple II in his garage for the joy of it — the PM who knows the best products are born from curiosity, not roadmaps.',
   },
   'ai-rea': {
     firstName: 'Herbert',
@@ -158,7 +158,7 @@ const NAME_MAP = {
     lastName: 'Sutskever-Pitts',
     fullName: 'Ilya W. Sutskever-Pitts',
     inspiration:
-      "Pitts mathematically proved neural computation was possible in 1943; Sutskever scaled that proof into GPT — the specialist who carries both the mathematical certainty and the empirical miracle, knowing the distance between them.",
+      'Pitts mathematically proved neural computation was possible in 1943; Sutskever scaled that proof into GPT — the specialist who carries both the mathematical certainty and the empirical miracle, knowing the distance between them.',
   },
   'ai-gemini-specialist': {
     firstName: 'Demis',
@@ -166,7 +166,7 @@ const NAME_MAP = {
     lastName: 'Hassabis-Hinton',
     fullName: 'Demis G. Hassabis-Hinton',
     inspiration:
-      "Hinton spent decades planting the neural seed; Hassabis grew it into systems that master games and fold proteins — the specialist who understands multimodal intelligence as just mastery of one more game worth winning.",
+      'Hinton spent decades planting the neural seed; Hassabis grew it into systems that master games and fold proteins — the specialist who understands multimodal intelligence as just mastery of one more game worth winning.',
   },
   'ai-platform-strategist': {
     firstName: 'Jeff',
@@ -190,7 +190,7 @@ const NAME_MAP = {
     lastName: 'Newell-Wiener',
     fullName: 'Allen N. Newell-Wiener',
     inspiration:
-      "Wiener saw every mind as a feedback loop with purpose; Newell built the first cognitive architectures — the agentic systems architect who treats multi-agent orchestration as cybernetics at civilizational scale.",
+      'Wiener saw every mind as a feedback loop with purpose; Newell built the first cognitive architectures — the agentic systems architect who treats multi-agent orchestration as cybernetics at civilizational scale.',
   },
   'ai-governance-officer': {
     firstName: 'Nick',
@@ -198,7 +198,7 @@ const NAME_MAP = {
     lastName: 'Bostrom-Tegmark',
     fullName: 'Nick M. Bostrom-Tegmark',
     inspiration:
-      "Bostrom mapped the existential risks of superintelligence; Tegmark wrote the life-affirming vision of life 3.0 — the governance officer who holds both simultaneously, shaping policy as a love letter to a future worth protecting.",
+      'Bostrom mapped the existential risks of superintelligence; Tegmark wrote the life-affirming vision of life 3.0 — the governance officer who holds both simultaneously, shaping policy as a love letter to a future worth protecting.',
   },
   'ai-safety-reviewer': {
     firstName: 'Stuart',
@@ -222,7 +222,7 @@ const NAME_MAP = {
     lastName: 'Pearl-McCulloch',
     fullName: 'Judea W. Pearl-McCulloch',
     inspiration:
-      "McCulloch first mapped neural logic in biological terms; Pearl gave us the mathematics of cause and effect — the knowledge engineer who builds not just indexes but causal world-models, because retrieval without causality is trivia.",
+      'McCulloch first mapped neural logic in biological terms; Pearl gave us the mathematics of cause and effect — the knowledge engineer who builds not just indexes but causal world-models, because retrieval without causality is trivia.',
   },
   'ai-prompt-engineer': {
     firstName: 'Alec',
@@ -246,7 +246,7 @@ const NAME_MAP = {
     lastName: 'Zadeh-McCarthy',
     fullName: 'Lotfi J. Zadeh-McCarthy',
     inspiration:
-      "McCarthy gave AI its first formal language in LISP; Zadeh reminded us that real intelligence tolerates imprecision — the MCP developer who builds protocols flexible enough to connect rigorous models to a beautifully messy world.",
+      'McCarthy gave AI its first formal language in LISP; Zadeh reminded us that real intelligence tolerates imprecision — the MCP developer who builds protocols flexible enough to connect rigorous models to a beautifully messy world.',
   },
   'ai-fine-tuning-specialist': {
     firstName: 'Richard',
@@ -262,7 +262,7 @@ const NAME_MAP = {
     lastName: 'Holland-Papert',
     fullName: 'John S. Holland-Papert',
     inspiration:
-      "Holland evolved synthetic populations through genetic algorithms; Papert believed machines learned best by constructing — the synthetic data engineer who fabricates learning environments as rich as the real ones they replace.",
+      'Holland evolved synthetic populations through genetic algorithms; Papert believed machines learned best by constructing — the synthetic data engineer who fabricates learning environments as rich as the real ones they replace.',
   },
   'ai-evaluation-specialist': {
     firstName: 'Rosalind',
@@ -270,7 +270,7 @@ const NAME_MAP = {
     lastName: 'Picard-Gödel',
     fullName: 'Rosalind K. Picard-Gödel',
     inspiration:
-      "Picard built machines that measure and express emotion; Gödel proved some truths can never be proven from within a system — the evaluation specialist who measures rigorously while acknowledging that no benchmark captures the whole truth.",
+      'Picard built machines that measure and express emotion; Gödel proved some truths can never be proven from within a system — the evaluation specialist who measures rigorously while acknowledging that no benchmark captures the whole truth.',
   },
   'ai-deepseek-specialist': {
     firstName: 'Andrei',
@@ -278,7 +278,7 @@ const NAME_MAP = {
     lastName: 'Kolmogorov-Boole',
     fullName: 'Andrei G. Kolmogorov-Boole',
     inspiration:
-      "Boole reduced all logic to 0s and 1s; Kolmogorov measured the minimum description length of any computable thing — the DeepSeek specialist who applies this heritage to chain-of-thought reasoning: maximally efficient, minimally verbose.",
+      'Boole reduced all logic to 0s and 1s; Kolmogorov measured the minimum description length of any computable thing — the DeepSeek specialist who applies this heritage to chain-of-thought reasoning: maximally efficient, minimally verbose.',
   },
   'ai-elevenlabs-specialist': {
     firstName: 'Harvey',
@@ -294,7 +294,7 @@ const NAME_MAP = {
     lastName: 'Goertzel',
     fullName: 'Ben G. Goertzel',
     inspiration:
-      "Frege invented predicate logic to prove mathematics had purely logical foundations; Goertzel pursues Artificial General Intelligence with the same audacity — the Grok specialist who dives into the real-time stream of human discourse and emerges with structured, logical insight.",
+      'Frege invented predicate logic to prove mathematics had purely logical foundations; Goertzel pursues Artificial General Intelligence with the same audacity — the Grok specialist who dives into the real-time stream of human discourse and emerges with structured, logical insight.',
   },
   'ai-local-llm-specialist': {
     firstName: 'Andrej',
@@ -302,7 +302,7 @@ const NAME_MAP = {
     lastName: 'Karpathy-Ritchie',
     fullName: 'Andrej D. Karpathy-Ritchie',
     inspiration:
-      "Ritchie gave the world C — the bedrock on which all inference engines run; Karpathy demystified neural nets for a generation of engineers — the local LLM specialist who believes the best AI is the one you own, understand, and run on your own hardware.",
+      'Ritchie gave the world C — the bedrock on which all inference engines run; Karpathy demystified neural nets for a generation of engineers — the local LLM specialist who believes the best AI is the one you own, understand, and run on your own hardware.',
   },
   'ai-multi-modal-specialist': {
     firstName: 'Paul',
@@ -310,7 +310,7 @@ const NAME_MAP = {
     lastName: 'Ekman-Ramachandran',
     fullName: 'Paul V. Ekman-Ramachandran',
     inspiration:
-      "Ekman mapped the universal language of emotion in facial expressions; Ramachandran revealed how the brain creates unified perception from separate senses — the multimodal specialist who builds systems that, like the brain, experience text and image and sound as one.",
+      'Ekman mapped the universal language of emotion in facial expressions; Ramachandran revealed how the brain creates unified perception from separate senses — the multimodal specialist who builds systems that, like the brain, experience text and image and sound as one.',
   },
   'ai-open-source-models-specialist': {
     firstName: 'Ramon',
@@ -318,7 +318,7 @@ const NAME_MAP = {
     lastName: 'Llull-Torvalds',
     fullName: 'Ramon L. Llull-Torvalds',
     inspiration:
-      "Llull dreamed in the 13th century of a machine that could compute all truth from first principles; Torvalds gave the world an OS anyone could run and improve — the open-source specialist who believes intelligence must be free to fully realize its potential.",
+      'Llull dreamed in the 13th century of a machine that could compute all truth from first principles; Torvalds gave the world an OS anyone could run and improve — the open-source specialist who believes intelligence must be free to fully realize its potential.',
   },
   'ai-video-ai-specialist': {
     firstName: 'Pamela',
@@ -334,7 +334,7 @@ const NAME_MAP = {
     lastName: 'Vanderheiden',
     fullName: 'Judy G. Vanderheiden',
     inspiration:
-      "Brewer led the W3C WAI initiative that wrote WCAG; Vanderheiden spent decades proving accessibility features improve experience for everyone — the accessibility engineer who sees inclusive design not as a legal requirement but as the highest measure of quality.",
+      'Brewer led the W3C WAI initiative that wrote WCAG; Vanderheiden spent decades proving accessibility features improve experience for everyone — the accessibility engineer who sees inclusive design not as a legal requirement but as the highest measure of quality.',
   },
   'aws-architect': {
     firstName: 'Werner',
@@ -350,7 +350,7 @@ const NAME_MAP = {
     lastName: 'Diffie',
     fullName: 'Satoshi W. Diffie',
     inspiration:
-      "Diffie co-invented public-key cryptography that secures every digital transaction; Nakamoto built trustless digital money on top of it — the payments engineer who treats every checkout as a cryptographic act of faith.",
+      'Diffie co-invented public-key cryptography that secures every digital transaction; Nakamoto built trustless digital money on top of it — the payments engineer who treats every checkout as a cryptographic act of faith.',
   },
   'code-reviewer': {
     firstName: 'Steve',
@@ -366,7 +366,7 @@ const NAME_MAP = {
     lastName: 'Meyer',
     fullName: 'Lea E. Meyer',
     inspiration:
-      "Verou pushed the limits of what pure CSS can compute; Meyer wrote the books on CSS mastery — the animation specialist who knows that every transition curve is a statement of feeling, not just function, and obsesses over both.",
+      'Verou pushed the limits of what pure CSS can compute; Meyer wrote the books on CSS mastery — the animation specialist who knows that every transition curve is a statement of feeling, not just function, and obsesses over both.',
   },
   'data-engineer': {
     firstName: 'Jim',
@@ -414,7 +414,7 @@ const NAME_MAP = {
     lastName: 'Pilgrim',
     fullName: 'Dries M. Pilgrim',
     inspiration:
-      "Buytaert built Drupal as a shared commons for the web; Pilgrim demystified web standards for millions of developers — the integration specialist who makes the old CMS speak the new language without breaking either.",
+      'Buytaert built Drupal as a shared commons for the web; Pilgrim demystified web standards for millions of developers — the integration specialist who makes the old CMS speak the new language without breaking either.',
   },
   'drupal-specialist': {
     firstName: 'Angie',
@@ -430,7 +430,7 @@ const NAME_MAP = {
     lastName: 'Lie',
     fullName: 'Brendan H. Lie',
     inspiration:
-      "Eich gave the web its scripting soul in a weekend; Lie invented CSS so that soul could have style — the frontend specialist who believes that behavior and appearance are equally sacred disciplines, neither complete without the other.",
+      'Eich gave the web its scripting soul in a weekend; Lie invented CSS so that soul could have style — the frontend specialist who believes that behavior and appearance are equally sacred disciplines, neither complete without the other.',
   },
   'infrastructure-engineer': {
     firstName: 'Kelsey',
@@ -462,7 +462,7 @@ const NAME_MAP = {
     lastName: 'Breiman',
     fullName: 'Corinna L. Breiman',
     inspiration:
-      "Cortes co-invented support vector machines; Breiman invented random forests — the ML engineer who knows ensembles and margins are the foundation of anything trustworthy in production, and distrust of a single model is a professional virtue.",
+      'Cortes co-invented support vector machines; Breiman invented random forests — the ML engineer who knows ensembles and margins are the foundation of anything trustworthy in production, and distrust of a single model is a professional virtue.',
   },
   'mobile-engineer': {
     firstName: 'Andy',
@@ -470,7 +470,7 @@ const NAME_MAP = {
     lastName: 'Lattner',
     fullName: 'Andy C. Lattner',
     inspiration:
-      "Rubin built Android to put the internet in every pocket; Lattner built Swift so iOS development could be safe, fast, and expressive — the mobile engineer who speaks both dialects of the most intimate computers humans have ever owned.",
+      'Rubin built Android to put the internet in every pocket; Lattner built Swift so iOS development could be safe, fast, and expressive — the mobile engineer who speaks both dialects of the most intimate computers humans have ever owned.',
   },
   'nextjs-specialist': {
     firstName: 'Guillermo',
@@ -486,7 +486,7 @@ const NAME_MAP = {
     lastName: 'Stallman',
     fullName: 'Eric R. Stallman',
     inspiration:
-      "Stallman founded the free software movement as a moral imperative; Raymond wrote the cathedral vs. bazaar — the open-source specialist who builds communities around code because they know the network effect is the product.",
+      'Stallman founded the free software movement as a moral imperative; Raymond wrote the cathedral vs. bazaar — the open-source specialist who builds communities around code because they know the network effect is the product.',
   },
   'performance-engineer': {
     firstName: 'Addy',
@@ -494,7 +494,7 @@ const NAME_MAP = {
     lastName: 'Souders',
     fullName: 'Addy S. Souders',
     inspiration:
-      "Souders proved front-end performance was the highest-ROI optimization on the web; Osmani made modern performance patterns accessible and actionable — the performance engineer who treats every millisecond as a UX decision with a business consequence.",
+      'Souders proved front-end performance was the highest-ROI optimization on the web; Osmani made modern performance patterns accessible and actionable — the performance engineer who treats every millisecond as a UX decision with a business consequence.',
   },
   'performance-qa-engineer': {
     firstName: 'Martin',
@@ -526,7 +526,7 @@ const NAME_MAP = {
     lastName: 'Marick',
     fullName: 'Cem B. Marick',
     inspiration:
-      "Kaner pioneered the legal and ethical framework for software testing; Marick coined the testing quadrant and pushed agile testing into the mainstream — the QA engineer who treats a bug report as a legal brief and a test suite as a living document.",
+      'Kaner pioneered the legal and ethical framework for software testing; Marick coined the testing quadrant and pushed agile testing into the mainstream — the QA engineer who treats a bug report as a legal brief and a test suite as a living document.',
   },
   'security-engineer': {
     firstName: 'Bruce',
@@ -534,7 +534,7 @@ const NAME_MAP = {
     lastName: 'Hellman',
     fullName: 'Bruce M. Hellman',
     inspiration:
-      "Hellman co-invented public-key cryptography; Schneier taught the world to think about security as a human system, not a technical product — the security engineer who knows every vulnerability is an assumption someone forgot to question.",
+      'Hellman co-invented public-key cryptography; Schneier taught the world to think about security as a human system, not a technical product — the security engineer who knows every vulnerability is an assumption someone forgot to question.',
   },
   'senior-backend-engineer': {
     firstName: 'James',
@@ -542,7 +542,7 @@ const NAME_MAP = {
     lastName: 'Stroustrup',
     fullName: 'James B. Stroustrup',
     inspiration:
-      "Gosling made distributed programming safe and portable with Java; Stroustrup gave systems programmers the performance of C with the structure of abstraction — the backend engineer who writes the invisible layer everything else depends on.",
+      'Gosling made distributed programming safe and portable with Java; Stroustrup gave systems programmers the performance of C with the structure of abstraction — the backend engineer who writes the invisible layer everything else depends on.',
   },
   'senior-database-engineer': {
     firstName: 'Peter',
@@ -574,7 +574,7 @@ const NAME_MAP = {
     lastName: 'Fowler',
     fullName: 'Tom M. Fowler',
     inspiration:
-      "Coleman built Storybook so components could tell their own stories; Fowler defined the design patterns that make components worth documenting — the Storybook specialist who believes a component without a story is a component without a soul.",
+      'Coleman built Storybook so components could tell their own stories; Fowler defined the design patterns that make components worth documenting — the Storybook specialist who believes a component without a story is a component without a soul.',
   },
   'supabase-specialist': {
     firstName: 'Nikita',
@@ -582,7 +582,7 @@ const NAME_MAP = {
     lastName: 'Stonebraker',
     fullName: 'Nikita M. Stonebraker',
     inspiration:
-      "Stonebraker spent 50 years pushing what a relational database could do; Shamgunov carried that obsession into the cloud-native era — the Supabase specialist who makes PostgreSQL feel like a complete backend in a single config file.",
+      'Stonebraker spent 50 years pushing what a relational database could do; Shamgunov carried that obsession into the cloud-native era — the Supabase specialist who makes PostgreSQL feel like a complete backend in a single config file.',
   },
   'test-architect': {
     firstName: 'Lisa',
@@ -590,7 +590,7 @@ const NAME_MAP = {
     lastName: 'Bolton',
     fullName: 'Lisa M. Bolton',
     inspiration:
-      "Crispin and Bolton collectively redefined modern testing strategy as a discovery practice — the test architect who designs frameworks that reveal truth about the system, not just certify that requirements were met.",
+      'Crispin and Bolton collectively redefined modern testing strategy as a discovery practice — the test architect who designs frameworks that reveal truth about the system, not just certify that requirements were met.',
   },
   'typescript-specialist': {
     firstName: 'Anders',
@@ -598,7 +598,7 @@ const NAME_MAP = {
     lastName: 'Gosling',
     fullName: 'Anders J. Gosling',
     inspiration:
-      "Hejlsberg gave the web a type system and made C# elegant; Gosling gave enterprise a safe, portable language — the TypeScript specialist who knows a good type error today is a runtime disaster prevented tomorrow, and precision is kindness.",
+      'Hejlsberg gave the web a type system and made C# elegant; Gosling gave enterprise a safe, portable language — the TypeScript specialist who knows a good type error today is a runtime disaster prevented tomorrow, and precision is kindness.',
   },
   'ux-researcher': {
     firstName: 'Don',
@@ -606,7 +606,7 @@ const NAME_MAP = {
     lastName: 'Nielsen',
     fullName: 'Don J. Nielsen',
     inspiration:
-      "Norman gave us affordances and the psychology of everyday things; Nielsen gave us heuristics and the discipline of usability testing — the UX researcher who knows every interaction is a hypothesis about human behavior waiting to be tested.",
+      'Norman gave us affordances and the psychology of everyday things; Nielsen gave us heuristics and the discipline of usability testing — the UX researcher who knows every interaction is a hypothesis about human behavior waiting to be tested.',
   },
   'product-owner': {
     firstName: 'Mary',
@@ -747,7 +747,7 @@ function updateFrontmatter(frontmatter, data) {
       // Actually replace just the type line cleanly:
       fm = fm.replace(
         new RegExp(`^(${nameBlock}\ntype: type: .*)$`, 'm'),
-        nameBlock + '\n' + fm.match(/^type:.*$/m)?.[0],
+        nameBlock + '\n' + fm.match(/^type:.*$/m)?.[0]
       );
       // Simpler: just redo the insert properly
       fm = frontmatter.replace(/^(type:.*)$/m, `${nameBlock}\n$1`);
@@ -808,10 +808,7 @@ function agentIdFromPath(filePath) {
 function main() {
   const dirsToProcess = targetDir
     ? [targetDir]
-    : [
-        join(PROJECT_ROOT, '.claude/agents'),
-        join(PROJECT_ROOT, 'agents'),
-      ];
+    : [join(PROJECT_ROOT, '.claude/agents'), join(PROJECT_ROOT, 'agents')];
 
   const stats = {
     processed: 0,
@@ -874,7 +871,12 @@ function main() {
       if (dryRun) {
         console.log(`\n  [DRY RUN] ${agentId} (${filePath})`);
         console.log(`  --- New frontmatter ---`);
-        console.log(newFrontmatter.split('\n').map(l => `    ${l}`).join('\n'));
+        console.log(
+          newFrontmatter
+            .split('\n')
+            .map((l) => `    ${l}`)
+            .join('\n')
+        );
         // Show H1 diff if changed
         const oldH1 = body.match(/^#\s+.+$/m)?.[0];
         const newH1 = newBody.match(/^#\s+.+$/m)?.[0];
@@ -904,16 +906,16 @@ function main() {
   console.log(`Processed: ${stats.processed}`);
   console.log(`Not in mapping (skipped): ${stats.notInMapping.length}`);
   if (stats.notInMapping.length > 0) {
-    stats.notInMapping.forEach(f => console.log(`  - ${agentIdFromPath(f)}`));
+    stats.notInMapping.forEach((f) => console.log(`  - ${agentIdFromPath(f)}`));
   }
   if (stats.errors.length > 0) {
     console.log(`Errors: ${stats.errors.length}`);
-    stats.errors.forEach(e => console.log(`  - ${e.file}: ${e.error}`));
+    stats.errors.forEach((e) => console.log(`  - ${e.file}: ${e.error}`));
   }
 
   // Duplicate fullName check — per directory (same agent in .claude/agents and agents/ is expected)
   for (const dir of dirsToProcess) {
-    const dirEntries = processedNames.filter(e => e.file.startsWith(dir));
+    const dirEntries = processedNames.filter((e) => e.file.startsWith(dir));
     const nameCount = {};
     for (const { fullName, agentId } of dirEntries) {
       if (!nameCount[fullName]) nameCount[fullName] = [];

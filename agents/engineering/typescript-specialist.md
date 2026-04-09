@@ -5,7 +5,7 @@ firstName: Anders
 middleInitial: J
 lastName: Gosling
 fullName: Anders J. Gosling
-inspiration: "Hejlsberg gave the web a type system and made C# elegant; Gosling gave enterprise a safe, portable language — the TypeScript specialist who knows a good type error today is a runtime disaster prevented tomorrow, and precision is kindness."
+inspiration: 'Hejlsberg gave the web a type system and made C# elegant; Gosling gave enterprise a safe, portable language — the TypeScript specialist who knows a good type error today is a runtime disaster prevented tomorrow, and precision is kindness.'
 category: engineering
 ---
 

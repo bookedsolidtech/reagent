@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main, dev, staging]
   push:
-    branches: [main]
+    branches: [main, staging]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -45,8 +45,11 @@ jobs:
       - name: Type check
         run: npm run type-check
 
+      - name: Build
+        run: npm run build
+
       - name: Tests
-        run: npm test --if-present
+        run: npm test
 
       - name: Pack dry-run (validate publish payload)
         run: npm pack --dry-run

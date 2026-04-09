@@ -3,14 +3,24 @@ npm-debug.log*
 .DS_Store
 *.log
 
+# MCP config (developer-local, not committed)
+.mcp.json
+
 # reagent — AI tooling (stays on developer machine, not committed)
 .claude/agents/
 .claude/hooks/
 .claude/settings.json
+RESTART.md
 
 # Generated during publish (not for commit)
 sbom.json
 *.tgz
 
+# TypeScript build output
+dist/
+
 # reagent runtime (HALT is committed when active; policy.yaml is committed)
 # .reagent/ itself is committed — do not ignore it
+.reagent/tasks.jsonl
+.reagent/.last-checkin
+.reagent/audit/

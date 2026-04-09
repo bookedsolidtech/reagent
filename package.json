@@ -1,26 +1,26 @@
 {
   "name": "@bookedsolid/reagent",
   "version": "0.1.0",
-  "description": "Zero-trust agentic infrastructure — hooks, cursor rules, attribution removal, and behavioral enforcement for any AI-assisted project",
+  "description": "Zero-trust MCP gateway — policy enforcement, secret redaction, and audit logging for AI-assisted projects",
   "license": "MIT",
   "author": "Booked Solid Technology <oss@bookedsolid.tech> (https://bookedsolid.tech)",
   "homepage": "https://github.com/bookedsolidtech/reagent#readme",
   "bugs": {
     "url": "https://github.com/bookedsolidtech/reagent/issues"
   },
-  "type": "commonjs",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bookedsolidtech/reagent.git"
   },
   "bin": {
-    "reagent": "bin/init.js"
+    "reagent": "dist/cli/index.js"
   },
   "engines": {
     "node": ">=22"
   },
   "files": [
-    "bin/",
+    "dist/",
     "hooks/",
     "cursor/",
     "husky/",
@@ -30,8 +30,9 @@
     "commands/"
   ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "prepare": "husky",
-    "prepublishOnly": "node scripts/block-local-publish.mjs",
+    "prepublishOnly": "npm run build && node scripts/block-local-publish.mjs",
     "preflight": "./scripts/preflight.sh",
     "changeset": "changeset",
     "changeset:version": "changeset version",
@@ -39,22 +40,33 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "echo 'No tests yet — add tests before 0.2.0' && exit 0",
-    "type-check": "echo 'No TypeScript config — skipping' && exit 0"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "keywords": [
     "claude",
+    "mcp",
     "ai-safety",
     "hooks",
-    "cursor",
-    "attribution",
     "zero-trust",
-    "agentic"
+    "agentic",
+    "gateway"
   ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "yaml": "^2.7.0",
+    "zod": "^3.23.0"
+  },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",
+    "@types/node": "^25.5.2",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^10.2.0",
     "husky": "^9.1.7",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "typescript": "^5.8.0",
+    "vitest": "^3.1.0"
   }
 }

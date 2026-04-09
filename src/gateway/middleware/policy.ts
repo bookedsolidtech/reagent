@@ -31,15 +31,21 @@ export function createPolicyMiddleware(
   gatewayConfig?: GatewayConfig,
   baseDir?: string
 ): Middleware {
+  // SECURITY: Cache last successfully parsed policy for fallback.
+  // This prevents falling back to a potentially more permissive initial policy
+  // if the file is corrupted after a stricter policy was loaded.
+  let lastGoodPolicy = initialPolicy;
+
   return async (ctx, next) => {
     // SECURITY: Re-read policy on each invocation for live autonomy changes.
-    // Falls back to initial policy if re-read fails (file deleted, parse error, etc.)
-    let policy = initialPolicy;
+    // Falls back to last successfully parsed policy on read failure.
+    let policy = lastGoodPolicy;
     if (baseDir) {
       try {
         policy = loadPolicy(baseDir);
+        lastGoodPolicy = policy; // Cache successful parse
       } catch {
-        // Use initial policy if re-read fails — fail-open to last known good config
+        // Use last known good policy if re-read fails
       }
     }
 

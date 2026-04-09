@@ -50,7 +50,7 @@ export async function startGateway(options: ServeOptions): Promise<void> {
     createKillSwitchMiddleware(baseDir),
     createTierMiddleware(gatewayConfig),
     createPolicyMiddleware(policy, gatewayConfig, baseDir),
-    createBlockedPathsMiddleware(policy),
+    createBlockedPathsMiddleware(policy, baseDir),
     redactMiddleware,
   ];
 

@@ -150,12 +150,12 @@ notification_channel: ""
     expect(ctx2.error).toContain('L0');
   });
 
-  it('falls back to initial policy if file is deleted', async () => {
+  it('falls back to last-good policy if file is deleted', async () => {
     writePolicyFile(AutonomyLevel.L3);
     const initialPolicy = createPolicy(AutonomyLevel.L1);
     const mw = createPolicyMiddleware(initialPolicy, undefined, tmpDir);
 
-    // Works with disk policy (L3)
+    // First call reads L3 from disk — this becomes the cached last-good
     const ctx1 = createContext('delete_channel');
     await mw(ctx1, async () => {});
     expect(ctx1.status).toBe(InvocationStatus.Allowed);
@@ -163,25 +163,43 @@ notification_channel: ""
     // Delete policy file
     fs.unlinkSync(path.join(tmpDir, '.reagent', 'policy.yaml'));
 
-    // Falls back to initial policy (L1) — denies destructive
+    // Falls back to last-good (L3), NOT initial (L1)
     const ctx2 = createContext('delete_channel');
     await mw(ctx2, async () => {});
-    expect(ctx2.status).toBe(InvocationStatus.Denied);
+    expect(ctx2.status).toBe(InvocationStatus.Allowed);
   });
 
-  it('falls back to initial policy if file is malformed', async () => {
-    writePolicyFile(AutonomyLevel.L3);
-    const initialPolicy = createPolicy(AutonomyLevel.L0);
+  it('falls back to last-good policy if file becomes malformed', async () => {
+    // Start at L0 on disk
+    writePolicyFile(AutonomyLevel.L0);
+    const initialPolicy = createPolicy(AutonomyLevel.L3);
     const mw = createPolicyMiddleware(initialPolicy, undefined, tmpDir);
 
-    // Write garbage
+    // First call reads L0 — caches it as last-good
+    const ctx1 = createContext('send_message'); // Write-tier
+    await mw(ctx1, async () => {});
+    expect(ctx1.status).toBe(InvocationStatus.Denied);
+    expect(ctx1.error).toContain('L0');
+
+    // Corrupt the file
     fs.writeFileSync(path.join(tmpDir, '.reagent', 'policy.yaml'), 'not: valid: yaml: {{{}}}');
 
-    // Falls back to initial (L0)
-    const ctx = createContext('send_message'); // Write-tier
+    // Falls back to last-good (L0), NOT initial (L3)
+    const ctx2 = createContext('send_message');
+    await mw(ctx2, async () => {});
+    expect(ctx2.status).toBe(InvocationStatus.Denied);
+    expect(ctx2.error).toContain('L0');
+  });
+
+  it('uses initial policy as last-good when no successful reload has occurred', async () => {
+    // No policy file on disk at all
+    const initialPolicy = createPolicy(AutonomyLevel.L1);
+    const mw = createPolicyMiddleware(initialPolicy, undefined, tmpDir);
+
+    // Falls back to initial (L1) — denies destructive
+    const ctx = createContext('delete_channel');
     await mw(ctx, async () => {});
     expect(ctx.status).toBe(InvocationStatus.Denied);
-    expect(ctx.error).toContain('L0');
   });
 
   it('does not hot-reload when baseDir is not provided', async () => {

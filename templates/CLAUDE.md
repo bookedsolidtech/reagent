@@ -48,14 +48,17 @@ This session may be subject to audit logging per `.reagent/policy.yaml`. All too
 
 ## Delegation
 
-This project uses a "bring your own engineering team" model with discoverable specialist agents.
+This project uses a "bring your own engineering team" model. All non-trivial work flows through the orchestrator to specialist agents.
 
-**CRITICAL: For any non-trivial task, you MUST delegate to specialist agents rather than doing the work directly.**
+**CRITICAL: For any non-trivial task, delegate to the `reagent-orchestrator` agent FIRST.**
 
-1. **Discover agents**: scan `.claude/agents/` to find specialist agents by domain
-2. **Route to specialists**: use the Agent tool with the appropriate `subagent_type` matching agent filenames (e.g., `security-engineer`, `frontend-specialist`, `database-architect`)
-3. **Use the orchestrator**: for complex multi-step tasks, delegate to the `reagent-orchestrator` agent which enforces engineering processes, selects the right specialists, and coordinates work
-4. **Run agents in parallel**: when tasks are independent, launch multiple specialist agents simultaneously for maximum throughput
+The orchestrator (`subagent_type: "reagent-orchestrator"`) is the primary routing layer:
+- It reads `.reagent/policy.yaml` and checks HALT before any work
+- It selects the right specialist agents from `.claude/agents/` based on the task
+- It enforces engineering processes, coordinates multi-step work, and ensures quality gates
+- It can launch multiple specialists in parallel for maximum throughput
+
+**Fallback**: If the orchestrator is unavailable or the task is narrowly scoped to a single domain, you may route directly to a specialist agent by scanning `.claude/agents/` and using the matching `subagent_type` (e.g., `security-engineer`, `frontend-specialist`, `database-architect`).
 
 **Do NOT** use generic Agent calls without specifying a `subagent_type`. Every agent invocation should target a discoverable specialist from `.claude/agents/`.
 

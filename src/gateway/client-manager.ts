@@ -65,17 +65,22 @@ export class ClientManager {
       { capabilities: {} }
     );
 
-    // H3: Timeout for downstream server connections
+    // Timeout for downstream server connections — timer is cleared on success to prevent leaks.
     const connectPromise = client.connect(transport);
+    let timer: ReturnType<typeof setTimeout>;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(
+      timer = setTimeout(
         () =>
           reject(new Error(`Connection to "${name}" timed out after ${this.connectTimeoutMs}ms`)),
         this.connectTimeoutMs
       );
     });
 
-    await Promise.race([connectPromise, timeoutPromise]);
+    try {
+      await Promise.race([connectPromise, timeoutPromise]);
+    } finally {
+      clearTimeout(timer!);
+    }
 
     return { name, client, transport, config };
   }

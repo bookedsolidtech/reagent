@@ -12,7 +12,7 @@ alwaysApply: true
 
 Remove these patterns from all commits, PR bodies, commit messages, and code:
 
-- `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>`
+- `Co-Authored-By: Claude <noreply@anthropic.com>`
 - `Co-Authored-By: Claude ...` (any variant)
 - `Generated with Claude Code`
 - `🤖 Generated with [Claude Code](https://claude.com/claude-code)`

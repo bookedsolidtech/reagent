@@ -1,5 +1,6 @@
 import { AutonomyLevel, InvocationStatus, Tier } from '../../types/index.js';
 import { classifyTool, isToolBlocked } from '../../config/tier-map.js';
+import { loadPolicy } from '../../config/policy-loader.js';
 import type { Policy, GatewayConfig } from '../../types/index.js';
 import type { Middleware } from './chain.js';
 
@@ -20,11 +21,28 @@ const TIER_ALLOWED: Record<AutonomyLevel, Set<Tier>> = {
 /**
  * Checks autonomy level against tool tier, and checks blocked tools.
  *
+ * SECURITY: Re-reads policy.yaml on every invocation so autonomy level changes
+ * take effect immediately without gateway restart.
  * SECURITY: Re-derives tier from tool_name independently — never trusts ctx.tier.
  * SECURITY: Undefined/unknown tier defaults to DENY (fail-closed).
  */
-export function createPolicyMiddleware(policy: Policy, gatewayConfig?: GatewayConfig): Middleware {
+export function createPolicyMiddleware(
+  initialPolicy: Policy,
+  gatewayConfig?: GatewayConfig,
+  baseDir?: string
+): Middleware {
   return async (ctx, next) => {
+    // SECURITY: Re-read policy on each invocation for live autonomy changes.
+    // Falls back to initial policy if re-read fails (file deleted, parse error, etc.)
+    let policy = initialPolicy;
+    if (baseDir) {
+      try {
+        policy = loadPolicy(baseDir);
+      } catch {
+        // Use initial policy if re-read fails — fail-open to last known good config
+      }
+    }
+
     // Check if tool is explicitly blocked
     if (isToolBlocked(ctx.tool_name, ctx.server_name, gatewayConfig)) {
       ctx.status = InvocationStatus.Denied;
@@ -52,9 +70,9 @@ export function createPolicyMiddleware(policy: Policy, gatewayConfig?: GatewayCo
       return;
     }
 
-    await next();
+    // Store current autonomy level in metadata for audit middleware
+    ctx.metadata.autonomy_level = policy.autonomy_level;
 
-    // SECURITY: Re-assert denial status cannot be undone by downstream middleware.
-    // Once denied, status is locked.
+    await next();
   };
 }

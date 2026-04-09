@@ -16,6 +16,21 @@
   "bin": {
     "reagent": "dist/cli/index.js"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/policy-loader.d.ts",
+      "import": "./dist/config/policy-loader.js"
+    },
+    "./middleware": {
+      "types": "./dist/gateway/middleware/chain.d.ts",
+      "import": "./dist/gateway/middleware/chain.js"
+    }
+  },
+  "sideEffects": false,
   "engines": {
     "node": ">=22"
   },

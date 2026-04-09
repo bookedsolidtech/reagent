@@ -5,6 +5,14 @@ import { z } from 'zod';
 import { AutonomyLevel } from '../types/index.js';
 import type { Policy } from '../types/index.js';
 
+/** Numeric ordering for autonomy levels — higher number = more permissive. */
+const LEVEL_ORDER: Record<AutonomyLevel, number> = {
+  [AutonomyLevel.L0]: 0,
+  [AutonomyLevel.L1]: 1,
+  [AutonomyLevel.L2]: 2,
+  [AutonomyLevel.L3]: 3,
+};
+
 const PolicySchema = z.object({
   version: z.string(),
   profile: z.string(),
@@ -36,11 +44,22 @@ export function loadPolicy(baseDir: string): Policy {
     );
   }
 
+  let policy: Policy;
   try {
-    return PolicySchema.parse(parsed);
+    policy = PolicySchema.parse(parsed);
   } catch (zodErr) {
     throw new Error(
       `Invalid policy schema at ${policyPath}: ${zodErr instanceof Error ? zodErr.message : zodErr}`
     );
   }
+
+  // SECURITY: Enforce max_autonomy_level ceiling — clamp if autonomy_level exceeds it.
+  if (LEVEL_ORDER[policy.autonomy_level] > LEVEL_ORDER[policy.max_autonomy_level]) {
+    console.error(
+      `[reagent] WARNING: autonomy_level ${policy.autonomy_level} exceeds max_autonomy_level ${policy.max_autonomy_level} — clamping to ${policy.max_autonomy_level}`
+    );
+    policy = { ...policy, autonomy_level: policy.max_autonomy_level };
+  }
+
+  return policy;
 }

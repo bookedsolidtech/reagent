@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -28,7 +28,7 @@ describe('E2E smoke — real CLI process', () => {
     execSync('npm run build', { cwd: projectRoot, stdio: 'pipe' });
 
     // Write a mock downstream MCP server script.
-    // This is a standalone Node script that registers tools and listens on stdio.
+    // Placed in the source tree so it can resolve node_modules; cleaned up in afterAll.
     mockServerScript = path.join(projectRoot, 'src/__tests__/gateway/_mock-downstream.mjs');
     fs.writeFileSync(
       mockServerScript,
@@ -63,6 +63,15 @@ console.error('[mock-downstream] Ready on stdio');
 `
     );
   }, 60_000);
+
+  afterAll(() => {
+    // Clean up the mock server script from temp
+    try {
+      fs.unlinkSync(mockServerScript);
+    } catch {
+      // Ignore — may already be cleaned up
+    }
+  });
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reagent-e2e-'));
@@ -106,10 +115,6 @@ servers:
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  afterEach(() => {
-    // Clean up mock server script is left for the session
   });
 
   it('spawns gateway, lists tools, calls a tool, and gets a result', async () => {

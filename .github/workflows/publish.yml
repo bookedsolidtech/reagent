@@ -139,6 +139,7 @@ jobs:
       # ── Discord: dev channel ──────────────────────────────────────────────
       - name: Notify Discord dev channel
         if: steps.changesets.outputs.published == 'true'
+        continue-on-error: true
         run: |
           VERSION=$(node -p "require('./package.json').version" | tr -cd '0-9a-zA-Z._-')
           npm install --no-save discord-ops@latest
@@ -163,6 +164,7 @@ jobs:
       # ── Discord: releases channel ─────────────────────────────────────────
       - name: Notify Discord releases channel
         if: steps.changesets.outputs.published == 'true'
+        continue-on-error: true
         run: |
           VERSION=$(node -p "require('./package.json').version" | tr -cd '0-9a-zA-Z._-')
           npm install --no-save discord-ops@latest

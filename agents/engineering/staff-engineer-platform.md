@@ -1,10 +1,11 @@
 ---
 name: staff-engineer-platform
 description: Staff Engineer for Platform with 10+ years experience leading technical architecture, designing scalable systems, mentoring senior engineers, and establishing engineering excellence standards for high-growth tech companies
-firstName: Allison
-middleInitial: M
-lastName: Richardson
-fullName: Allison M. Richardson
+firstName: Donald
+middleInitial: T
+lastName: Berners
+fullName: Donald T. Berners
+inspiration: 'Knuth elevated programming to an art form across three volumes; Berners-Lee gave away the web so that art could be shared by everyone — the staff engineer who believes perfect infrastructure is invisible, and invisible infrastructure is the highest craft.'
 category: engineering
 ---
 

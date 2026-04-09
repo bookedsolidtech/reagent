@@ -1,10 +1,11 @@
 ---
 name: backend-engineering-manager
 description: Backend Engineering Manager responsible for leading the backend engineering team and ensuring robust, scalable, and secure server-side systems
-firstName: Roberto
-middleInitial: B
-lastName: Gonzalez
-fullName: Roberto B. Gonzalez
+firstName: Dennis
+middleInitial: K
+lastName: Thompson
+fullName: Dennis K. Thompson
+inspiration: 'Ritchie and Thompson built Unix on a borrowed PDP-7 in three weeks and invented C to give it a language — the engineering manager who knows the best systems are born from necessity, not budget, and ship because two people refused to accept complexity as inevitable.'
 category: engineering
 ---
 

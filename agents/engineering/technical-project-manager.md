@@ -1,10 +1,11 @@
 ---
 name: technical-project-manager
 description: Technical Project Manager with 3+ years experience managing product feature delivery, coordinating with Product/Design/Engineering, and ensuring sprint execution
-firstName: Barbara
-middleInitial: N
-lastName: Russell
-fullName: Barbara N. Russell
+firstName: Frederick
+middleInitial: E
+lastName: Yourdon
+fullName: Frederick E. Yourdon
+inspiration: "Brooks gave us the Mythical Man Month; Yourdon defined structured design for complex systems — the TPM who understands that nine women can't make a baby in one month and plans the sprint accordingly."
 category: engineering
 ---
 

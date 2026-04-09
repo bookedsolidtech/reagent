@@ -1,49 +1,17 @@
-#!/usr/bin/env node
-'use strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { PKG_ROOT, getPkgVersion, parseFlag, gitignoreHasEntry } from '../utils.js';
 
-const fs = require('fs');
-const path = require('path');
-
-// ── Package metadata ─────────────────────────────────────────────────────────
-
-const PKG_ROOT = path.join(__dirname, '..');
-const PKG_VERSION = (() => {
-  try {
-    return JSON.parse(fs.readFileSync(path.join(PKG_ROOT, 'package.json'), 'utf8')).version;
-  } catch {
-    return '0.0.0';
-  }
-})();
-
-// ── CLI routing ──────────────────────────────────────────────────────────────
-
-const [, , cmd, ...rest] = process.argv;
-
-if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
-  printHelp();
-  process.exit(0);
+interface InstallResult {
+  file: string;
+  status: 'installed' | 'updated' | 'skipped' | 'warn';
 }
 
-if (cmd === 'init') {
-  runInit(rest);
-} else if (cmd === 'check') {
-  runCheck(rest);
-} else if (cmd === 'freeze') {
-  runFreeze(rest);
-} else if (cmd === 'unfreeze') {
-  runUnfreeze(rest);
-} else {
-  console.error(`\nUnknown command: ${cmd}`);
-  printHelp();
-  process.exit(1);
-}
-
-// ── Commands ─────────────────────────────────────────────────────────────────
-
-function runInit(args) {
+export function runInit(args: string[]): void {
   const profileName = parseFlag(args, '--profile') || 'client-engagement';
   const targetDir = process.cwd();
   const dryRun = args.includes('--dry-run');
+  const PKG_VERSION = getPkgVersion();
 
   console.log(`\n@bookedsolid/reagent v${PKG_VERSION} init`);
   console.log(`  Profile: ${profileName}`);
@@ -75,63 +43,49 @@ function runInit(args) {
   }
   const profile = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
 
-  const results = [];
+  const results: InstallResult[] = [];
 
-  // ── Step 1: .gitignore entries ─────────────────────────────────────────────
+  // Step 1: .gitignore entries
   if (profile.gitignoreEntries?.length) {
-    const r = installGitignoreEntries(targetDir, profile.gitignoreEntries, dryRun);
-    results.push(...r);
+    results.push(...installGitignoreEntries(targetDir, profile.gitignoreEntries, dryRun));
   }
 
-  // ── Step 2: Cursor rules ───────────────────────────────────────────────────
+  // Step 2: Cursor rules
   if (profile.cursorRules?.length) {
-    const r = installCursorRules(targetDir, profile.cursorRules, dryRun);
-    results.push(...r);
+    results.push(...installCursorRules(targetDir, profile.cursorRules, dryRun));
   }
 
-  // ── Step 3: Husky commit-msg hook ──────────────────────────────────────────
+  // Step 3-5: Husky hooks
   if (profile.huskyCommitMsg) {
-    const r = installHuskyHook(targetDir, 'commit-msg', 'commit-msg.sh', dryRun);
-    results.push(...r);
+    results.push(...installHuskyHook(targetDir, 'commit-msg', 'commit-msg.sh', dryRun));
   }
-
-  // ── Step 4: Husky pre-commit hook ─────────────────────────────────────────
   if (profile.huskyPreCommit) {
-    const r = installHuskyHook(targetDir, 'pre-commit', 'pre-commit.sh', dryRun);
-    results.push(...r);
+    results.push(...installHuskyHook(targetDir, 'pre-commit', 'pre-commit.sh', dryRun));
   }
-
-  // ── Step 5: Husky pre-push hook ───────────────────────────────────────────
   if (profile.huskyPrePush) {
-    const r = installHuskyHook(targetDir, 'pre-push', 'pre-push.sh', dryRun);
-    results.push(...r);
+    results.push(...installHuskyHook(targetDir, 'pre-push', 'pre-push.sh', dryRun));
   }
 
-  // ── Step 6: Claude hooks + settings.json ──────────────────────────────────
+  // Step 6: Claude hooks
   if (profile.claudeHooks) {
-    const r = installClaudeHooks(targetDir, profile.claudeHooks, dryRun);
-    results.push(...r);
+    results.push(...installClaudeHooks(targetDir, profile.claudeHooks, dryRun));
   }
 
-  // ── Step 7: CLAUDE.md ─────────────────────────────────────────────────────
+  // Step 7: CLAUDE.md
   if (profile.claudeMd) {
-    const r = installClaudeMd(targetDir, profile.claudeMd, profileName, dryRun);
-    results.push(...r);
+    results.push(...installClaudeMd(targetDir, profile.claudeMd, dryRun));
   }
 
-  // ── Step 8: .reagent/policy.yaml ──────────────────────────────────────────
-  const r = installPolicy(targetDir, profileName, dryRun);
-  results.push(...r);
+  // Step 8: Policy
+  results.push(...installPolicy(targetDir, profileName, dryRun));
 
-  // ── Step 9: Orchestrator agent ────────────────────────────────────────────
-  const ra = installOrchestratorAgent(targetDir, dryRun);
-  results.push(...ra);
+  // Step 9: Orchestrator agent
+  results.push(...installOrchestratorAgent(targetDir, dryRun));
 
-  // ── Step 10: Claude commands (/restart, /rea) ───────────────────────────
-  const rc = installClaudeCommands(targetDir, dryRun);
-  results.push(...rc);
+  // Step 10: Claude commands
+  results.push(...installClaudeCommands(targetDir, dryRun));
 
-  // ── Summary ────────────────────────────────────────────────────────────────
+  // Summary
   console.log('');
   const installed = results.filter((r) => r.status === 'installed');
   const updated = results.filter((r) => r.status === 'updated');
@@ -167,12 +121,6 @@ function runInit(args) {
     console.log('  .claude/settings.json');
     console.log('  .claude/agents/');
     console.log('');
-    console.log('Test attribution stripping:');
-    console.log(
-      '  git commit --allow-empty -m "test\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>"'
-    );
-    console.log('  git log -1 --format="%B" | grep "Co-Authored"  # should return nothing');
-    console.log('');
     console.log('Test kill switch:');
     console.log('  reagent freeze --reason "testing"');
     console.log('  reagent unfreeze');
@@ -180,135 +128,13 @@ function runInit(args) {
   }
 }
 
-function runCheck(_args) {
-  const targetDir = process.cwd();
-  console.log(`\n@bookedsolid/reagent v${PKG_VERSION} check`);
-  console.log(`  Target: ${targetDir}\n`);
-
-  const checks = [
-    {
-      label: '.cursor/rules/ installed',
-      pass: () =>
-        fs.existsSync(path.join(targetDir, '.cursor', 'rules', '001-no-hallucination.mdc')),
-    },
-    {
-      label: '.husky/commit-msg installed',
-      pass: () => fs.existsSync(path.join(targetDir, '.husky', 'commit-msg')),
-    },
-    {
-      label: '.husky/pre-commit installed',
-      pass: () => fs.existsSync(path.join(targetDir, '.husky', 'pre-commit')),
-    },
-    {
-      label: '.husky/pre-push installed',
-      pass: () => fs.existsSync(path.join(targetDir, '.husky', 'pre-push')),
-    },
-    {
-      label: '.git/hooks/commit-msg installed (fallback)',
-      pass: () => fs.existsSync(path.join(targetDir, '.git', 'hooks', 'commit-msg')),
-    },
-    {
-      label: '.claude/hooks/ installed',
-      pass: () =>
-        fs.existsSync(path.join(targetDir, '.claude', 'hooks', 'dangerous-bash-interceptor.sh')),
-    },
-    {
-      label: '.claude/settings.json installed',
-      pass: () => fs.existsSync(path.join(targetDir, '.claude', 'settings.json')),
-    },
-    {
-      label: 'CLAUDE.md has reagent block',
-      pass: () => {
-        const p = path.join(targetDir, 'CLAUDE.md');
-        if (!fs.existsSync(p)) return false;
-        return fs.readFileSync(p, 'utf8').includes('<!-- reagent-managed:start -->');
-      },
-    },
-    {
-      label: '.reagent/policy.yaml installed',
-      pass: () => fs.existsSync(path.join(targetDir, '.reagent', 'policy.yaml')),
-    },
-    {
-      label: '.gitignore has .claude/agents/',
-      pass: () => gitignoreHasEntry(targetDir, '.claude/agents/'),
-    },
-    {
-      label: '.claude/commands/restart.md installed',
-      pass: () => fs.existsSync(path.join(targetDir, '.claude', 'commands', 'restart.md')),
-    },
-    {
-      label: '.claude/commands/rea.md installed',
-      pass: () => fs.existsSync(path.join(targetDir, '.claude', 'commands', 'rea.md')),
-    },
-  ];
-
-  let allPass = true;
-  checks.forEach(({ label, pass }) => {
-    const ok = pass();
-    console.log(`  ${ok ? '✓' : '✗'} ${label}`);
-    if (!ok) allPass = false;
-  });
-
-  // Check HALT status
-  const haltFile = path.join(targetDir, '.reagent', 'HALT');
-  if (fs.existsSync(haltFile)) {
-    const reason = fs.readFileSync(haltFile, 'utf8').trim();
-    console.log(`\n  ⚠ HALT ACTIVE: ${reason}`);
-    console.log(`  Run 'reagent unfreeze' to resume agent operations.`);
-  }
-
-  console.log('');
-  if (allPass) {
-    console.log('All checks passed.');
-  } else {
-    console.log('Some checks failed. Run: npx @bookedsolid/reagent init');
-    process.exit(1);
-  }
-}
-
-function runFreeze(args) {
-  const targetDir = process.cwd();
-  const rawReason =
-    parseFlag(args, '--reason') || args.find((a) => !a.startsWith('--')) || 'Manual freeze';
-  // Strip control characters (terminal escape injection defense)
-  const reason = rawReason.replace(/[\x00-\x1f\x7f]/g, '');
-
-  const reagentDir = path.join(targetDir, '.reagent');
-  const haltFile = path.join(reagentDir, 'HALT');
-
-  if (!fs.existsSync(reagentDir)) {
-    fs.mkdirSync(reagentDir, { recursive: true });
-  }
-
-  const timestamp = new Date().toISOString();
-  const content = `${reason} (frozen at ${timestamp})`;
-  fs.writeFileSync(haltFile, content, 'utf8');
-
-  console.log(`\nREAGENT FROZEN`);
-  console.log(`  Reason:  ${reason}`);
-  console.log(`  File:    .reagent/HALT`);
-  console.log(`  Effect:  All PreToolUse hooks will exit 2 — agent operations blocked.`);
-  console.log(`\n  To resume: reagent unfreeze`);
-  console.log('');
-}
-
-function runUnfreeze(_args) {
-  const targetDir = process.cwd();
-  const haltFile = path.join(targetDir, '.reagent', 'HALT');
-
-  if (!fs.existsSync(haltFile)) {
-    console.log('\nNot frozen — no .reagent/HALT file found.\n');
-    return;
-  }
-
-  fs.unlinkSync(haltFile);
-  console.log('\nREAGENT UNFROZEN');
-  console.log('  .reagent/HALT removed — agent operations resumed.\n');
-}
-
 // ── Installation helpers ──────────────────────────────────────────────────────
 
-function installGitignoreEntries(targetDir, entries, dryRun) {
+function installGitignoreEntries(
+  targetDir: string,
+  entries: string[],
+  dryRun: boolean
+): InstallResult[] {
   const gitignorePath = path.join(targetDir, '.gitignore');
   const missing = entries.filter((e) => !gitignoreHasEntry(targetDir, e));
 
@@ -328,13 +154,17 @@ function installGitignoreEntries(targetDir, entries, dryRun) {
   return [{ file: `.gitignore (+${missing.length} entries)`, status: 'updated' }];
 }
 
-function installCursorRules(targetDir, ruleNames, dryRun) {
+function installCursorRules(
+  targetDir: string,
+  ruleNames: string[],
+  dryRun: boolean
+): InstallResult[] {
   const rulesDir = path.join(targetDir, '.cursor', 'rules');
   if (!dryRun) {
     fs.mkdirSync(rulesDir, { recursive: true });
   }
 
-  const results = [];
+  const results: InstallResult[] = [];
   for (const name of ruleNames) {
     const srcFile = path.join(PKG_ROOT, 'cursor', 'rules', `${name}.mdc`);
     const destFile = path.join(rulesDir, `${name}.mdc`);
@@ -360,7 +190,27 @@ function installCursorRules(targetDir, ruleNames, dryRun) {
   return results;
 }
 
-function installHuskyHook(targetDir, hookName, srcFileName, dryRun) {
+interface HookEntry {
+  matcher: string;
+  hooks: string[];
+}
+
+interface HooksConfig {
+  PreToolUse?: HookEntry[];
+  PostToolUse?: HookEntry[];
+}
+
+interface ClaudeMdConfig {
+  preflightCmd?: string;
+  attributionRule?: string;
+}
+
+function installHuskyHook(
+  targetDir: string,
+  hookName: string,
+  srcFileName: string,
+  dryRun: boolean
+): InstallResult[] {
   const srcFile = path.join(PKG_ROOT, 'husky', srcFileName);
   const huskyDir = path.join(targetDir, '.husky');
   const huskyHook = path.join(huskyDir, hookName);
@@ -371,24 +221,24 @@ function installHuskyHook(targetDir, hookName, srcFileName, dryRun) {
   }
 
   const srcContent = fs.readFileSync(srcFile, 'utf8');
-  const results = [];
+  const results: InstallResult[] = [];
 
   if (!dryRun) {
     fs.mkdirSync(huskyDir, { recursive: true });
   }
 
   const huskyExists = fs.existsSync(huskyHook);
-  const hussySame = huskyExists && fs.readFileSync(huskyHook, 'utf8') === srcContent;
+  const huskySame = huskyExists && fs.readFileSync(huskyHook, 'utf8') === srcContent;
 
-  if (!hussySame && !dryRun) {
+  if (!huskySame && !dryRun) {
     fs.writeFileSync(huskyHook, srcContent, { mode: 0o755 });
   }
   results.push({
     file: `.husky/${hookName}`,
-    status: hussySame ? 'skipped' : huskyExists ? 'updated' : 'installed',
+    status: huskySame ? 'skipped' : huskyExists ? 'updated' : 'installed',
   });
 
-  // For commit-msg: also install to .git/hooks/ as fallback (works without node_modules)
+  // For commit-msg: also install to .git/hooks/ as fallback
   if (hookName === 'commit-msg') {
     const gitHooksDir = path.join(targetDir, '.git', 'hooks');
     if (fs.existsSync(gitHooksDir)) {
@@ -430,7 +280,7 @@ function installHuskyHook(targetDir, hookName, srcFileName, dryRun) {
           results.push({ file: 'package.json (added husky)', status: 'updated' });
         }
       } catch (err) {
-        console.warn(`  Warning: Could not update package.json: ${err.message}`);
+        console.warn(`  Warning: Could not update package.json: ${(err as Error).message}`);
       }
     }
   }
@@ -438,27 +288,28 @@ function installHuskyHook(targetDir, hookName, srcFileName, dryRun) {
   return results;
 }
 
-function installClaudeHooks(targetDir, hooksConfig, dryRun) {
+function installClaudeHooks(
+  targetDir: string,
+  hooksConfig: HooksConfig,
+  dryRun: boolean
+): InstallResult[] {
   const claudeHooksDir = path.join(targetDir, '.claude', 'hooks');
   if (!dryRun) {
     fs.mkdirSync(claudeHooksDir, { recursive: true });
   }
 
-  const results = [];
-  const installedHookNames = new Set();
+  const results: InstallResult[] = [];
+  const installedHookNames = new Set<string>();
 
-  // Collect all hook names from all matchers
   const allHookEntries = [...(hooksConfig.PreToolUse || []), ...(hooksConfig.PostToolUse || [])];
   for (const entry of allHookEntries) {
     for (const hookName of entry.hooks || []) {
       const srcFile = path.join(PKG_ROOT, 'hooks', `${hookName}.sh`);
 
       if (!fs.existsSync(srcFile)) {
-        // LOUDLY warn: hook referenced in profile does not exist in package
         console.error(
           `  ERROR: Hook '${hookName}' referenced in profile but not found in package.`
         );
-        console.error(`         Skipping — will NOT be written to .claude/settings.json.`);
         results.push({
           file: `.claude/hooks/${hookName}.sh (MISSING — not installed)`,
           status: 'warn',
@@ -484,7 +335,7 @@ function installClaudeHooks(targetDir, hooksConfig, dryRun) {
     }
   }
 
-  // Write settings.json with ONLY hooks that actually exist
+  // Write settings.json
   const settingsPath = path.join(targetDir, '.claude', 'settings.json');
   const settings = buildSettingsJson(hooksConfig, installedHookNames);
   const settingsContent = JSON.stringify(settings, null, 2) + '\n';
@@ -504,7 +355,12 @@ function installClaudeHooks(targetDir, hooksConfig, dryRun) {
   return results;
 }
 
-function installClaudeMd(targetDir, claudeMdConfig, profileName, dryRun) {
+function installClaudeMd(
+  targetDir: string,
+  claudeMdConfig: ClaudeMdConfig,
+  dryRun: boolean
+): InstallResult[] {
+  const PKG_VERSION = getPkgVersion();
   const claudeMdPath = path.join(targetDir, 'CLAUDE.md');
   const templatePath = path.join(PKG_ROOT, 'templates', 'CLAUDE.md');
 
@@ -514,11 +370,8 @@ function installClaudeMd(targetDir, claudeMdConfig, profileName, dryRun) {
   }
 
   let template = fs.readFileSync(templatePath, 'utf8');
+  const safe = (val: string) => String(val).replace(/\{\{[^}]*\}\}/g, '');
 
-  // Sanitize profile values to prevent template double-substitution
-  const safe = (val) => String(val).replace(/\{\{[^}]*\}\}/g, '');
-
-  // Interpolate profile-specific values
   template = template
     .replace(/\{\{VERSION\}\}/g, PKG_VERSION)
     .replace(/\{\{PREFLIGHT_CMD\}\}/g, safe(claudeMdConfig.preflightCmd || 'pnpm preflight'))
@@ -533,22 +386,18 @@ function installClaudeMd(targetDir, claudeMdConfig, profileName, dryRun) {
   const MARKER_END = '<!-- reagent-managed:end -->';
 
   const existingContent = fs.existsSync(claudeMdPath) ? fs.readFileSync(claudeMdPath, 'utf8') : '';
-
-  // Check if reagent block already exists
   const hasBlock = existingContent.includes(MARKER_START);
 
-  let newContent;
+  let newContent: string;
   if (hasBlock) {
     const startIdx = existingContent.indexOf(MARKER_START);
     const endIdx = existingContent.indexOf(MARKER_END);
     if (endIdx === -1) {
-      // Orphaned start marker — strip it, prepend fresh block
       const stripped = (
         existingContent.slice(0, startIdx) + existingContent.slice(startIdx + MARKER_START.length)
       ).trim();
       newContent = stripped ? template.trimEnd() + '\n\n' + stripped.trimStart() : template;
     } else {
-      // Remove old block entirely, prepend new template
       const endAfter = endIdx + MARKER_END.length;
       const withoutBlock = (
         existingContent.slice(0, startIdx) + existingContent.slice(endAfter)
@@ -556,7 +405,6 @@ function installClaudeMd(targetDir, claudeMdConfig, profileName, dryRun) {
       newContent = withoutBlock ? template.trimEnd() + '\n\n' + withoutBlock.trimStart() : template;
     }
   } else {
-    // Prepend to existing CLAUDE.md (or create new)
     newContent = existingContent
       ? template.trimEnd() + '\n\n' + existingContent.trimStart()
       : template;
@@ -575,7 +423,8 @@ function installClaudeMd(targetDir, claudeMdConfig, profileName, dryRun) {
   ];
 }
 
-function installPolicy(targetDir, profileName, dryRun) {
+function installPolicy(targetDir: string, profileName: string, dryRun: boolean): InstallResult[] {
+  const PKG_VERSION = getPkgVersion();
   const reagentDir = path.join(targetDir, '.reagent');
   const policyPath = path.join(reagentDir, 'policy.yaml');
 
@@ -622,7 +471,7 @@ notification_channel: ""
   return [{ file: '.reagent/policy.yaml', status: 'installed' }];
 }
 
-function installOrchestratorAgent(targetDir, dryRun) {
+function installOrchestratorAgent(targetDir: string, dryRun: boolean): InstallResult[] {
   const agentsSrcDir = path.join(PKG_ROOT, 'agents');
   const agentsDestDir = path.join(targetDir, '.claude', 'agents');
   const srcFile = path.join(agentsSrcDir, 'reagent-orchestrator.md');
@@ -652,7 +501,7 @@ function installOrchestratorAgent(targetDir, dryRun) {
   ];
 }
 
-function installClaudeCommands(targetDir, dryRun) {
+function installClaudeCommands(targetDir: string, dryRun: boolean): InstallResult[] {
   const commandsSrcDir = path.join(PKG_ROOT, 'commands');
   const commandsDestDir = path.join(targetDir, '.claude', 'commands');
 
@@ -664,7 +513,7 @@ function installClaudeCommands(targetDir, dryRun) {
     fs.mkdirSync(commandsDestDir, { recursive: true });
   }
 
-  const results = [];
+  const results: InstallResult[] = [];
   const commandFiles = fs.readdirSync(commandsSrcDir).filter((f) => f.endsWith('.md'));
 
   for (const fileName of commandFiles) {
@@ -688,18 +537,20 @@ function installClaudeCommands(targetDir, dryRun) {
   return results;
 }
 
-function buildSettingsJson(hooksConfig, installedHookNames) {
-  const settings = {
-    env: {
-      ENABLE_TOOL_SEARCH: 'auto:5',
-    },
-    hooks: {},
+// ── Settings builder ──────────────────────────────────────────────────────────
+
+function buildSettingsJson(
+  hooksConfig: HooksConfig,
+  installedHookNames: Set<string>
+): Record<string, unknown> {
+  const settings: Record<string, unknown> = {
+    env: { ENABLE_TOOL_SEARCH: 'auto:5' },
+    hooks: {} as Record<string, unknown>,
   };
 
-  function buildHookEntries(entries) {
+  function buildHookEntries(entries: HookEntry[]) {
     const result = [];
     for (const entry of entries) {
-      // Only include hooks that were actually installed (exist in package)
       const availableHooks = entry.hooks.filter((h) => installedHookNames.has(h));
       if (!availableHooks.length) continue;
 
@@ -716,26 +567,28 @@ function buildSettingsJson(hooksConfig, installedHookNames) {
     return result;
   }
 
+  const hooks = settings.hooks as Record<string, unknown>;
+
   if (hooksConfig.PreToolUse?.length) {
     const merged = mergeByMatcher(hooksConfig.PreToolUse);
     const entries = buildHookEntries(merged);
-    if (entries.length) settings.hooks.PreToolUse = entries;
+    if (entries.length) hooks.PreToolUse = entries;
   }
 
   if (hooksConfig.PostToolUse?.length) {
     const merged = mergeByMatcher(hooksConfig.PostToolUse);
     const entries = buildHookEntries(merged);
-    if (entries.length) settings.hooks.PostToolUse = entries;
+    if (entries.length) hooks.PostToolUse = entries;
   }
 
   return settings;
 }
 
-function mergeByMatcher(entries) {
-  const map = new Map();
+function mergeByMatcher(entries: HookEntry[]): HookEntry[] {
+  const map = new Map<string, HookEntry>();
   for (const entry of entries) {
     if (map.has(entry.matcher)) {
-      map.get(entry.matcher).hooks.push(...entry.hooks);
+      map.get(entry.matcher)!.hooks.push(...entry.hooks);
     } else {
       map.set(entry.matcher, { matcher: entry.matcher, hooks: [...entry.hooks] });
     }
@@ -743,8 +596,8 @@ function mergeByMatcher(entries) {
   return Array.from(map.values());
 }
 
-function getHookTimeout(hookName) {
-  const timeouts = {
+function getHookTimeout(hookName: string): number {
+  const timeouts: Record<string, number> = {
     'secret-scanner': 15000,
     'dangerous-bash-interceptor': 10000,
     'env-file-protection': 5000,
@@ -753,66 +606,12 @@ function getHookTimeout(hookName) {
   return timeouts[hookName] || 10000;
 }
 
-function getHookStatusMessage(hookName) {
-  const messages = {
+function getHookStatusMessage(hookName: string): string {
+  const messages: Record<string, string> = {
     'dangerous-bash-interceptor': 'Checking command safety...',
     'env-file-protection': 'Checking for .env file reads...',
     'secret-scanner': 'Scanning for credentials...',
     'attribution-advisory': 'Checking for AI attribution...',
   };
   return messages[hookName] || `Running ${hookName}...`;
-}
-
-// ── Utility functions ─────────────────────────────────────────────────────────
-
-function parseFlag(args, flag) {
-  const eqForm = args.find((a) => a.startsWith(`${flag}=`));
-  if (eqForm) return eqForm.split('=').slice(1).join('=');
-  const idx = args.indexOf(flag);
-  if (idx !== -1 && args[idx + 1] && !args[idx + 1].startsWith('--')) {
-    return args[idx + 1];
-  }
-  return null;
-}
-
-function gitignoreHasEntry(targetDir, entry) {
-  const gitignorePath = path.join(targetDir, '.gitignore');
-  if (!fs.existsSync(gitignorePath)) return false;
-  const content = fs.readFileSync(gitignorePath, 'utf8');
-  return content.split('\n').some((line) => line.trim() === entry.trim());
-}
-
-function printHelp() {
-  console.log(`
-@bookedsolid/reagent v${PKG_VERSION} — zero-trust agentic infrastructure
-
-Usage:
-  npx @bookedsolid/reagent <command> [options]
-
-Commands:
-  init       Install reagent config into the current directory
-  check      Check what reagent components are installed
-  freeze     Create .reagent/HALT to suspend all agent operations
-  unfreeze   Remove .reagent/HALT to resume agent operations
-  help       Show this help
-
-Options for init:
-  --profile <name>    Profile to install (default: client-engagement)
-  --dry-run           Preview what would be installed without writing files
-
-Options for freeze:
-  --reason <text>     Reason for freeze (stored in HALT file)
-
-Available profiles:
-  client-engagement   Zero-trust setup for client engagements (default)
-  bst-internal        BST internal project setup
-
-Examples:
-  npx @bookedsolid/reagent init
-  npx @bookedsolid/reagent init --profile bst-internal
-  npx @bookedsolid/reagent init --dry-run
-  npx @bookedsolid/reagent check
-  npx @bookedsolid/reagent freeze --reason "security incident"
-  npx @bookedsolid/reagent unfreeze
-`);
 }

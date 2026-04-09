@@ -69,12 +69,17 @@ else
   echo "  Lint (eslint)                   SKIP (not installed)"
 fi
 
-# ── Gate 4: Tests ─────────────────────────────────────────────────────────────
-if node -e "const p=require('./package.json');if(!p.scripts||!p.scripts.test)process.exit(1);" 2>/dev/null; then
-  gate "Tests" npm test --if-present
+# ── Gate 4: Type check ────────────────────────────────────────────────────────
+if [ -f tsconfig.json ]; then
+  gate "Type check (tsc)" npm run type-check
 fi
 
-# ── Gate 5: Pack dry-run ──────────────────────────────────────────────────────
+# ── Gate 5: Tests ─────────────────────────────────────────────────────────────
+if [ -f vitest.config.ts ] || [ -f vitest.config.js ]; then
+  gate "Tests (vitest)" npm test
+fi
+
+# ── Gate 6: Pack dry-run ──────────────────────────────────────────────────────
 gate "Pack dry-run" npm pack --dry-run
 
 # ── Summary ───────────────────────────────────────────────────────────────────

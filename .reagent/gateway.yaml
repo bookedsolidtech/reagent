@@ -1,0 +1,22 @@
+# .reagent/gateway.yaml — MCP gateway topology
+# Defines downstream MCP servers that reagent proxies through its middleware chain.
+
+version: '1'
+
+servers:
+  discord-ops:
+    command: npx
+    args: ['-y', 'discord-ops@latest']
+    env:
+      BOOKED_DISCORD_BOT_TOKEN: '${BOOKED_DISCORD_BOT_TOKEN}'
+      CLARITY_DISCORD_BOT_TOKEN: '${CLARITY_DISCORD_BOT_TOKEN}'
+    tool_overrides:
+      ban_member:
+        tier: destructive
+      kick_member:
+        tier: destructive
+      purge_messages:
+        tier: destructive
+      delete_channel:
+        tier: destructive
+        blocked: true

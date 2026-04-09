@@ -41,6 +41,8 @@ paths = [
   '''templates/''',
   # Changeset directory
   '''\.changeset/''',
+  # Adversarial test files — contain deliberate test secrets for redaction testing
+  '''src/__tests__/adversarial/''',
 ]
 
 # GitHub Actions expression syntax — not real secrets

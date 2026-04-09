@@ -10,6 +10,16 @@ export function installClaudeHooks(
 ): InstallResult[] {
   const claudeHooksDir = path.join(targetDir, '.claude', 'hooks');
   if (!dryRun) {
+    // If a stale symlink exists (e.g. from a retired .clarity submodule), remove it first.
+    // mkdirSync with recursive:true cannot replace a symlink — it will throw ENOENT.
+    try {
+      const stat = fs.lstatSync(claudeHooksDir);
+      if (stat.isSymbolicLink()) {
+        fs.unlinkSync(claudeHooksDir);
+      }
+    } catch {
+      // Path doesn't exist yet — that's fine, mkdirSync will create it
+    }
     fs.mkdirSync(claudeHooksDir, { recursive: true });
   }
 

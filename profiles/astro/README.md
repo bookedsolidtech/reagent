@@ -19,11 +19,11 @@ Install this profile when your project:
 
 ### Quality gates (gates.yaml)
 
-| Gate | Command | On failure |
-|------|---------|------------|
-| astro-check | `npx astro check` | block |
-| astro-build | `npx astro build` | block |
-| astro-type-check | `npx tsc --noEmit` | block |
+| Gate             | Command            | On failure |
+| ---------------- | ------------------ | ---------- |
+| astro-check      | `npx astro check`  | block      |
+| astro-build      | `npx astro build`  | block      |
+| astro-type-check | `npx tsc --noEmit` | block      |
 
 ### Agents
 

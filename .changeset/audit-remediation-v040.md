@@ -11,7 +11,7 @@ Security audit remediation, policy hot-reload, and init improvements
 - Security: argument redaction runs pre-execution with circular reference guard
 - Feature: policy hot-reload re-reads policy.yaml per invocation for live autonomy changes
 - Feature: gateway.yaml generated during init (idempotent, commented template)
-- Feature: convention-based tier classification for tools (get_*, delete_*, etc.)
+- Feature: convention-based tier classification for tools (get*\*, delete*\*, etc.)
 - Fix: audit write queue serialization for consistent log ordering
 - Fix: client-manager timer leak on connection timeout
 - Fix: tool-proxy uses z.unknown() instead of z.any()

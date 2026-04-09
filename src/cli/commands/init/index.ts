@@ -1,0 +1,149 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { PKG_ROOT, getPkgVersion, parseFlag } from '../../utils.js';
+import type { InstallResult, ProfileConfig } from './types.js';
+import { installGitignoreEntries } from './gitignore.js';
+import { installCursorRules } from './cursor-rules.js';
+import { installHuskyHook } from './husky-hooks.js';
+import { installClaudeHooks } from './claude-hooks.js';
+import { installClaudeMd } from './claude-md.js';
+import { installPolicy } from './policy.js';
+import { installGatewayConfig } from './gateway-config.js';
+import { installAgents } from './agents.js';
+import { installClaudeCommands } from './commands.js';
+import { installPm } from './pm.js';
+
+export function runInit(args: string[]): void {
+  const profileName = parseFlag(args, '--profile') || 'client-engagement';
+  const targetDir = process.cwd();
+  const dryRun = args.includes('--dry-run');
+  const PKG_VERSION = getPkgVersion();
+
+  console.log(`\n@bookedsolid/reagent v${PKG_VERSION} init`);
+  console.log(`  Profile: ${profileName}`);
+  console.log(`  Target:  ${targetDir}`);
+  if (dryRun) console.log(`  Mode:    dry-run (no changes written)`);
+  console.log('');
+
+  // Load profile — validate name to prevent path traversal
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(profileName)) {
+    console.error(
+      `Invalid profile name: "${profileName}" (only lowercase letters, numbers, hyphens allowed)`
+    );
+    process.exit(1);
+  }
+  const profilesDir = path.join(PKG_ROOT, 'profiles');
+  const profilePath = path.resolve(profilesDir, `${profileName}.json`);
+  if (!profilePath.startsWith(profilesDir + path.sep)) {
+    console.error(`Invalid profile name: "${profileName}" (path traversal detected)`);
+    process.exit(1);
+  }
+  if (!fs.existsSync(profilePath)) {
+    const available = fs
+      .readdirSync(path.join(PKG_ROOT, 'profiles'))
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => f.replace('.json', ''));
+    console.error(`Profile not found: ${profileName}`);
+    console.error(`Available profiles: ${available.join(', ')}`);
+    process.exit(1);
+  }
+  const profile: ProfileConfig = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
+
+  const results: InstallResult[] = [];
+
+  // Step 1: .gitignore entries
+  if (profile.gitignoreEntries?.length) {
+    results.push(...installGitignoreEntries(targetDir, profile.gitignoreEntries, dryRun));
+  }
+
+  // Step 2: Cursor rules
+  if (profile.cursorRules?.length) {
+    results.push(...installCursorRules(targetDir, profile.cursorRules, dryRun));
+  }
+
+  // Step 3-5: Husky hooks
+  if (profile.huskyCommitMsg) {
+    results.push(...installHuskyHook(targetDir, 'commit-msg', 'commit-msg.sh', dryRun));
+  }
+  if (profile.huskyPreCommit) {
+    results.push(...installHuskyHook(targetDir, 'pre-commit', 'pre-commit.sh', dryRun));
+  }
+  if (profile.huskyPrePush) {
+    results.push(...installHuskyHook(targetDir, 'pre-push', 'pre-push.sh', dryRun));
+  }
+
+  // Step 6: Claude hooks
+  if (profile.claudeHooks) {
+    results.push(...installClaudeHooks(targetDir, profile.claudeHooks, dryRun));
+  }
+
+  // Step 7: CLAUDE.md
+  if (profile.claudeMd) {
+    results.push(...installClaudeMd(targetDir, profile.claudeMd, dryRun));
+  }
+
+  // Step 8: Policy
+  results.push(...installPolicy(targetDir, profileName, profile, dryRun));
+
+  // Step 9: Gateway config
+  results.push(...installGatewayConfig(targetDir, dryRun));
+
+  // Step 10: Agent team
+  results.push(...installAgents(targetDir, dryRun));
+
+  // Step 11: Claude commands
+  results.push(...installClaudeCommands(targetDir, dryRun));
+
+  // Step 12: Project management
+  results.push(
+    ...installPm(
+      targetDir,
+      profile.pm as
+        | { enabled?: boolean; taskLinkGate?: boolean; maxOpenTasks?: number }
+        | undefined,
+      dryRun
+    )
+  );
+
+  // Summary
+  console.log('');
+  const installed = results.filter((r) => r.status === 'installed');
+  const updated = results.filter((r) => r.status === 'updated');
+  const skipped = results.filter((r) => r.status === 'skipped');
+  const warned = results.filter((r) => r.status === 'warn');
+
+  if (installed.length) {
+    console.log('Installed:');
+    installed.forEach((r) => console.log(`  + ${r.file}`));
+  }
+  if (updated.length) {
+    console.log('Updated:');
+    updated.forEach((r) => console.log(`  ~ ${r.file}`));
+  }
+  if (skipped.length) {
+    console.log('Already up-to-date:');
+    skipped.forEach((r) => console.log(`  = ${r.file}`));
+  }
+  if (warned.length) {
+    console.log('Warnings:');
+    warned.forEach((r) => console.log(`  ! ${r.file}`));
+  }
+
+  if (!dryRun) {
+    console.log('\n✓ reagent init complete');
+    console.log('\nCommit these files (safe to commit):');
+    console.log(
+      '  git add .cursor/rules/ .husky/ .claude/commands/ CLAUDE.md .reagent/policy.yaml .reagent/gateway.yaml && git commit -m "chore: add reagent zero-trust config"'
+    );
+    console.log('');
+    console.log('Do NOT commit (gitignored — stays on your machine):');
+    console.log('  .claude/hooks/');
+    console.log('  .claude/settings.json');
+    console.log('  .claude/agents/');
+    console.log('');
+    console.log('Test kill switch:');
+    console.log('  reagent freeze --reason "testing"');
+    console.log('  reagent unfreeze');
+    console.log('');
+  }
+}

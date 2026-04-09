@@ -143,7 +143,8 @@ servers:
       expect(toolNames).toContain('mock__health_check');
       expect(toolNames).toContain('mock__send_message');
       expect(toolNames).toContain('mock__delete_channel');
-      expect(toolNames.length).toBe(3);
+      // 6 native tools (task_*) + 3 proxied tools from mock server
+      expect(toolNames.length).toBe(9);
 
       // Call health_check (read-tier)
       const healthResult = await client.callTool({
@@ -213,7 +214,8 @@ servers:
     try {
       // Tool listing should still work (middleware only applies to callTool)
       const toolsList = await client.listTools();
-      expect(toolsList.tools.length).toBe(3);
+      // 6 native tools + 3 proxied tools
+      expect(toolsList.tools.length).toBe(9);
 
       // But calling a tool should be denied
       const result = await client.callTool({

@@ -12,6 +12,7 @@ import { createPolicyMiddleware } from './middleware/policy.js';
 import { redactMiddleware } from './middleware/redact.js';
 import { createAuditMiddleware } from './middleware/audit.js';
 import { createBlockedPathsMiddleware } from './middleware/blocked-paths.js';
+import { registerNativeTools } from './native-tools.js';
 import type { Middleware } from './middleware/chain.js';
 
 export interface ServeOptions {
@@ -64,11 +65,17 @@ export async function startGateway(options: ServeOptions): Promise<void> {
   const clientManager = new ClientManager();
   await clientManager.connectAll(gatewayConfig);
 
-  // Discover and register tools
-  const toolProxy = new ToolProxy();
-  const toolCount = await toolProxy.discoverAndRegister(gateway, clientManager, middlewares);
+  // Register native (first-party) tools
+  const nativeCount = registerNativeTools(gateway, baseDir, middlewares);
 
-  console.error(`[reagent] Gateway ready: ${toolCount} tools registered`);
+  // Discover and register proxied tools
+  const toolProxy = new ToolProxy();
+  const proxyCount = await toolProxy.discoverAndRegister(gateway, clientManager, middlewares);
+  const toolCount = nativeCount + proxyCount;
+
+  console.error(
+    `[reagent] Gateway ready: ${toolCount} tools registered (${nativeCount} native, ${proxyCount} proxied)`
+  );
 
   // Listen on stdio
   const transport = new StdioServerTransport();

@@ -12,11 +12,13 @@ import { installGatewayConfig } from './gateway-config.js';
 import { installAgents } from './agents.js';
 import { installClaudeCommands } from './commands.js';
 import { installPm } from './pm.js';
+import { installGitHub } from './github.js';
 
 export function runInit(args: string[]): void {
   const profileName = parseFlag(args, '--profile') || 'client-engagement';
   const targetDir = process.cwd();
   const dryRun = args.includes('--dry-run');
+  const withGitHub = args.includes('--github');
   const PKG_VERSION = getPkgVersion();
 
   console.log(`\n@bookedsolid/reagent v${PKG_VERSION} init`);
@@ -104,6 +106,18 @@ export function runInit(args: string[]): void {
       dryRun
     )
   );
+
+  // Step 13: GitHub repo scaffold (opt-in via --github flag)
+  if (withGitHub) {
+    const description = typeof profile.description === 'string' ? profile.description : undefined;
+    results.push(
+      ...installGitHub({
+        targetDir,
+        description,
+        dryRun,
+      })
+    );
+  }
 
   // Summary
   console.log('');

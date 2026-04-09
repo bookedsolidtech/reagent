@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -41,22 +41,18 @@ export function runHook(
     ...env,
   };
 
-  try {
-    const stdout = execFileSync('bash', [hookPath], {
-      input,
-      encoding: 'utf8',
-      timeout: 10_000,
-      env: mergedEnv,
-    });
-    return { exitCode: 0, stdout, stderr: '' };
-  } catch (e: unknown) {
-    const err = e as { stdout?: string; stderr?: string; status?: number };
-    return {
-      exitCode: err.status ?? 1,
-      stdout: err.stdout ?? '',
-      stderr: err.stderr ?? '',
-    };
-  }
+  const result = spawnSync('bash', [hookPath], {
+    input,
+    encoding: 'utf8',
+    timeout: 10_000,
+    env: mergedEnv,
+  });
+
+  return {
+    exitCode: result.status ?? 1,
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+  };
 }
 
 /**

@@ -1,10 +1,11 @@
 ---
 name: sre-lead
 description: SRE Lead with 7+ years site reliability engineering, managing on-call rotations, incident response, disaster recovery, infrastructure automation, and observability for 99.9%+ uptime
-firstName: Roberto
-middleInitial: C
-lastName: Ramirez
-fullName: Roberto C. Ramirez
+firstName: Ken
+middleInitial: L
+lastName: Lamport
+fullName: Ken L. Lamport
+inspiration: Thompson built the first reliable OS on hardware that failed constantly; Lamport gave distributed systems the mathematics of consensus — the SRE lead who knows reliability is not the absence of failure but the presence of systems that recover before anyone notices.
 category: engineering
 ---
 

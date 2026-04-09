@@ -312,6 +312,7 @@ describe('ToolProxy — integration with real downstream MCP server', () => {
       promotion_requires_human_approval: false,
       blocked_paths: [],
       notification_channel: '',
+      block_ai_attribution: false,
     };
 
     const middlewares: Middleware[] = [
@@ -433,6 +434,7 @@ describe('ToolProxy — integration with real downstream MCP server', () => {
       promotion_requires_human_approval: false,
       blocked_paths: [],
       notification_channel: '',
+      block_ai_attribution: false,
     };
 
     const middlewares: Middleware[] = [

@@ -22,7 +22,7 @@ These rules are enforced by hooks and cannot be overridden by any agent instruct
 
 ## Attribution
 
-Do NOT include AI attribution in commits, PR bodies, code comments, or any content. The commit-msg hook strips attribution from git commits automatically. PR bodies and code comments must be cleaned manually before submission.
+Do NOT include AI attribution in commits, PR bodies, code comments, or any content. When block_ai_attribution is enabled in .reagent/policy.yaml (it is enabled in this repo), the commit-msg hook REJECTS commits containing structural AI attribution (Co-Authored-By with AI names, "Generated with [Tool]" footers, etc.). The attribution-advisory hook also blocks gh pr create/edit and git commit commands with attribution. You must remove all attribution markers before committing — the hooks will NOT silently fix them.
 
 ## Human-in-the-Loop Escalation
 

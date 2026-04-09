@@ -8,6 +8,7 @@ export interface Policy {
   autonomy_level: AutonomyLevel;
   max_autonomy_level: AutonomyLevel;
   promotion_requires_human_approval: boolean;
+  block_ai_attribution: boolean;
   blocked_paths: string[];
   notification_channel: string;
 }

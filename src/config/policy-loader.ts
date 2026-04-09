@@ -13,6 +13,7 @@ const PolicySchema = z.object({
   autonomy_level: z.nativeEnum(AutonomyLevel),
   max_autonomy_level: z.nativeEnum(AutonomyLevel),
   promotion_requires_human_approval: z.boolean(),
+  block_ai_attribution: z.boolean().default(false),
   blocked_paths: z.array(z.string()),
   notification_channel: z.string().default(''),
 });

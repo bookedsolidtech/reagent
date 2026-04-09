@@ -177,6 +177,7 @@ describe('Gateway server — full integration', () => {
     promotion_requires_human_approval: false,
     blocked_paths: [],
     notification_channel: '',
+    block_ai_attribution: false,
   };
 
   const defaultGatewayConfig: GatewayConfig = {

@@ -17,6 +17,7 @@ function createPolicy(level: AutonomyLevel): Policy {
     promotion_requires_human_approval: true,
     blocked_paths: [],
     notification_channel: '',
+    block_ai_attribution: false,
   };
 }
 

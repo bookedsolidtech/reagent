@@ -18,6 +18,13 @@ max_autonomy_level: L2
 # Human must approve any autonomy level increase
 promotion_requires_human_approval: true
 
+# Block AI attribution in commits and PRs (opt-in)
+# When true, the commit-msg hook rejects commits containing AI attribution
+# markers (Co-Authored-By, "Generated with [Tool]", etc.) and the
+# attribution-advisory hook blocks gh pr create/edit commands with attribution.
+# Casual mentions of AI tools in commit messages are still allowed.
+block_ai_attribution: true
+
 # Paths hooks and agents must never modify
 blocked_paths:
   - '.reagent/'

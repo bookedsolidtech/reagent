@@ -41,6 +41,11 @@ paths = [
   '''templates/''',
   # Changeset directory
   '''\.changeset/''',
+  # Adversarial test files — contain deliberate test secrets for redaction testing
+  '''src/__tests__/adversarial/''',
+  # Middleware and gateway tests — contain fake credential patterns for redaction testing
+  '''src/__tests__/middleware/''',
+  '''src/__tests__/gateway/''',
 ]
 
 # GitHub Actions expression syntax — not real secrets

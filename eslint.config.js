@@ -1,6 +1,26 @@
-'use strict';
+import tseslint from '@typescript-eslint/eslint-plugin';
+import tsparser from '@typescript-eslint/parser';
 
-module.exports = [
+export default [
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: {
+      parser: tsparser,
+      ecmaVersion: 2022,
+      sourceType: 'module',
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+    },
+    rules: {
+      'no-console': 'off',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+    },
+  },
   {
     files: ['bin/**/*.js', 'scripts/**/*.mjs'],
     languageOptions: {
@@ -21,6 +41,6 @@ module.exports = [
     },
   },
   {
-    ignores: ['node_modules/**', 'CHANGELOG.md'],
+    ignores: ['node_modules/**', 'dist/**', 'CHANGELOG.md'],
   },
 ];

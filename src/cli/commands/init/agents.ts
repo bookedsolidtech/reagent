@@ -12,6 +12,13 @@ export function installAgents(targetDir: string, dryRun: boolean): InstallResult
   }
 
   if (!dryRun) {
+    // Remove stale symlink if present (e.g. from a retired .clarity submodule)
+    try {
+      const stat = fs.lstatSync(agentsDestDir);
+      if (stat.isSymbolicLink()) fs.unlinkSync(agentsDestDir);
+    } catch {
+      /* doesn't exist yet — fine */
+    }
     fs.mkdirSync(agentsDestDir, { recursive: true });
   }
 

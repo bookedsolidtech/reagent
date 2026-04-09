@@ -13,12 +13,15 @@ import { installAgents } from './agents.js';
 import { installClaudeCommands } from './commands.js';
 import { installPm } from './pm.js';
 import { installGitHub } from './github.js';
+import { installProfile, listTechProfiles } from './profiles.js';
+import { installDiscord, parseDiscordArgs } from './discord.js';
 
 export function runInit(args: string[]): void {
   const profileName = parseFlag(args, '--profile') || 'client-engagement';
   const targetDir = process.cwd();
   const dryRun = args.includes('--dry-run');
   const withGitHub = args.includes('--github');
+  const withDiscord = args.includes('--discord');
   const PKG_VERSION = getPkgVersion();
 
   console.log(`\n@bookedsolid/reagent v${PKG_VERSION} init`);
@@ -27,26 +30,60 @@ export function runInit(args: string[]): void {
   if (dryRun) console.log(`  Mode:    dry-run (no changes written)`);
   console.log('');
 
-  // Load profile — validate name to prevent path traversal
+  // Validate profile name format
   if (!/^[a-z0-9][a-z0-9-]*$/.test(profileName)) {
     console.error(
       `Invalid profile name: "${profileName}" (only lowercase letters, numbers, hyphens allowed)`
     );
     process.exit(1);
   }
+
   const profilesDir = path.join(PKG_ROOT, 'profiles');
+  const techProfiles = listTechProfiles();
+  const isTechProfile = techProfiles.includes(profileName);
+
+  // If this is a tech stack profile (directory-based), run it directly
+  if (isTechProfile) {
+    const results: InstallResult[] = [];
+    const profileResult = installProfile(profileName, targetDir, dryRun);
+    results.push(...profileResult.results);
+
+    // Announce gates
+    if (profileResult.gatesInstalled.length > 0) {
+      console.log(`Tech profile "${profileName}" gates (add to your preflight script):`);
+      for (const gate of profileResult.gatesInstalled) {
+        console.log(`  [${gate.on_failure}] ${gate.name}: ${gate.command}`);
+      }
+      console.log('');
+    }
+
+    // Announce recommended agents
+    if (profileResult.agentsInstalled.length > 0) {
+      console.log(`Recommended agents for "${profileName}":`);
+      for (const agent of profileResult.agentsInstalled) {
+        console.log(`  - ${agent}`);
+      }
+      console.log('');
+    }
+
+    printSummary(results, dryRun, false);
+    return;
+  }
+
+  // Load base JSON profile — validate path to prevent traversal
   const profilePath = path.resolve(profilesDir, `${profileName}.json`);
   if (!profilePath.startsWith(profilesDir + path.sep)) {
     console.error(`Invalid profile name: "${profileName}" (path traversal detected)`);
     process.exit(1);
   }
   if (!fs.existsSync(profilePath)) {
-    const available = fs
-      .readdirSync(path.join(PKG_ROOT, 'profiles'))
+    const availableJson = fs
+      .readdirSync(profilesDir)
       .filter((f) => f.endsWith('.json'))
       .map((f) => f.replace('.json', ''));
     console.error(`Profile not found: ${profileName}`);
-    console.error(`Available profiles: ${available.join(', ')}`);
+    console.error(`Available base profiles: ${availableJson.join(', ')}`);
+    console.error(`Available tech profiles: ${techProfiles.join(', ')}`);
     process.exit(1);
   }
   const profile: ProfileConfig = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
@@ -124,7 +161,20 @@ export function runInit(args: string[]): void {
     );
   }
 
-  // Summary
+  // Step 14: Discord notifications (opt-in via --discord flag)
+  if (withDiscord) {
+    const discordOpts = parseDiscordArgs(args);
+    results.push(...installDiscord(targetDir, discordOpts, dryRun));
+  }
+
+  printSummary(results, dryRun, true);
+}
+
+function printSummary(
+  results: InstallResult[],
+  dryRun: boolean,
+  showCommitInstructions: boolean
+): void {
   console.log('');
   const installed = results.filter((r) => r.status === 'installed');
   const updated = results.filter((r) => r.status === 'updated');
@@ -150,19 +200,21 @@ export function runInit(args: string[]): void {
 
   if (!dryRun) {
     console.log('\n✓ reagent init complete');
-    console.log('\nCommit these files (safe to commit):');
-    console.log(
-      '  git add .cursor/rules/ .husky/ .claude/commands/ CLAUDE.md .reagent/policy.yaml .reagent/gateway.yaml && git commit -m "chore: add reagent zero-trust config"'
-    );
-    console.log('');
-    console.log('Do NOT commit (gitignored — stays on your machine):');
-    console.log('  .claude/hooks/');
-    console.log('  .claude/settings.json');
-    console.log('  .claude/agents/');
-    console.log('');
-    console.log('Test kill switch:');
-    console.log('  reagent freeze --reason "testing"');
-    console.log('  reagent unfreeze');
-    console.log('');
+    if (showCommitInstructions) {
+      console.log('\nCommit these files (safe to commit):');
+      console.log(
+        '  git add .cursor/rules/ .husky/ .claude/commands/ CLAUDE.md .reagent/policy.yaml .reagent/gateway.yaml && git commit -m "chore: add reagent zero-trust config"'
+      );
+      console.log('');
+      console.log('Do NOT commit (gitignored — stays on your machine):');
+      console.log('  .claude/hooks/');
+      console.log('  .claude/settings.json');
+      console.log('  .claude/agents/');
+      console.log('');
+      console.log('Test kill switch:');
+      console.log('  reagent freeze --reason "testing"');
+      console.log('  reagent unfreeze');
+      console.log('');
+    }
   }
 }

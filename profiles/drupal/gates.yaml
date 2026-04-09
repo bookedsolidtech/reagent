@@ -1,0 +1,15 @@
+gates:
+  - name: phpcs-drupal
+    command: vendor/bin/phpcs --standard=Drupal --extensions=php,module,inc,install,theme .
+    description: Drupal coding standards (PHPCS) must pass
+    on_failure: block
+
+  - name: drupal-cache-rebuild
+    command: vendor/bin/drush cr
+    description: Drush cache rebuild must succeed (validates module/theme structure)
+    on_failure: warn
+
+  - name: phpunit-drupal
+    command: vendor/bin/phpunit --testsuite=unit
+    description: Drupal PHPUnit unit tests must pass
+    on_failure: block

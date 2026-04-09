@@ -10,14 +10,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
+env:
+  HUSKY: '0'
 
 jobs:
   quality:
     name: Quality gates (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     strategy:
       matrix:
         node: ['22', '24']
@@ -42,7 +44,6 @@ jobs:
 
       - name: Type check
         run: npm run type-check
-        continue-on-error: true  # no tsc config yet — graceful skip
 
       - name: Tests
         run: npm test --if-present
@@ -54,6 +55,8 @@ jobs:
     name: Secret scan
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -63,16 +66,22 @@ jobs:
       - name: Install gitleaks
         run: |
           GITLEAKS_VERSION="8.18.4"
-          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-            | tar -xz -C /usr/local/bin gitleaks
+          GITLEAKS_SHA256="ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d"
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            -o /tmp/gitleaks.tar.gz
+          echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum -c
+          tar -xz -C /usr/local/bin gitleaks < /tmp/gitleaks.tar.gz
 
       - name: Scan repository for secrets
         run: gitleaks detect --config .gitleaks.toml --no-banner --verbose --redact
 
-  pnpm-audit:
+  npm-audit:
     name: Security audit
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4

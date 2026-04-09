@@ -8,20 +8,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write   # Required for npm provenance attestation (sigstore/OIDC)
-
 env:
-  HUSKY: '0'  # Prevent husky hooks running in CI
+  HUSKY: '0'
 
 jobs:
-  # ── Gate: secret scan + quality on source before any publish ─────────────────
+  # ── Gate: secret scan + quality on source before any publish ───────────────
   secret-scan:
     name: Secret scan + quality gates
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -45,8 +42,12 @@ jobs:
       - name: Install gitleaks
         run: |
           GITLEAKS_VERSION="8.18.4"
-          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-            | tar -xz -C /usr/local/bin gitleaks
+          GITLEAKS_SHA256="ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d"
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            -o /tmp/gitleaks.tar.gz
+          echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum -c
+          tar -xz -C /usr/local/bin gitleaks < /tmp/gitleaks.tar.gz
 
       - name: Scan repository source for secrets
         run: gitleaks detect --config .gitleaks.toml --no-banner --verbose --redact
@@ -61,13 +62,17 @@ jobs:
           fi
           echo "Publish payload clean."
 
-  # ── Publish job ───────────────────────────────────────────────────────────────
+  # ── Publish job ────────────────────────────────────────────────────────────
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: secret-scan
-    environment: npm-publish  # requires manual approval gate in GitHub repo settings
+    environment: npm-publish
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -91,7 +96,7 @@ jobs:
         with:
           name: sbom-${{ github.sha }}
           path: sbom.json
-          retention-days: 400   # SOC 2 Type II 12-month observation window
+          retention-days: 400
           if-no-files-found: error
 
       - name: Version and Publish
@@ -107,48 +112,45 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
 
-      # ── Publish audit record ────────────────────────────────────────────────
+      # ── Publish audit record ──────────────────────────────────────────────
       - name: Emit publish audit record
         if: steps.changesets.outputs.published == 'true'
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          RECORD=$(node -e "
+          VERSION=$(node -p "require('./package.json').version" | tr -cd '0-9a-zA-Z._-')
+          node -e "
             const d = {
               ts: new Date().toISOString(),
               event: 'npm_publish',
               package: '@bookedsolid/reagent',
-              version: process.env.VERSION,
+              version: process.env.PKG_VERSION,
               run_id: process.env.RUN_ID,
               sha: process.env.SHA,
               actor: process.env.ACTOR,
               sbom_artifact: 'sbom-' + process.env.SHA
             };
-            console.log(JSON.stringify(d));
-          ")
-          echo "AUDIT: $RECORD"
-          # Phase 2: POST to OTel collector or append to audit branch
+            console.log('AUDIT: ' + JSON.stringify(d));
+          "
         env:
-          VERSION: ${{ steps.changesets.outputs.publishedPackages && fromJson(steps.changesets.outputs.publishedPackages)[0].version || 'unknown' }}
+          PKG_VERSION: ${{ steps.changesets.outputs.publishedPackages && fromJSON(steps.changesets.outputs.publishedPackages)[0].version || 'unknown' }}
           RUN_ID: ${{ github.run_id }}
           SHA: ${{ github.sha }}
           ACTOR: ${{ github.actor }}
 
-      # ── Discord: dev channel ────────────────────────────────────────────────
+      # ── Discord: dev channel ──────────────────────────────────────────────
       - name: Notify Discord dev channel
         if: steps.changesets.outputs.published == 'true'
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION=$(node -p "require('./package.json').version" | tr -cd '0-9a-zA-Z._-')
           npx discord-ops@latest run send_message --args "{\"project\":\"reagent\",\"channel\":\"dev\",\"content\":\"📦 **@bookedsolid/reagent v${VERSION}** published to npm\"}"
         env:
           BOOKED_DISCORD_BOT_TOKEN: ${{ secrets.BOOKED_DISCORD_BOT_TOKEN }}
           DISCORD_OPS_CONFIG: ${{ secrets.DISCORD_OPS_CONFIG }}
 
-      # ── Discord: releases channel ───────────────────────────────────────────
+      # ── Discord: releases channel ─────────────────────────────────────────
       - name: Notify Discord releases channel
         if: steps.changesets.outputs.published == 'true'
         run: |
-          PUBLISHED='${{ steps.changesets.outputs.publishedPackages }}'
-          VERSION=$(echo "$PUBLISHED" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));console.log(d[0]?.version||'unknown')")
+          VERSION=$(node -p "require('./package.json').version" | tr -cd '0-9a-zA-Z._-')
           npx discord-ops@latest run send_template --args "{
             \"project\": \"reagent\",
             \"channel\": \"releases\",
@@ -167,3 +169,4 @@ jobs:
         env:
           BOOKED_DISCORD_BOT_TOKEN: ${{ secrets.BOOKED_DISCORD_BOT_TOKEN }}
           DISCORD_OPS_CONFIG: ${{ secrets.DISCORD_OPS_CONFIG }}
+          PUBLISHED_PACKAGES_JSON: ${{ steps.changesets.outputs.publishedPackages }}

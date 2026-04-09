@@ -4,16 +4,8 @@
   "huskyCommitMsg": true,
   "huskyPreCommit": true,
   "huskyPrePush": true,
-  "cursorRules": [
-    "001-no-hallucination",
-    "002-verify-before-act",
-    "003-attribution"
-  ],
-  "gitignoreEntries": [
-    ".claude/agents/",
-    ".claude/hooks/",
-    ".claude/settings.json"
-  ],
+  "cursorRules": ["001-no-hallucination", "002-verify-before-act", "003-attribution"],
+  "gitignoreEntries": [".claude/agents/", ".claude/hooks/", ".claude/settings.json", "RESTART.md"],
   "claudeMd": {
     "preflightCmd": "pnpm preflight",
     "attributionRule": "Do NOT include AI attribution in commits, PR bodies, code comments, or any client-facing content. The commit-msg hook strips attribution from git commits automatically. PR bodies and code comments must be cleaned manually before submission."

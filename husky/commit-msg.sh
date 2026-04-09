@@ -30,7 +30,8 @@ fi
 
 # Atomic write: grep to temp, mv to original (no partial-write risk)
 TMPFILE=$(mktemp) || { echo "ERROR: mktemp failed" >&2; exit 1; }
-trap "rm -f '$TMPFILE'" EXIT
+cleanup() { rm -f "$TMPFILE"; }
+trap cleanup EXIT
 
 grep -v \
   -e "Co-Authored-By: Claude" \

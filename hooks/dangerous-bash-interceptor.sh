@@ -18,21 +18,30 @@ set -uo pipefail
 # ── 1. Read ALL stdin immediately before doing anything else ──────────────────
 INPUT=$(cat)
 
-# ── 2. HALT check ─────────────────────────────────────────────────────────────
-if [ -f ".reagent/HALT" ]; then
-  printf 'REAGENT HALT: %s\nAll agent operations suspended. Run: reagent unfreeze\n' \
-    "$(cat ".reagent/HALT" 2>/dev/null || echo 'Reason unknown')" >&2
+# ── 2. Dependency check ───────────────────────────────────────────────────────
+if ! command -v jq >/dev/null 2>&1; then
+  printf 'REAGENT ERROR: jq is required but not installed.\n' >&2
+  printf 'Install: brew install jq  OR  apt-get install -y jq\n' >&2
   exit 2
 fi
 
-# ── 3. Parse tool_input.command from the hook payload ─────────────────────────
+# ── 3. HALT check ─────────────────────────────────────────────────────────────
+REAGENT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+HALT_FILE="${REAGENT_ROOT}/.reagent/HALT"
+if [ -f "$HALT_FILE" ]; then
+  printf 'REAGENT HALT: %s\nAll agent operations suspended. Run: reagent unfreeze\n' \
+    "$(cat "$HALT_FILE" 2>/dev/null || echo 'Reason unknown')" >&2
+  exit 2
+fi
+
+# ── 4. Parse tool_input.command from the hook payload ─────────────────────────
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 
 if [[ -z "$CMD" ]]; then
   exit 0
 fi
 
-# ── 4. Helper: truncate command for display ────────────────────────────────────
+# ── 5. Helper: truncate command for display ────────────────────────────────────
 truncate_cmd() {
   local STR="$1"
   local MAX=200
@@ -43,9 +52,9 @@ truncate_cmd() {
   fi
 }
 
-# ── 5. Violation accumulators ──────────────────────────────────────────────────
-HIGH_FILE=$(mktemp /tmp/reagent-bash-high-XXXXXX)
-MEDIUM_FILE=$(mktemp /tmp/reagent-bash-medium-XXXXXX)
+# ── 6. Violation accumulators ──────────────────────────────────────────────────
+HIGH_FILE=$(mktemp "${TMPDIR:-/tmp}/reagent-bash-high-XXXXXX")
+MEDIUM_FILE=$(mktemp "${TMPDIR:-/tmp}/reagent-bash-medium-XXXXXX")
 
 cleanup_violations() {
   rm -f "$HIGH_FILE" "$MEDIUM_FILE"
@@ -74,15 +83,23 @@ add_medium() {
   printf 'END_VIOLATION\n' >> "$MEDIUM_FILE"
 }
 
-# ── 6. Smart exclusion flags ───────────────────────────────────────────────────
+# ── 7. Per-segment evaluation helper ──────────────────────────────────────────
+# Split on &&, ||, ;, and newlines and test a pattern against each segment.
+# Returns 0 if ANY segment matches the pattern.
+any_segment_matches() {
+  local PATTERN="$1"
+  while IFS= read -r SEG; do
+    if printf '%s' "$SEG" | grep -qiE "$PATTERN"; then
+      return 0
+    fi
+  done < <(printf '%s' "$CMD" | sed 's/&&/\n/g; s/||/\n/g; s/;/\n/g')
+  return 1
+}
+
+# ── 8. Smart exclusion flags ──────────────────────────────────────────────────
 CMD_IS_REBASE_SAFE=0
 if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+(rebase)[[:space:]].*(--abort|--continue)'; then
   CMD_IS_REBASE_SAFE=1
-fi
-
-CMD_IS_FORCE_LEASE=0
-if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+push.*--force-with-lease'; then
-  CMD_IS_FORCE_LEASE=1
 fi
 
 CMD_IS_CLEAN_DRY=0
@@ -90,23 +107,26 @@ if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+clean.*([ \t]-n|--dry-run)'; t
   CMD_IS_CLEAN_DRY=1
 fi
 
-# ── 7. HIGH severity checks ────────────────────────────────────────────────────
+# ── 9. HIGH severity checks ────────────────────────────────────────────────────
 
-# H1: git push --force or -f to main or master
-if [[ $CMD_IS_FORCE_LEASE -eq 0 ]]; then
-  if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+push.*(--force|-f[[:space:]])' || \
-     printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+push.*(--force|-f)$'; then
-    if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+push.*(--force|-f).*(main|master)' || \
-       printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+push[[:space:]]+(--force|-f)[[:space:]]*$' || \
-       printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+push[[:space:]]+origin[[:space:]]+(--force|-f)[[:space:]]*$' || \
-       printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+push[[:space:]]+[^[:space:]]+[[:space:]]+(--force|-f)[[:space:]]*$'; then
-      add_high \
-        "git push --force to main/master" \
-        "Force-pushing rewrites public history and breaks collaborators' local copies." \
-        "Alt: Use 'git push --force-with-lease' — blocks if upstream has new commits you haven't pulled."
-    fi
+# H1: git push --force or -f (per-segment — prevents --force-with-lease poisoning)
+# A segment containing --force-with-lease is excluded; other segments are not.
+while IFS= read -r SEGMENT; do
+  SEGMENT=$(printf '%s' "$SEGMENT" | sed 's/^[[:space:]]*//')
+  [[ -z "$SEGMENT" ]] && continue
+  # Skip segments that use the safe --force-with-lease
+  if printf '%s' "$SEGMENT" | grep -qiE 'git[[:space:]]+push.*--force-with-lease'; then
+    continue
   fi
-fi
+  if printf '%s' "$SEGMENT" | grep -qiE 'git[[:space:]]+push.*(--force|-f[[:space:]])' || \
+     printf '%s' "$SEGMENT" | grep -qiE 'git[[:space:]]+push.*(--force|-f)$'; then
+    add_high \
+      "git push --force — force push detected" \
+      "Force-pushing rewrites public history and breaks collaborators' local copies." \
+      "Alt: Use 'git push --force-with-lease' — blocks if upstream has new commits you haven't pulled."
+    break
+  fi
+done < <(printf '%s' "$CMD" | sed 's/&&/\n/g; s/||/\n/g; s/;/\n/g')
 
 # H2: git rebase — advisory (MEDIUM)
 if [[ $CMD_IS_REBASE_SAFE -eq 0 ]]; then
@@ -127,8 +147,9 @@ if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+checkout[[:space:]]+--[[:space
     "Alt: 'git stash' to temporarily shelve changes, 'git restore <file>' for individual files."
 fi
 
-# H4: git restore .
-if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+restore[[:space:]]+\./?[[:space:]]*$'; then
+# H4: git restore . (any form — with or without --staged flag)
+if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+restore[[:space:]].*[[:space:]]\.([[:space:]]|$)' || \
+   printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+restore[[:space:]]+\.[[:space:]]*$'; then
   add_high \
     "git restore . — discards all uncommitted changes" \
     "Restores every tracked file to HEAD, permanently discarding all working tree modifications." \
@@ -177,7 +198,38 @@ if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+commit.*--no-verify'; then
     "Alt: Fix the underlying hook failure rather than bypassing it."
 fi
 
-# ── 8. MEDIUM severity checks ──────────────────────────────────────────────────
+# H10: HUSKY=0 bypass — suppresses all git hooks without --no-verify
+if printf '%s' "$CMD" | grep -qiE '(^|[[:space:];]|&&|\|\|)HUSKY=0[[:space:]]+git[[:space:]]+(commit|push|tag)'; then
+  add_high \
+    "HUSKY=0 — bypasses all husky git hooks" \
+    "Setting HUSKY=0 disables pre-commit, commit-msg, and pre-push safety gates without --no-verify." \
+    "Alt: Fix the underlying hook failure rather than suppressing all hooks."
+fi
+
+# H11: rm -rf with broad targets
+# Covers combined flags (rm -rf, rm -fr), split flags (rm -r -f), and long flags (rm --recursive --force)
+BROAD_TARGETS='(\/|~\/|\.\/\*|\*|\.|src|dist|build|node_modules)'
+if printf '%s' "$CMD" | grep -qiE "rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f[[:space:]]+${BROAD_TARGETS}" || \
+   printf '%s' "$CMD" | grep -qiE "rm[[:space:]]+-[a-zA-Z]*f[a-zA-Z]*r[[:space:]]+${BROAD_TARGETS}" || \
+   printf '%s' "$CMD" | grep -qiE "rm[[:space:]]+-[a-zA-Z]*r[[:space:]]+-[a-zA-Z]*f[[:space:]]+${BROAD_TARGETS}" || \
+   printf '%s' "$CMD" | grep -qiE "rm[[:space:]]+-[a-zA-Z]*f[[:space:]]+-[a-zA-Z]*r[[:space:]]+${BROAD_TARGETS}" || \
+   printf '%s' "$CMD" | grep -qiE "rm[[:space:]]+--recursive[[:space:]]+--force[[:space:]]+${BROAD_TARGETS}" || \
+   printf '%s' "$CMD" | grep -qiE "rm[[:space:]]+--force[[:space:]]+--recursive[[:space:]]+${BROAD_TARGETS}"; then
+  add_high \
+    "rm -rf with broad target — mass file deletion" \
+    "Permanently deletes files and directories. Cannot be undone." \
+    "Alt: Move to a temp location first, or use 'rm -ri' for interactive deletion."
+fi
+
+# H12: curl/wget piped directly to shell (supply chain attack vector)
+if printf '%s' "$CMD" | grep -qiE '(curl|wget)[^|]*\|[[:space:]]*(bash|sh|zsh|fish)'; then
+  add_high \
+    "curl/wget piped to shell — remote code execution" \
+    "Executing remote scripts without inspection is a major supply chain risk." \
+    "Alt: Download first, inspect the script, then execute: curl -o script.sh URL && cat script.sh && bash script.sh"
+fi
+
+# ── 10. MEDIUM severity checks ────────────────────────────────────────────────
 
 # M1: npm install --force
 if printf '%s' "$CMD" | grep -qiE 'npm[[:space:]]+(install|i)[[:space:]].*--force'; then
@@ -187,7 +239,7 @@ if printf '%s' "$CMD" | grep -qiE 'npm[[:space:]]+(install|i)[[:space:]].*--forc
     "Alt: Resolve the dependency conflict explicitly. Use --legacy-peer-deps if needed."
 fi
 
-# ── 9. Evaluate and report ─────────────────────────────────────────────────────
+# ── 11. Evaluate and report ───────────────────────────────────────────────────
 
 TRUNCATED_CMD=$(truncate_cmd "$CMD")
 

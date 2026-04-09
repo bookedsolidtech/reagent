@@ -4,15 +4,17 @@ on:
   pull_request:
     branches: [main, dev]
 
-permissions:
-  contents: read
-  pull-requests: read
+env:
+  HUSKY: '0'
 
 jobs:
   changeset:
     name: Require changeset
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
 
     steps:
       - uses: actions/checkout@v4
@@ -28,15 +30,14 @@ jobs:
         run: npm ci
 
       - name: Check for changeset
-        # Skip on the automated "Version Packages" PR created by changesets/action
         if: "!startsWith(github.head_ref, 'changeset-release/')"
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          # Verify at least one changeset file exists for this PR's changes
-          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          CHANGED=$(git diff --name-only "origin/${BASE_REF}...HEAD")
           SRC_CHANGED=$(echo "$CHANGED" | grep -vE '^(\.changeset/|CHANGELOG\.md|package\.json)' | head -1 || true)
 
           if [ -n "$SRC_CHANGED" ]; then
-            # Source changed — require a changeset
             CHANGESETS=$(ls .changeset/*.md 2>/dev/null | grep -v README.md | wc -l | tr -d ' ')
             if [ "$CHANGESETS" -eq 0 ]; then
               echo ""

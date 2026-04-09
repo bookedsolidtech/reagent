@@ -37,6 +37,7 @@ The cost of pausing is always lower than the cost of acting incorrectly.
 ## Policy File
 
 Read `.reagent/policy.yaml` at the start of every session to confirm:
+
 - The current `autonomy_level` (L0–L3) — your permitted operation scope
 - `blocked_paths` — directories you must never modify
 - `max_autonomy_level` — ceiling set by a human; never request escalation beyond it

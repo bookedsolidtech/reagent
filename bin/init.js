@@ -17,7 +17,7 @@ const PKG_VERSION = (() => {
 
 // ── CLI routing ──────────────────────────────────────────────────────────────
 
-const [,, cmd, ...rest] = process.argv;
+const [, , cmd, ...rest] = process.argv;
 
 if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
   printHelp();
@@ -51,12 +51,24 @@ function runInit(args) {
   if (dryRun) console.log(`  Mode:    dry-run (no changes written)`);
   console.log('');
 
-  // Load profile
-  const profilePath = path.join(PKG_ROOT, 'profiles', `${profileName}.json`);
+  // Load profile — validate name to prevent path traversal
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(profileName)) {
+    console.error(
+      `Invalid profile name: "${profileName}" (only lowercase letters, numbers, hyphens allowed)`
+    );
+    process.exit(1);
+  }
+  const profilesDir = path.join(PKG_ROOT, 'profiles');
+  const profilePath = path.resolve(profilesDir, `${profileName}.json`);
+  if (!profilePath.startsWith(profilesDir + path.sep)) {
+    console.error(`Invalid profile name: "${profileName}" (path traversal detected)`);
+    process.exit(1);
+  }
   if (!fs.existsSync(profilePath)) {
-    const available = fs.readdirSync(path.join(PKG_ROOT, 'profiles'))
-      .filter(f => f.endsWith('.json'))
-      .map(f => f.replace('.json', ''));
+    const available = fs
+      .readdirSync(path.join(PKG_ROOT, 'profiles'))
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => f.replace('.json', ''));
     console.error(`Profile not found: ${profileName}`);
     console.error(`Available profiles: ${available.join(', ')}`);
     process.exit(1);
@@ -115,34 +127,40 @@ function runInit(args) {
   const ra = installOrchestratorAgent(targetDir, dryRun);
   results.push(...ra);
 
+  // ── Step 10: Claude commands (/restart, /rea) ───────────────────────────
+  const rc = installClaudeCommands(targetDir, dryRun);
+  results.push(...rc);
+
   // ── Summary ────────────────────────────────────────────────────────────────
   console.log('');
-  const installed = results.filter(r => r.status === 'installed');
-  const updated   = results.filter(r => r.status === 'updated');
-  const skipped   = results.filter(r => r.status === 'skipped');
-  const warned    = results.filter(r => r.status === 'warn');
+  const installed = results.filter((r) => r.status === 'installed');
+  const updated = results.filter((r) => r.status === 'updated');
+  const skipped = results.filter((r) => r.status === 'skipped');
+  const warned = results.filter((r) => r.status === 'warn');
 
   if (installed.length) {
     console.log('Installed:');
-    installed.forEach(r => console.log(`  + ${r.file}`));
+    installed.forEach((r) => console.log(`  + ${r.file}`));
   }
   if (updated.length) {
     console.log('Updated:');
-    updated.forEach(r => console.log(`  ~ ${r.file}`));
+    updated.forEach((r) => console.log(`  ~ ${r.file}`));
   }
   if (skipped.length) {
     console.log('Already up-to-date:');
-    skipped.forEach(r => console.log(`  = ${r.file}`));
+    skipped.forEach((r) => console.log(`  = ${r.file}`));
   }
   if (warned.length) {
     console.log('Warnings:');
-    warned.forEach(r => console.log(`  ! ${r.file}`));
+    warned.forEach((r) => console.log(`  ! ${r.file}`));
   }
 
   if (!dryRun) {
     console.log('\n✓ reagent init complete');
     console.log('\nCommit these files (safe to commit):');
-    console.log('  git add .cursor/rules/ .husky/ CLAUDE.md .reagent/policy.yaml && git commit -m "chore: add reagent zero-trust config"');
+    console.log(
+      '  git add .cursor/rules/ .husky/ .claude/commands/ CLAUDE.md .reagent/policy.yaml && git commit -m "chore: add reagent zero-trust config"'
+    );
     console.log('');
     console.log('Do NOT commit (gitignored — stays on your machine):');
     console.log('  .claude/hooks/');
@@ -150,7 +168,9 @@ function runInit(args) {
     console.log('  .claude/agents/');
     console.log('');
     console.log('Test attribution stripping:');
-    console.log('  git commit --allow-empty -m "test\\n\\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"');
+    console.log(
+      '  git commit --allow-empty -m "test\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>"'
+    );
     console.log('  git log -1 --format="%B" | grep "Co-Authored"  # should return nothing');
     console.log('');
     console.log('Test kill switch:');
@@ -160,7 +180,7 @@ function runInit(args) {
   }
 }
 
-function runCheck(args) {
+function runCheck(_args) {
   const targetDir = process.cwd();
   console.log(`\n@bookedsolid/reagent v${PKG_VERSION} check`);
   console.log(`  Target: ${targetDir}\n`);
@@ -168,7 +188,8 @@ function runCheck(args) {
   const checks = [
     {
       label: '.cursor/rules/ installed',
-      pass: () => fs.existsSync(path.join(targetDir, '.cursor', 'rules', '001-no-hallucination.mdc')),
+      pass: () =>
+        fs.existsSync(path.join(targetDir, '.cursor', 'rules', '001-no-hallucination.mdc')),
     },
     {
       label: '.husky/commit-msg installed',
@@ -188,7 +209,8 @@ function runCheck(args) {
     },
     {
       label: '.claude/hooks/ installed',
-      pass: () => fs.existsSync(path.join(targetDir, '.claude', 'hooks', 'dangerous-bash-interceptor.sh')),
+      pass: () =>
+        fs.existsSync(path.join(targetDir, '.claude', 'hooks', 'dangerous-bash-interceptor.sh')),
     },
     {
       label: '.claude/settings.json installed',
@@ -209,6 +231,14 @@ function runCheck(args) {
     {
       label: '.gitignore has .claude/agents/',
       pass: () => gitignoreHasEntry(targetDir, '.claude/agents/'),
+    },
+    {
+      label: '.claude/commands/restart.md installed',
+      pass: () => fs.existsSync(path.join(targetDir, '.claude', 'commands', 'restart.md')),
+    },
+    {
+      label: '.claude/commands/rea.md installed',
+      pass: () => fs.existsSync(path.join(targetDir, '.claude', 'commands', 'rea.md')),
     },
   ];
 
@@ -238,7 +268,10 @@ function runCheck(args) {
 
 function runFreeze(args) {
   const targetDir = process.cwd();
-  const reason = parseFlag(args, '--reason') || args.find(a => !a.startsWith('--')) || 'Manual freeze';
+  const rawReason =
+    parseFlag(args, '--reason') || args.find((a) => !a.startsWith('--')) || 'Manual freeze';
+  // Strip control characters (terminal escape injection defense)
+  const reason = rawReason.replace(/[\x00-\x1f\x7f]/g, '');
 
   const reagentDir = path.join(targetDir, '.reagent');
   const haltFile = path.join(reagentDir, 'HALT');
@@ -259,7 +292,7 @@ function runFreeze(args) {
   console.log('');
 }
 
-function runUnfreeze(args) {
+function runUnfreeze(_args) {
   const targetDir = process.cwd();
   const haltFile = path.join(targetDir, '.reagent', 'HALT');
 
@@ -277,12 +310,7 @@ function runUnfreeze(args) {
 
 function installGitignoreEntries(targetDir, entries, dryRun) {
   const gitignorePath = path.join(targetDir, '.gitignore');
-  let current = '';
-  if (fs.existsSync(gitignorePath)) {
-    current = fs.readFileSync(gitignorePath, 'utf8');
-  }
-
-  const missing = entries.filter(e => !gitignoreHasEntry(targetDir, e));
+  const missing = entries.filter((e) => !gitignoreHasEntry(targetDir, e));
 
   if (!missing.length) {
     return [{ file: '.gitignore', status: 'skipped' }];
@@ -401,8 +429,8 @@ function installHuskyHook(targetDir, hookName, srcFileName, dryRun) {
           fs.writeFileSync(pkgJsonPath, JSON.stringify(pkg, null, 2) + '\n');
           results.push({ file: 'package.json (added husky)', status: 'updated' });
         }
-      } catch (e) {
-        // Non-fatal: package.json may not be valid JSON
+      } catch (err) {
+        console.warn(`  Warning: Could not update package.json: ${err.message}`);
       }
     }
   }
@@ -420,19 +448,21 @@ function installClaudeHooks(targetDir, hooksConfig, dryRun) {
   const installedHookNames = new Set();
 
   // Collect all hook names from all matchers
-  const allHookEntries = [
-    ...(hooksConfig.PreToolUse || []),
-    ...(hooksConfig.PostToolUse || []),
-  ];
+  const allHookEntries = [...(hooksConfig.PreToolUse || []), ...(hooksConfig.PostToolUse || [])];
   for (const entry of allHookEntries) {
-    for (const hookName of (entry.hooks || [])) {
+    for (const hookName of entry.hooks || []) {
       const srcFile = path.join(PKG_ROOT, 'hooks', `${hookName}.sh`);
 
       if (!fs.existsSync(srcFile)) {
         // LOUDLY warn: hook referenced in profile does not exist in package
-        console.error(`  ERROR: Hook '${hookName}' referenced in profile but not found in package.`);
+        console.error(
+          `  ERROR: Hook '${hookName}' referenced in profile but not found in package.`
+        );
         console.error(`         Skipping — will NOT be written to .claude/settings.json.`);
-        results.push({ file: `.claude/hooks/${hookName}.sh (MISSING — not installed)`, status: 'warn' });
+        results.push({
+          file: `.claude/hooks/${hookName}.sh (MISSING — not installed)`,
+          status: 'warn',
+        });
         continue;
       }
 
@@ -485,37 +515,51 @@ function installClaudeMd(targetDir, claudeMdConfig, profileName, dryRun) {
 
   let template = fs.readFileSync(templatePath, 'utf8');
 
+  // Sanitize profile values to prevent template double-substitution
+  const safe = (val) => String(val).replace(/\{\{[^}]*\}\}/g, '');
+
   // Interpolate profile-specific values
   template = template
     .replace(/\{\{VERSION\}\}/g, PKG_VERSION)
-    .replace(/\{\{PREFLIGHT_CMD\}\}/g, claudeMdConfig.preflightCmd || 'pnpm preflight')
-    .replace(/\{\{ATTRIBUTION_RULE\}\}/g, claudeMdConfig.attributionRule || 'Do not include AI attribution in client-facing content.');
+    .replace(/\{\{PREFLIGHT_CMD\}\}/g, safe(claudeMdConfig.preflightCmd || 'pnpm preflight'))
+    .replace(
+      /\{\{ATTRIBUTION_RULE\}\}/g,
+      safe(
+        claudeMdConfig.attributionRule || 'Do not include AI attribution in client-facing content.'
+      )
+    );
 
   const MARKER_START = '<!-- reagent-managed:start -->';
   const MARKER_END = '<!-- reagent-managed:end -->';
 
-  const existingContent = fs.existsSync(claudeMdPath)
-    ? fs.readFileSync(claudeMdPath, 'utf8')
-    : '';
+  const existingContent = fs.existsSync(claudeMdPath) ? fs.readFileSync(claudeMdPath, 'utf8') : '';
 
   // Check if reagent block already exists
   const hasBlock = existingContent.includes(MARKER_START);
 
   let newContent;
   if (hasBlock) {
-    // Replace existing reagent block
-    const before = existingContent.indexOf(MARKER_START);
-    const afterMarker = existingContent.indexOf(MARKER_END);
-    if (afterMarker === -1) {
-      // Malformed — prepend fresh block
-      newContent = template + '\n' + existingContent;
+    const startIdx = existingContent.indexOf(MARKER_START);
+    const endIdx = existingContent.indexOf(MARKER_END);
+    if (endIdx === -1) {
+      // Orphaned start marker — strip it, prepend fresh block
+      const stripped = (
+        existingContent.slice(0, startIdx) + existingContent.slice(startIdx + MARKER_START.length)
+      ).trim();
+      newContent = stripped ? template.trimEnd() + '\n\n' + stripped.trimStart() : template;
     } else {
-      const after = afterMarker + MARKER_END.length;
-      newContent = template + existingContent.slice(after);
+      // Remove old block entirely, prepend new template
+      const endAfter = endIdx + MARKER_END.length;
+      const withoutBlock = (
+        existingContent.slice(0, startIdx) + existingContent.slice(endAfter)
+      ).trim();
+      newContent = withoutBlock ? template.trimEnd() + '\n\n' + withoutBlock.trimStart() : template;
     }
   } else {
     // Prepend to existing CLAUDE.md (or create new)
-    newContent = template + (existingContent ? '\n' + existingContent : '');
+    newContent = existingContent
+      ? template.trimEnd() + '\n\n' + existingContent.trimStart()
+      : template;
   }
 
   const same = existingContent === newContent;
@@ -523,10 +567,12 @@ function installClaudeMd(targetDir, claudeMdConfig, profileName, dryRun) {
     fs.writeFileSync(claudeMdPath, newContent, 'utf8');
   }
 
-  return [{
-    file: 'CLAUDE.md',
-    status: same ? 'skipped' : existingContent ? (hasBlock ? 'updated' : 'updated') : 'installed',
-  }];
+  return [
+    {
+      file: 'CLAUDE.md',
+      status: same ? 'skipped' : existingContent ? 'updated' : 'installed',
+    },
+  ];
 }
 
 function installPolicy(targetDir, profileName, dryRun) {
@@ -598,10 +644,48 @@ function installOrchestratorAgent(targetDir, dryRun) {
     fs.writeFileSync(destFile, srcContent, 'utf8');
   }
 
-  return [{
-    file: '.claude/agents/reagent-orchestrator.md',
-    status: same ? 'skipped' : exists ? 'updated' : 'installed',
-  }];
+  return [
+    {
+      file: '.claude/agents/reagent-orchestrator.md',
+      status: same ? 'skipped' : exists ? 'updated' : 'installed',
+    },
+  ];
+}
+
+function installClaudeCommands(targetDir, dryRun) {
+  const commandsSrcDir = path.join(PKG_ROOT, 'commands');
+  const commandsDestDir = path.join(targetDir, '.claude', 'commands');
+
+  if (!fs.existsSync(commandsSrcDir)) {
+    return [];
+  }
+
+  if (!dryRun) {
+    fs.mkdirSync(commandsDestDir, { recursive: true });
+  }
+
+  const results = [];
+  const commandFiles = fs.readdirSync(commandsSrcDir).filter((f) => f.endsWith('.md'));
+
+  for (const fileName of commandFiles) {
+    const srcFile = path.join(commandsSrcDir, fileName);
+    const destFile = path.join(commandsDestDir, fileName);
+
+    const srcContent = fs.readFileSync(srcFile, 'utf8');
+    const exists = fs.existsSync(destFile);
+    const same = exists && fs.readFileSync(destFile, 'utf8') === srcContent;
+
+    if (!same && !dryRun) {
+      fs.writeFileSync(destFile, srcContent, 'utf8');
+    }
+
+    results.push({
+      file: `.claude/commands/${fileName}`,
+      status: same ? 'skipped' : exists ? 'updated' : 'installed',
+    });
+  }
+
+  return results;
 }
 
 function buildSettingsJson(hooksConfig, installedHookNames) {
@@ -616,12 +700,12 @@ function buildSettingsJson(hooksConfig, installedHookNames) {
     const result = [];
     for (const entry of entries) {
       // Only include hooks that were actually installed (exist in package)
-      const availableHooks = entry.hooks.filter(h => installedHookNames.has(h));
+      const availableHooks = entry.hooks.filter((h) => installedHookNames.has(h));
       if (!availableHooks.length) continue;
 
       result.push({
         matcher: entry.matcher,
-        hooks: availableHooks.map(hookName => ({
+        hooks: availableHooks.map((hookName) => ({
           type: 'command',
           command: `"$CLAUDE_PROJECT_DIR"/.claude/hooks/${hookName}.sh`,
           timeout: getHookTimeout(hookName),
@@ -662,9 +746,6 @@ function mergeByMatcher(entries) {
 function getHookTimeout(hookName) {
   const timeouts = {
     'secret-scanner': 15000,
-    'type-check-after-edit': 60000,
-    'lint-after-edit': 15000,
-    'any-type-detector': 10000,
     'dangerous-bash-interceptor': 10000,
     'env-file-protection': 5000,
     'attribution-advisory': 5000,
@@ -678,9 +759,6 @@ function getHookStatusMessage(hookName) {
     'env-file-protection': 'Checking for .env file reads...',
     'secret-scanner': 'Scanning for credentials...',
     'attribution-advisory': 'Checking for AI attribution...',
-    'lint-after-edit': 'Linting edited file...',
-    'type-check-after-edit': 'Type-checking edited file...',
-    'any-type-detector': "Checking for 'any' type violations...",
   };
   return messages[hookName] || `Running ${hookName}...`;
 }
@@ -688,7 +766,7 @@ function getHookStatusMessage(hookName) {
 // ── Utility functions ─────────────────────────────────────────────────────────
 
 function parseFlag(args, flag) {
-  const eqForm = args.find(a => a.startsWith(`${flag}=`));
+  const eqForm = args.find((a) => a.startsWith(`${flag}=`));
   if (eqForm) return eqForm.split('=').slice(1).join('=');
   const idx = args.indexOf(flag);
   if (idx !== -1 && args[idx + 1] && !args[idx + 1].startsWith('--')) {
@@ -701,7 +779,7 @@ function gitignoreHasEntry(targetDir, entry) {
   const gitignorePath = path.join(targetDir, '.gitignore');
   if (!fs.existsSync(gitignorePath)) return false;
   const content = fs.readFileSync(gitignorePath, 'utf8');
-  return content.split('\n').some(line => line.trim() === entry.trim());
+  return content.split('\n').some((line) => line.trim() === entry.trim());
 }
 
 function printHelp() {

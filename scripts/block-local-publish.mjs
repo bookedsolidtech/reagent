@@ -8,14 +8,11 @@
  *   - SBOM is generated and attached
  *   - Provenance attestation is recorded (NPM_CONFIG_PROVENANCE=true)
  *   - Changeset version bump is committed before publish
- *
- * Exception: explicitly set ALLOW_LOCAL_PUBLISH=1 to bypass (for emergency use only).
  */
 
 const isCI = process.env.CI === 'true';
-const isAllowed = process.env.ALLOW_LOCAL_PUBLISH === '1';
 
-if (!isCI && !isAllowed) {
+if (!isCI) {
   console.error('');
   console.error('ERROR: Local npm publish is blocked.');
   console.error('');
@@ -25,10 +22,7 @@ if (!isCI && !isAllowed) {
   console.error('  - npm provenance attestation (sigstore)');
   console.error('  - Changeset version bump committed before publish');
   console.error('');
-  console.error('To publish: push to main, merge the Version Packages PR,');
-  console.error('then let publish.yml handle the rest.');
-  console.error('');
-  console.error('Emergency bypass: ALLOW_LOCAL_PUBLISH=1 npm publish');
+  console.error('To publish: push to main, let publish.yml handle the rest.');
   console.error('');
   process.exit(1);
 }

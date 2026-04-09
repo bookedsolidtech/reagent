@@ -2,10 +2,10 @@
 # Commit this file. Edit autonomy_level and max_autonomy_level as needed.
 # Run 'reagent freeze --reason "..."' to halt all agent operations.
 
-version: "1"
-profile: "bst-internal"
-installed_by: "reagent@0.1.0"
-installed_at: "2026-04-09T04:34:24.864Z"
+version: '1'
+profile: 'bst-internal'
+installed_by: 'reagent@0.1.0'
+installed_at: '2026-04-09T04:34:24.864Z'
 
 # Autonomy levels:
 #   L0 — Read-only; every write requires explicit user approval
@@ -20,10 +20,10 @@ promotion_requires_human_approval: true
 
 # Paths hooks and agents must never modify
 blocked_paths:
-  - ".reagent/"
-  - ".github/workflows/"
-  - ".env"
-  - ".env.*"
+  - '.reagent/'
+  - '.github/workflows/'
+  - '.env'
+  - '.env.*'
 
 # Optional: Discord webhook for halt/promote notifications
-notification_channel: ""
+notification_channel: ''

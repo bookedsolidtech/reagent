@@ -21,18 +21,20 @@ cd "$REPO_ROOT"
 
 PASS=0
 FAIL=0
+GATE_OUT=$(mktemp /tmp/reagent-preflight-XXXXXX) || { echo "ERROR: mktemp failed"; exit 1; }
+trap 'rm -f "$GATE_OUT"' EXIT
 
 gate() {
   local LABEL="$1"
   shift
   printf '  %-32s' "$LABEL..."
-  if "$@" > /tmp/reagent-preflight-out.txt 2>&1; then
+  if "$@" > "$GATE_OUT" 2>&1; then
     echo "PASS"
     PASS=$((PASS + 1))
   else
     echo "FAIL"
     FAIL=$((FAIL + 1))
-    cat /tmp/reagent-preflight-out.txt
+    cat "$GATE_OUT"
     echo ""
   fi
 }

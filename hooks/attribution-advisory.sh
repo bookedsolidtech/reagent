@@ -7,37 +7,47 @@
 # attribution strings and warns Claude to self-correct before submitting.
 #
 # Hook protocol: PreToolUse hooks can ONLY block (exit 2) or allow (exit 0).
-# This hook always exits 0 — the commit-msg hook is the mechanical enforcement.
+# This hook exits 0 in advisory mode and exits 2 only when HALT is active.
+# The commit-msg hook is the mechanical enforcement for git commits.
 #
 # Exit codes:
-#   0 = allow (always — advisory only)
+#   0 = allow (advisory mode — always, unless HALT is active)
+#   2 = block (only when .reagent/HALT is present)
 
 set -uo pipefail
 
 # ── 1. Read ALL stdin immediately before doing anything else ──────────────────
 INPUT=$(cat)
 
-# ── 2. HALT check ─────────────────────────────────────────────────────────────
-if [ -f ".reagent/HALT" ]; then
-  printf 'REAGENT HALT: %s\nAll agent operations suspended. Run: reagent unfreeze\n' \
-    "$(cat ".reagent/HALT" 2>/dev/null || echo 'Reason unknown')" >&2
+# ── 2. Dependency check ───────────────────────────────────────────────────────
+if ! command -v jq >/dev/null 2>&1; then
+  printf 'REAGENT ERROR: jq is required but not installed.\n' >&2
+  printf 'Install: brew install jq  OR  apt-get install -y jq\n' >&2
   exit 2
 fi
 
-# ── 3. Parse tool_input.command from the hook payload ─────────────────────────
+# ── 3. HALT check ─────────────────────────────────────────────────────────────
+REAGENT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+HALT_FILE="${REAGENT_ROOT}/.reagent/HALT"
+if [ -f "$HALT_FILE" ]; then
+  printf 'REAGENT HALT: %s\nAll agent operations suspended. Run: reagent unfreeze\n' \
+    "$(cat "$HALT_FILE" 2>/dev/null || echo 'Reason unknown')" >&2
+  exit 2
+fi
+
+# ── 4. Parse tool_input.command from the hook payload ─────────────────────────
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 
-# If the command is empty or jq failed, allow silently
 if [[ -z "$CMD" ]]; then
   exit 0
 fi
 
-# ── 4. Only check gh pr commands ──────────────────────────────────────────────
+# ── 5. Only check gh pr commands ──────────────────────────────────────────────
 if ! printf '%s' "$CMD" | grep -qiE 'gh[[:space:]]+pr[[:space:]]+(create|edit)'; then
   exit 0
 fi
 
-# ── 5. Check for attribution strings in the command ───────────────────────────
+# ── 6. Check for attribution strings in the command ───────────────────────────
 FOUND_ATTRIBUTION=0
 
 if printf '%s' "$CMD" | grep -qiE '(Co-Authored-By:[[:space:]]+Claude|Generated with Claude Code|claude\.ai|🤖[[:space:]]+Generated)'; then
@@ -55,10 +65,10 @@ if [[ $FOUND_ATTRIBUTION -eq 1 ]]; then
     printf '    - 🤖 Generated with ...\n'
     printf '    - claude.ai references\n'
     printf '\n'
-    printf '  Note: commit-msg hook will strip attribution from git commits automatically.\n'
+    printf '  Note: commit-msg hook strips attribution from git commits automatically.\n'
     printf '  PR bodies must be cleaned manually — the commit-msg hook does not cover them.\n'
   } >&2
 fi
 
-# Always allow — advisory only
+# Always allow in advisory mode
 exit 0

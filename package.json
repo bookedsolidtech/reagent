@@ -3,6 +3,12 @@
   "version": "0.1.0",
   "description": "Zero-trust agentic infrastructure — hooks, cursor rules, attribution removal, and behavioral enforcement for any AI-assisted project",
   "license": "MIT",
+  "author": "Booked Solid Technology <oss@bookedsolid.tech> (https://bookedsolid.tech)",
+  "homepage": "https://github.com/bookedsolidtech/reagent#readme",
+  "bugs": {
+    "url": "https://github.com/bookedsolidtech/reagent/issues"
+  },
+  "type": "commonjs",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bookedsolidtech/reagent.git"
@@ -11,7 +17,7 @@
     "reagent": "bin/init.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "files": [
     "bin/",
@@ -21,7 +27,7 @@
     "profiles/",
     "templates/",
     "agents/",
-    "scripts/"
+    "commands/"
   ],
   "scripts": {
     "prepare": "husky",
@@ -33,7 +39,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test test/**/*.test.mjs 2>/dev/null || true",
+    "test": "echo 'No tests yet — add tests before 0.2.0' && exit 0",
     "type-check": "echo 'No TypeScript config — skipping' && exit 0"
   },
   "keywords": [

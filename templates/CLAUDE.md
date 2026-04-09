@@ -48,7 +48,16 @@ This session may be subject to audit logging per `.reagent/policy.yaml`. All too
 
 ## Delegation
 
-For non-trivial implementation tasks, delegate to the `reagent-orchestrator` agent before proceeding. The orchestrator enforces BST engineering processes, selects specialist agents, and coordinates multi-step work.
+This project uses a "bring your own engineering team" model with discoverable specialist agents.
+
+**CRITICAL: For any non-trivial task, you MUST delegate to specialist agents rather than doing the work directly.**
+
+1. **Discover agents**: scan `.claude/agents/` to find specialist agents by domain
+2. **Route to specialists**: use the Agent tool with the appropriate `subagent_type` matching agent filenames (e.g., `security-engineer`, `frontend-specialist`, `database-architect`)
+3. **Use the orchestrator**: for complex multi-step tasks, delegate to the `reagent-orchestrator` agent which enforces engineering processes, selects the right specialists, and coordinates work
+4. **Run agents in parallel**: when tasks are independent, launch multiple specialist agents simultaneously for maximum throughput
+
+**Do NOT** use generic Agent calls without specifying a `subagent_type`. Every agent invocation should target a discoverable specialist from `.claude/agents/`.
 
 Exception: simple read-only questions and direct clarifications may be answered without delegation.
 

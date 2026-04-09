@@ -58,13 +58,17 @@ CREATE POLICY "owner_update" ON table_name
 
 ```typescript
 const channel = supabase
-  .channel(`${table}-${contextId}`)  // Always include context in channel name
-  .on('postgres_changes', {
-    event: '*',
-    schema: 'public',
-    table: tableName,
-    filter: `context_id=eq.${contextId}`,
-  }, (payload) => handleChange(payload))
+  .channel(`${table}-${contextId}`) // Always include context in channel name
+  .on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: tableName,
+      filter: `context_id=eq.${contextId}`,
+    },
+    (payload) => handleChange(payload)
+  )
   .subscribe();
 ```
 
@@ -75,7 +79,6 @@ const channel = supabase
 - Every new table MUST have RLS enabled
 - Always include rollback comments in migration files
 - Never modify existing migrations — create new ones
-
 
 ## Zero-Trust Protocol
 
@@ -99,4 +102,5 @@ const channel = supabase
 - `auth.uid()` returns NULL for non-Supabase-Auth sessions (e.g. PIN auth) — account for this in RLS
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

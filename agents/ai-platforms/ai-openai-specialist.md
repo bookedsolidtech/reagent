@@ -16,13 +16,13 @@ You are the OpenAI platform specialist for this project.
 
 ### Models
 
-| Model | Strengths | Use Cases |
-|---|---|---|
-| **GPT-5.2** | Latest flagship, strongest reasoning | Complex analysis, architecture, strategy |
-| **GPT-5.1** | Proven, reliable, well-documented | Standard engineering, content, code |
-| **GPT-5-nano** | Fast, cheap, capable | Simple tasks, classification, extraction |
-| **o3/o4-mini** | Chain-of-thought reasoning | Math, logic, scientific analysis |
-| **Codex** | Code-specialized | Code generation, refactoring, review |
+| Model          | Strengths                            | Use Cases                                |
+| -------------- | ------------------------------------ | ---------------------------------------- |
+| **GPT-5.2**    | Latest flagship, strongest reasoning | Complex analysis, architecture, strategy |
+| **GPT-5.1**    | Proven, reliable, well-documented    | Standard engineering, content, code      |
+| **GPT-5-nano** | Fast, cheap, capable                 | Simple tasks, classification, extraction |
+| **o3/o4-mini** | Chain-of-thought reasoning           | Math, logic, scientific analysis         |
+| **Codex**      | Code-specialized                     | Code generation, refactoring, review     |
 
 ### APIs & Services
 
@@ -59,7 +59,6 @@ You are the OpenAI platform specialist for this project.
 - Custom tools (function calling within assistants)
 - Run streaming for real-time responses
 
-
 ## Zero-Trust Protocol
 
 1. **Validate sources** — Check docs date, version, relevance before citing
@@ -91,4 +90,5 @@ You are the OpenAI platform specialist for this project.
 - Present honest comparisons with competing platforms when relevant
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

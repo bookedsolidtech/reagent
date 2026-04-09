@@ -31,13 +31,18 @@ import { z } from 'zod';
 const server = new McpServer({ name: 'my-server', version: '1.0.0' });
 
 // Define a tool
-server.tool('my-tool', 'Description of what this tool does', {
-  param1: z.string().describe('What this parameter is'),
-  param2: z.number().optional().describe('Optional numeric param'),
-}, async ({ param1, param2 }) => {
-  // Implementation
-  return { content: [{ type: 'text', text: 'Result' }] };
-});
+server.tool(
+  'my-tool',
+  'Description of what this tool does',
+  {
+    param1: z.string().describe('What this parameter is'),
+    param2: z.number().optional().describe('Optional numeric param'),
+  },
+  async ({ param1, param2 }) => {
+    // Implementation
+    return { content: [{ type: 'text', text: 'Result' }] };
+  }
+);
 
 // Define a resource
 server.resource('my-resource', 'resource://path', async (uri) => {
@@ -70,7 +75,6 @@ await server.connect(transport);
 }
 ```
 
-
 ## Zero-Trust Protocol
 
 1. **Validate sources** — Check docs date, version, relevance before citing
@@ -100,4 +104,5 @@ await server.connect(transport);
 - Keep tool count manageable (prefer fewer, well-designed tools over many simple ones)
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

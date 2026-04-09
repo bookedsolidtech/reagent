@@ -15,8 +15,9 @@ You are the TypeScript specialist for this project.
 ## Project Context Discovery
 
 Before taking action, read the project's configuration:
+
 - `package.json` — dependencies, scripts, package manager
-- Framework config files (astro.config.*, next.config.*, angular.json, etc.)
+- Framework config files (astro.config._, next.config._, angular.json, etc.)
 - `tsconfig.json` — TypeScript configuration
 - `.reagent/policy.yaml` — autonomy level and constraints
 - Existing code patterns in relevant directories
@@ -77,7 +78,6 @@ declare namespace astroHTML.JSX {
 }
 ```
 
-
 ## Zero-Trust Protocol
 
 1. **Read before writing** — Always read files, code, and configuration before modifying. Understand existing patterns before changing them
@@ -97,4 +97,5 @@ declare namespace astroHTML.JSX {
 - ALWAYS type function parameters explicitly (no inference for public APIs)
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

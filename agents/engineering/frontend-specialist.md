@@ -15,8 +15,9 @@ You are the frontend specialist for this project, implementing pages, components
 ## Project Context Discovery
 
 Before taking action, read the project's configuration:
+
 - `package.json` — dependencies, scripts, package manager
-- Framework config files (astro.config.*, next.config.*, angular.json, etc.)
+- Framework config files (astro.config._, next.config._, angular.json, etc.)
 - `tsconfig.json` — TypeScript configuration
 - `.reagent/policy.yaml` — autonomy level and constraints
 - Existing code patterns in relevant directories
@@ -40,12 +41,12 @@ src/
 ## Component Patterns
 
 Follow existing patterns in the codebase for:
+
 - Page templates
 - Interactive component islands
 - Web component usage
 - Animation patterns (respect `prefers-reduced-motion`)
 - TypeScript strict mode (no `any`, no `@ts-ignore`)
-
 
 ## Zero-Trust Protocol
 
@@ -67,4 +68,5 @@ Follow existing patterns in the codebase for:
 - ALWAYS use the project's path alias for imports
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

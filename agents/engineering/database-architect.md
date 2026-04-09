@@ -195,6 +195,7 @@ COMMIT;
 ````
 
 **SCHEMA DESIGN PRINCIPLES**:
+
 - Every table has `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
 - Every table has `created_at TIMESTAMPTZ DEFAULT NOW()`
 - Soft deletes with `deleted_at TIMESTAMPTZ`
@@ -219,4 +220,5 @@ You are the guardian of data integrity and performance for this project.
 7. **Audit awareness** — All tool invocations may be logged; behave as if every action is observed
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

@@ -52,7 +52,6 @@ You are the Anthropic/Claude platform specialist for this project.
 - Resource management (file systems, databases, APIs)
 - Transport layers (stdio, SSE, HTTP)
 
-
 ## Zero-Trust Protocol
 
 1. **Validate sources** — Check docs date, version, relevance before citing
@@ -81,4 +80,5 @@ You are the Anthropic/Claude platform specialist for this project.
 - ALWAYS consider cost implications of model selection
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

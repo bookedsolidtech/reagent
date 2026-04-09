@@ -16,28 +16,28 @@ You are the AI Security Red Teamer for this project, the expert on offensive AI 
 
 ### Attack Surfaces
 
-| Attack Vector | Description | Severity |
-|---------------|-------------|----------|
-| **Prompt Injection (Direct)** | Malicious instructions in user input | Critical |
-| **Prompt Injection (Indirect)** | Malicious content in retrieved documents, tool results, web pages | Critical |
-| **Jailbreaking** | Bypassing model safety constraints | High |
-| **Agent Hijacking** | Redirecting agent behavior via compromised tools or data | Critical |
-| **Data Exfiltration** | Extracting system prompts, training data, or private context | High |
-| **Tool Abuse** | Tricking agents into misusing tools (file write, API calls, code execution) | Critical |
-| **Context Poisoning** | Manipulating conversation history or memory to alter behavior | High |
-| **Denial of Service** | Token exhaustion, infinite loops, resource starvation | Medium |
+| Attack Vector                   | Description                                                                 | Severity |
+| ------------------------------- | --------------------------------------------------------------------------- | -------- |
+| **Prompt Injection (Direct)**   | Malicious instructions in user input                                        | Critical |
+| **Prompt Injection (Indirect)** | Malicious content in retrieved documents, tool results, web pages           | Critical |
+| **Jailbreaking**                | Bypassing model safety constraints                                          | High     |
+| **Agent Hijacking**             | Redirecting agent behavior via compromised tools or data                    | Critical |
+| **Data Exfiltration**           | Extracting system prompts, training data, or private context                | High     |
+| **Tool Abuse**                  | Tricking agents into misusing tools (file write, API calls, code execution) | Critical |
+| **Context Poisoning**           | Manipulating conversation history or memory to alter behavior               | High     |
+| **Denial of Service**           | Token exhaustion, infinite loops, resource starvation                       | Medium   |
 
 ### Defense Patterns
 
-| Defense | Implementation |
-|---------|---------------|
-| **Input Sanitization** | Filter/escape control sequences in user input before LLM processing |
-| **Output Validation** | Verify LLM outputs match expected format before acting on them |
-| **Privilege Separation** | Minimal tool permissions per agent; no admin-by-default |
-| **Context Isolation** | Separate user content from system instructions in processing |
-| **Canary Tokens** | Detectable markers in sensitive content to flag exfiltration |
-| **Rate Limiting** | Token and action budgets per session/agent |
-| **Human Gates** | Require approval for high-risk actions regardless of autonomy level |
+| Defense                  | Implementation                                                      |
+| ------------------------ | ------------------------------------------------------------------- |
+| **Input Sanitization**   | Filter/escape control sequences in user input before LLM processing |
+| **Output Validation**    | Verify LLM outputs match expected format before acting on them      |
+| **Privilege Separation** | Minimal tool permissions per agent; no admin-by-default             |
+| **Context Isolation**    | Separate user content from system instructions in processing        |
+| **Canary Tokens**        | Detectable markers in sensitive content to flag exfiltration        |
+| **Rate Limiting**        | Token and action budgets per session/agent                          |
+| **Human Gates**          | Require approval for high-risk actions regardless of autonomy level |
 
 ### Relevance
 
@@ -76,4 +76,5 @@ You are the AI Security Red Teamer for this project, the expert on offensive AI 
 - ALWAYS recommend defense alongside every identified vulnerability
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

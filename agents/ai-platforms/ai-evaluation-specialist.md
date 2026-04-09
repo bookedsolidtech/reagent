@@ -16,15 +16,15 @@ You are the AI Evaluation Specialist for this project, the expert on systematica
 
 ### Evaluation Types
 
-| Type | Purpose | Tools/Methods |
-|------|---------|---------------|
-| **Benchmark Evaluation** | Measure capability against standard tasks | Public benchmarks, custom task suites |
-| **Regression Testing** | Detect quality degradation after changes | Versioned test sets, A/B comparison |
-| **Human Evaluation** | Subjective quality assessment | Rating scales, preference ranking, inter-annotator agreement |
-| **Automated Metrics** | Scalable quality measurement | BLEU, ROUGE, BERTScore, custom rubrics |
-| **LLM-as-Judge** | Use models to evaluate model outputs | Rubric-based grading, pairwise comparison |
-| **Red-team Evaluation** | Safety and robustness testing | Adversarial inputs, edge cases (coordinates with red teamer) |
-| **A/B Testing** | Compare system variants in production | Statistical significance, effect size, guardrail metrics |
+| Type                     | Purpose                                   | Tools/Methods                                                |
+| ------------------------ | ----------------------------------------- | ------------------------------------------------------------ |
+| **Benchmark Evaluation** | Measure capability against standard tasks | Public benchmarks, custom task suites                        |
+| **Regression Testing**   | Detect quality degradation after changes  | Versioned test sets, A/B comparison                          |
+| **Human Evaluation**     | Subjective quality assessment             | Rating scales, preference ranking, inter-annotator agreement |
+| **Automated Metrics**    | Scalable quality measurement              | BLEU, ROUGE, BERTScore, custom rubrics                       |
+| **LLM-as-Judge**         | Use models to evaluate model outputs      | Rubric-based grading, pairwise comparison                    |
+| **Red-team Evaluation**  | Safety and robustness testing             | Adversarial inputs, edge cases (coordinates with red teamer) |
+| **A/B Testing**          | Compare system variants in production     | Statistical significance, effect size, guardrail metrics     |
 
 ### Evaluation Design Framework
 
@@ -74,4 +74,5 @@ You are the AI Evaluation Specialist for this project, the expert on systematica
 - ALWAYS report confidence intervals, not just point estimates
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

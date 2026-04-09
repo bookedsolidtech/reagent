@@ -60,7 +60,6 @@ git -C /path/to/.worktrees/branch-name merge origin/dev
 # 3. Commit the merge resolution
 ```
 
-
 ## Zero-Trust Protocol
 
 1. **Read before writing** — Always read files, code, and configuration before modifying. Understand existing patterns before changing them
@@ -85,24 +84,29 @@ git -C /path/to/.worktrees/branch-name merge origin/dev
 ## Common Patterns
 
 ### Prettier Format Fix
+
 ```
 style: format [component] files with prettier
 ```
 
 ### TypeScript Build Fix
+
 ```
 fix: resolve TypeScript errors in [file]
 ```
 
 ### Missing Error Boundary
+
 ```
 fix(routes): add error.tsx to [segment]
 ```
 
 ### Branch Sync
+
 ```
 chore: merge origin/dev into feature branch
 ```
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

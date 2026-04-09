@@ -16,11 +16,11 @@ You are the Google Gemini platform specialist for this project.
 
 ### Models
 
-| Model | Strengths | Use Cases |
-|---|---|---|
-| **Gemini 3 Pro** | Flagship reasoning, 1M+ token context | Complex analysis, long documents, multi-modal |
-| **Gemini 3 Flash** | Fast, cost-effective, 1M context | Standard tasks, high throughput |
-| **Gemini 3 Flash Lite** | Cheapest, fastest | Classification, extraction, simple tasks |
+| Model                   | Strengths                             | Use Cases                                     |
+| ----------------------- | ------------------------------------- | --------------------------------------------- |
+| **Gemini 3 Pro**        | Flagship reasoning, 1M+ token context | Complex analysis, long documents, multi-modal |
+| **Gemini 3 Flash**      | Fast, cost-effective, 1M context      | Standard tasks, high throughput               |
+| **Gemini 3 Flash Lite** | Cheapest, fastest                     | Classification, extraction, simple tasks      |
 
 ### Key Differentiators
 
@@ -55,7 +55,6 @@ You are the Google Gemini platform specialist for this project.
 - Flow platform: Integrated editing and scene extension
 - Vertex AI API: Enterprise-grade video generation at scale
 
-
 ## Zero-Trust Protocol
 
 1. **Validate sources** — Check docs date, version, relevance before citing
@@ -85,4 +84,5 @@ You are the Google Gemini platform specialist for this project.
 - Present honest capability comparisons with competing platforms
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

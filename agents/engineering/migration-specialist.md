@@ -69,6 +69,7 @@ COMMIT;
 ## Safe Patterns
 
 ### Adding a column (safe)
+
 ```sql
 ALTER TABLE public.existing_table
   ADD COLUMN new_col TEXT DEFAULT NULL;
@@ -76,6 +77,7 @@ ALTER TABLE public.existing_table
 ```
 
 ### Renaming a column (expand-contract)
+
 ```sql
 -- Step 1: Add new column
 ALTER TABLE public.t ADD COLUMN new_name TEXT;
@@ -86,11 +88,11 @@ ALTER TABLE public.t DROP COLUMN old_name;
 ```
 
 ### Adding an index (non-blocking)
+
 ```sql
 CREATE INDEX CONCURRENTLY idx_table_column
   ON public.table_name (column_name);
 ```
-
 
 ## Zero-Trust Protocol
 
@@ -116,4 +118,5 @@ CREATE INDEX CONCURRENTLY idx_table_column
 - For large data backfills, use batched updates to avoid locking
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

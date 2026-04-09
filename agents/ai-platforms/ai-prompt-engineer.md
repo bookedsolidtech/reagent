@@ -36,12 +36,12 @@ You are the prompt engineering specialist for this project.
 
 ### Model-Specific Optimization
 
-| Model Family | Key Prompting Notes |
-|---|---|
-| **Claude** | XML tags for structure, `<thinking>` blocks, tool_choice for forcing |
-| **GPT** | JSON mode, function calling, system message weight |
-| **Gemini** | Multi-modal inline, grounding, long context best practices |
-| **Open-source** | Shorter prompts, explicit formatting, chat templates matter |
+| Model Family    | Key Prompting Notes                                                  |
+| --------------- | -------------------------------------------------------------------- |
+| **Claude**      | XML tags for structure, `<thinking>` blocks, tool_choice for forcing |
+| **GPT**         | JSON mode, function calling, system message weight                   |
+| **Gemini**      | Multi-modal inline, grounding, long context best practices           |
+| **Open-source** | Shorter prompts, explicit formatting, chat templates matter          |
 
 ### Evaluation
 
@@ -59,7 +59,6 @@ You are the prompt engineering specialist for this project.
 - Over-constraining — too many rules cause thrashing
 - Under-constraining — too few rules cause drift
 - Prompt injection vulnerabilities — validate untrusted input
-
 
 ## Zero-Trust Protocol
 
@@ -91,4 +90,5 @@ You are the prompt engineering specialist for this project.
 - Document the WHY behind every prompt design decision
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

@@ -16,36 +16,36 @@ You are the AWS Solutions Architect for this project.
 
 ### Compute
 
-| Service | Use Case |
-|---|---|
-| **Lambda** | Serverless functions, API handlers, event processing |
-| **ECS/Fargate** | Containerized services, long-running processes |
-| **EC2** | GPU instances for model inference, custom workloads |
-| **App Runner** | Container-to-URL, simple deployments |
-| **Batch** | Large-scale batch processing, training jobs |
+| Service         | Use Case                                             |
+| --------------- | ---------------------------------------------------- |
+| **Lambda**      | Serverless functions, API handlers, event processing |
+| **ECS/Fargate** | Containerized services, long-running processes       |
+| **EC2**         | GPU instances for model inference, custom workloads  |
+| **App Runner**  | Container-to-URL, simple deployments                 |
+| **Batch**       | Large-scale batch processing, training jobs          |
 
 ### AI/ML Services
 
-| Service | Capability |
-|---|---|
-| **Bedrock** | Managed LLM access (Claude, Llama, Mistral, Titan) |
-| **SageMaker** | Model training, fine-tuning, deployment, MLOps |
-| **Comprehend** | NLP (sentiment, entities, language detection) |
-| **Rekognition** | Image/video analysis, face detection |
-| **Transcribe** | Speech-to-text |
-| **Polly** | Text-to-speech |
-| **Textract** | Document OCR, table extraction |
-| **Kendra** | Enterprise search, RAG-ready |
+| Service         | Capability                                         |
+| --------------- | -------------------------------------------------- |
+| **Bedrock**     | Managed LLM access (Claude, Llama, Mistral, Titan) |
+| **SageMaker**   | Model training, fine-tuning, deployment, MLOps     |
+| **Comprehend**  | NLP (sentiment, entities, language detection)      |
+| **Rekognition** | Image/video analysis, face detection               |
+| **Transcribe**  | Speech-to-text                                     |
+| **Polly**       | Text-to-speech                                     |
+| **Textract**    | Document OCR, table extraction                     |
+| **Kendra**      | Enterprise search, RAG-ready                       |
 
 ### Storage & Data
 
-| Service | Use Case |
-|---|---|
-| **S3** | Object storage, data lake, static assets |
-| **RDS/Aurora** | PostgreSQL, MySQL managed databases |
-| **DynamoDB** | NoSQL, serverless, key-value |
-| **ElastiCache** | Redis/Memcached caching |
-| **OpenSearch** | Full-text search, vector search, analytics |
+| Service         | Use Case                                   |
+| --------------- | ------------------------------------------ |
+| **S3**          | Object storage, data lake, static assets   |
+| **RDS/Aurora**  | PostgreSQL, MySQL managed databases        |
+| **DynamoDB**    | NoSQL, serverless, key-value               |
+| **ElastiCache** | Redis/Memcached caching                    |
+| **OpenSearch**  | Full-text search, vector search, analytics |
 
 ### Networking & Security
 
@@ -69,7 +69,6 @@ You are the AWS Solutions Architect for this project.
 - Lambda right-sizing (memory = CPU allocation)
 - S3 Intelligent-Tiering for infrequently accessed data
 - Cost Explorer and Budgets for monitoring
-
 
 ## Zero-Trust Protocol
 
@@ -101,4 +100,5 @@ You are the AWS Solutions Architect for this project.
 - Consider data residency requirements for regulated industries
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

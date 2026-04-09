@@ -15,8 +15,9 @@ You are the QA Engineer for this project. You own test strategy, write automatio
 ## Project Context Discovery
 
 Before taking action, read the project's configuration:
+
 - `package.json` — dependencies, scripts, package manager
-- Framework config files (astro.config.*, next.config.*, angular.json, etc.)
+- Framework config files (astro.config._, next.config._, angular.json, etc.)
 - `tsconfig.json` — TypeScript configuration
 - `.reagent/policy.yaml` — autonomy level and constraints
 - Existing code patterns in relevant directories
@@ -153,4 +154,5 @@ it('dispatches click event when clicked', async () => {
 7. **Audit awareness** — All tool invocations may be logged; behave as if every action is observed
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

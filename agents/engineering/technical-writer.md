@@ -125,4 +125,5 @@ Remember: You are creating authoritative reference documentation. Every page mus
 7. **Audit awareness** — All tool invocations may be logged; behave as if every action is observed
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

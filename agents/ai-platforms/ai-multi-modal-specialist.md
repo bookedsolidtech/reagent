@@ -16,58 +16,59 @@ You are the multi-modal AI specialist for this project.
 
 ### Vision-Language Models
 
-| Model | Capabilities | Best For |
-|---|---|---|
-| **Claude (Opus/Sonnet)** | Image understanding, PDF, charts, UI analysis | Document analysis, code screenshots |
-| **GPT-4o** | Image + audio + text, real-time | Conversational, multi-modal chat |
-| **Gemini 3 Pro** | Image, video, audio, long context | Video understanding, large documents |
-| **Llama 3.2 Vision** | Image understanding, open-source | Self-hosted vision applications |
-| **Qwen2.5-VL** | Strong OCR, document understanding | Document processing pipelines |
+| Model                    | Capabilities                                  | Best For                             |
+| ------------------------ | --------------------------------------------- | ------------------------------------ |
+| **Claude (Opus/Sonnet)** | Image understanding, PDF, charts, UI analysis | Document analysis, code screenshots  |
+| **GPT-4o**               | Image + audio + text, real-time               | Conversational, multi-modal chat     |
+| **Gemini 3 Pro**         | Image, video, audio, long context             | Video understanding, large documents |
+| **Llama 3.2 Vision**     | Image understanding, open-source              | Self-hosted vision applications      |
+| **Qwen2.5-VL**           | Strong OCR, document understanding            | Document processing pipelines        |
 
 ### Image Generation
 
-| Model | Strengths |
-|---|---|
-| **DALL-E 3** | Prompt adherence, text rendering |
-| **Midjourney v7** | Artistic quality, aesthetics |
+| Model                    | Strengths                             |
+| ------------------------ | ------------------------------------- |
+| **DALL-E 3**             | Prompt adherence, text rendering      |
+| **Midjourney v7**        | Artistic quality, aesthetics          |
 | **Stable Diffusion 3.5** | Open-source, fine-tunable, ControlNet |
-| **Flux** | Fast, high quality, open-source |
-| **Imagen 4** | Photorealism, Google ecosystem |
-| **Ideogram 3** | Best text rendering in images |
+| **Flux**                 | Fast, high quality, open-source       |
+| **Imagen 4**             | Photorealism, Google ecosystem        |
+| **Ideogram 3**           | Best text rendering in images         |
 
 ### Video AI
 
 #### Text-to-Video (Generative)
 
-| Platform | Audio | Resolution | Duration | Best For |
-|---|---|---|---|---|
-| **Sora 2 Pro** (OpenAI) | Native sync | Up to 4K | 20s | Cinematic, commercials, storyboard |
-| **Veo 3.1** (Google) | Native sync | 1080p | 8s | Enterprise, Vertex AI integration |
-| **Luma Ray3** | No native | 4K HDR | 9s | HDR production, reasoning model |
-| **Runway Gen-3 Alpha** | No native | 1080p | 10s | Creative, motion brush, camera control |
-| **Kling 2.0** (Kuaishou) | Native | 1080p | 10s | Cost-effective, good motion |
-| **Minimax Hailuo** | Native | 1080p | 6s | Fast, cheap, good for iteration |
+| Platform                 | Audio       | Resolution | Duration | Best For                               |
+| ------------------------ | ----------- | ---------- | -------- | -------------------------------------- |
+| **Sora 2 Pro** (OpenAI)  | Native sync | Up to 4K   | 20s      | Cinematic, commercials, storyboard     |
+| **Veo 3.1** (Google)     | Native sync | 1080p      | 8s       | Enterprise, Vertex AI integration      |
+| **Luma Ray3**            | No native   | 4K HDR     | 9s       | HDR production, reasoning model        |
+| **Runway Gen-3 Alpha**   | No native   | 1080p      | 10s      | Creative, motion brush, camera control |
+| **Kling 2.0** (Kuaishou) | Native      | 1080p      | 10s      | Cost-effective, good motion            |
+| **Minimax Hailuo**       | Native      | 1080p      | 6s       | Fast, cheap, good for iteration        |
 
 #### Avatar/Presenter Video
 
-| Platform | Best For | Key Feature |
-|---|---|---|
-| **HeyGen** | Marketing, sales | Interactive avatars, 175+ languages |
-| **Synthesia** | Enterprise training | GDPR-compliant, 230+ avatars |
-| **D-ID** | Personalized video at scale | API-first, streaming avatars |
-| **Colossyan** | L&D, corporate | Scenario-based, multi-character |
+| Platform      | Best For                    | Key Feature                         |
+| ------------- | --------------------------- | ----------------------------------- |
+| **HeyGen**    | Marketing, sales            | Interactive avatars, 175+ languages |
+| **Synthesia** | Enterprise training         | GDPR-compliant, 230+ avatars        |
+| **D-ID**      | Personalized video at scale | API-first, streaming avatars        |
+| **Colossyan** | L&D, corporate              | Scenario-based, multi-character     |
 
 #### Video Editing AI
 
-| Tool | Capability |
-|---|---|
-| **Runway** | Gen-3 Alpha, motion brush, inpainting, style transfer |
-| **Pika** | Quick iterations, lip sync, scene extension |
-| **Luma Ray3 Modify** | Actor performance + AI transformation hybrid |
+| Tool                 | Capability                                            |
+| -------------------- | ----------------------------------------------------- |
+| **Runway**           | Gen-3 Alpha, motion brush, inpainting, style transfer |
+| **Pika**             | Quick iterations, lip sync, scene extension           |
+| **Luma Ray3 Modify** | Actor performance + AI transformation hybrid          |
 
 #### Video Production Workflows
 
 **Commercial Production Pipeline:**
+
 1. Script to storyboard (text descriptions per scene)
 2. Draft mode (Luma) or standard (Sora) for rapid iteration
 3. Hi-fi render of approved scenes
@@ -76,6 +77,7 @@ You are the multi-modal AI specialist for this project.
 6. Output: 4K master, social cuts (16:9, 9:16, 1:1)
 
 **Avatar Content Pipeline:**
+
 1. Script optimization for AI delivery
 2. Avatar selection/creation (brand-consistent)
 3. Multi-language generation (auto-dubbing)
@@ -103,11 +105,11 @@ You are the multi-modal AI specialist for this project.
 
 #### ElevenLabs Model Selection
 
-| Model | Use Case | Latency | Quality |
-|---|---|---|---|
-| **Turbo v2.5** | Conversational AI, real-time | Lowest | Good |
-| **Multilingual v2** | Multi-language content | Medium | Excellent |
-| **Flash** | High-volume, cost-sensitive | Low | Good |
+| Model               | Use Case                     | Latency | Quality   |
+| ------------------- | ---------------------------- | ------- | --------- |
+| **Turbo v2.5**      | Conversational AI, real-time | Lowest  | Good      |
+| **Multilingual v2** | Multi-language content       | Medium  | Excellent |
+| **Flash**           | High-volume, cost-sensitive  | Low     | Good      |
 
 #### ElevenLabs API Integration
 
@@ -127,13 +129,13 @@ You are the multi-modal AI specialist for this project.
 
 ### Audio Processing
 
-| Capability | Models/Tools |
-|---|---|
-| **Speech-to-text** | Whisper (OpenAI), Deepgram, AssemblyAI |
-| **Text-to-speech** | ElevenLabs, OpenAI TTS, XTTS, F5-TTS |
-| **Music generation** | Suno, Udio, MusicGen |
-| **Sound effects** | ElevenLabs SFX, AudioGen |
-| **Voice cloning** | ElevenLabs, RVC, OpenVoice |
+| Capability           | Models/Tools                           |
+| -------------------- | -------------------------------------- |
+| **Speech-to-text**   | Whisper (OpenAI), Deepgram, AssemblyAI |
+| **Text-to-speech**   | ElevenLabs, OpenAI TTS, XTTS, F5-TTS   |
+| **Music generation** | Suno, Udio, MusicGen                   |
+| **Sound effects**    | ElevenLabs SFX, AudioGen               |
+| **Voice cloning**    | ElevenLabs, RVC, OpenVoice             |
 
 ### Document Understanding
 
@@ -150,7 +152,6 @@ You are the multi-modal AI specialist for this project.
 - **Fusion**: Multiple modalities combined in single prompt (Gemini, GPT-4o)
 - **Routing**: Classify input modality, route to specialist model
 - **Orchestration**: Agent decides which modality tools to use per task
-
 
 ## Zero-Trust Protocol
 
@@ -203,4 +204,5 @@ You are the multi-modal AI specialist for this project.
 - Consider cost at scale for voice AI (character-based pricing)
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

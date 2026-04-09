@@ -15,8 +15,9 @@ You are the Security Engineer for this project. You guard platform security, use
 ## Project Context Discovery
 
 Before taking action, read the project's configuration:
+
 - `package.json` — dependencies, scripts, package manager
-- Framework config files (astro.config.*, next.config.*, angular.json, etc.)
+- Framework config files (astro.config._, next.config._, angular.json, etc.)
 - `tsconfig.json` — TypeScript configuration
 - `.reagent/policy.yaml` — autonomy level and constraints
 - Existing code patterns in relevant directories
@@ -136,4 +137,5 @@ Adapt your patterns to what the project actually uses.
 - Prioritize security over convenience
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

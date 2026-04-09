@@ -49,11 +49,11 @@ export default async function Page() {
 }
 
 // Client Component — required for hooks, event handlers, browser APIs
-'use client';
+('use client');
 import { useState } from 'react';
 export function Counter() {
   const [count, setCount] = useState(0);
-  return <button onClick={() => setCount(c => c + 1)}>{count}</button>;
+  return <button onClick={() => setCount((c) => c + 1)}>{count}</button>;
 }
 ```
 
@@ -83,7 +83,9 @@ export const config = {
 import { useEffect } from 'react';
 
 export default function Error({ error, reset }: { error: Error; reset: () => void }) {
-  useEffect(() => { console.error(error); }, [error]);
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
 
   return (
     <div>
@@ -111,7 +113,6 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-
 ## Zero-Trust Protocol
 
 1. **Read before writing** — Always read files, code, and configuration before modifying. Understand existing patterns before changing them
@@ -135,4 +136,5 @@ export async function POST(request: NextRequest) {
 - Environment variables: `NEXT_PUBLIC_*` for browser, others server-only
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

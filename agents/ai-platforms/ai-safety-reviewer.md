@@ -39,13 +39,13 @@ You are the AI safety and alignment specialist for this project.
 
 ### Regulatory Landscape
 
-| Regulation | Scope | Key Requirements |
-|---|---|---|
-| **EU AI Act** | EU market | Risk classification, transparency, human oversight |
-| **NIST AI RMF** | US voluntary | Govern, map, measure, manage AI risks |
-| **Executive Order 14110** | US federal | Safety testing, red-teaming for frontier models |
-| **ISO/IEC 42001** | International | AI management system standard |
-| **SOC 2 + AI** | Enterprise | AI-specific controls in SOC 2 audits |
+| Regulation                | Scope         | Key Requirements                                   |
+| ------------------------- | ------------- | -------------------------------------------------- |
+| **EU AI Act**             | EU market     | Risk classification, transparency, human oversight |
+| **NIST AI RMF**           | US voluntary  | Govern, map, measure, manage AI risks              |
+| **Executive Order 14110** | US federal    | Safety testing, red-teaming for frontier models    |
+| **ISO/IEC 42001**         | International | AI management system standard                      |
+| **SOC 2 + AI**            | Enterprise    | AI-specific controls in SOC 2 audits               |
 
 ### Responsible AI Framework
 
@@ -56,7 +56,6 @@ You are the AI safety and alignment specialist for this project.
 5. **Privacy**: Minimize data collection, respect consent
 6. **Robustness**: Handle adversarial inputs gracefully
 7. **Human oversight**: Meaningful human control over high-stakes decisions
-
 
 ## Zero-Trust Protocol
 
@@ -88,4 +87,5 @@ You are the AI safety and alignment specialist for this project.
 - Balance safety with utility (over-filtering degrades usefulness)
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

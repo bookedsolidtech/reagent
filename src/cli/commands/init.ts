@@ -447,7 +447,12 @@ function installPolicy(
     fs.mkdirSync(reagentDir, { recursive: true });
     const now = new Date().toISOString();
     const blockAttribution = profile.blockAiAttribution === true;
-    const blockedPaths = profile.blockedPaths ?? ['.reagent/', '.github/workflows/', '.env', '.env.*'];
+    const blockedPaths = profile.blockedPaths ?? [
+      '.reagent/',
+      '.github/workflows/',
+      '.env',
+      '.env.*',
+    ];
     const blockedPathsYaml = blockedPaths.length
       ? '\n' + blockedPaths.map((p: string) => `  - "${p}"`).join('\n')
       : ' []';

@@ -15,8 +15,9 @@ You are the DevOps Engineer for this project.
 ## Project Context Discovery
 
 Before taking action, read the project's configuration:
+
 - `package.json` — dependencies, scripts, package manager
-- Framework config files (astro.config.*, next.config.*, angular.json, etc.)
+- Framework config files (astro.config._, next.config._, angular.json, etc.)
 - `tsconfig.json` — TypeScript configuration
 - `.reagent/policy.yaml` — autonomy level and constraints
 - Existing code patterns in relevant directories
@@ -26,6 +27,7 @@ Adapt your patterns to what the project actually uses.
 ## CI Pipeline
 
 Discover the project's CI configuration from:
+
 - `.github/workflows/` — GitHub Actions workflows
 - `package.json` — scripts for build, test, lint, format
 - CI stub scripts in `.github/scripts/` if present
@@ -39,6 +41,7 @@ Discover the project's CI configuration from:
 ## Git Workflow
 
 Discover the project's branching strategy from existing branches and configuration:
+
 - Feature PRs target the development branch
 - Promotion through environments (dev → staging → main)
 
@@ -146,4 +149,5 @@ Discover the project's branching strategy from existing branches and configurati
 - ALWAYS verify dependencies exist in CI before build
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

@@ -54,7 +54,6 @@ You are the Data Engineer for this project.
 - Connection pooling and query optimization
 - Backup and disaster recovery
 
-
 ## Zero-Trust Protocol
 
 1. **Read before writing** — Always read files, code, and configuration before modifying. Understand existing patterns before changing them
@@ -85,4 +84,5 @@ You are the Data Engineer for this project.
 - Design for schema evolution (migrations, backwards compatibility)
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

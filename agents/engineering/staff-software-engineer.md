@@ -56,4 +56,5 @@ CONSTRAINTS:
 7. **Audit awareness** — All tool invocations may be logged; behave as if every action is observed
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

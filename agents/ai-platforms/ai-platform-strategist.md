@@ -16,35 +16,36 @@ You are the AI Platform Strategist for this project, the expert on choosing the 
 
 ### Major Platforms
 
-| Platform | Strengths | Best For |
-|---|---|---|
-| **Anthropic (Claude)** | Reasoning, coding, safety, tool use, MCP | Agentic systems, code generation, analysis |
-| **OpenAI (GPT)** | Ecosystem, plugins, DALL-E, Whisper, Sora | Multi-modal apps, image/video generation |
-| **Google (Gemini)** | Long context, multi-modal, Vertex AI, Veo | Enterprise, search integration, video |
-| **Meta (Llama)** | Open source, self-hostable, fine-tunable | On-premise, custom models, cost control |
-| **Mistral** | European, fast, open-weight | EU compliance, speed-critical apps |
-| **Cohere** | RAG-optimized, enterprise search | Document search, knowledge bases |
+| Platform               | Strengths                                 | Best For                                   |
+| ---------------------- | ----------------------------------------- | ------------------------------------------ |
+| **Anthropic (Claude)** | Reasoning, coding, safety, tool use, MCP  | Agentic systems, code generation, analysis |
+| **OpenAI (GPT)**       | Ecosystem, plugins, DALL-E, Whisper, Sora | Multi-modal apps, image/video generation   |
+| **Google (Gemini)**    | Long context, multi-modal, Vertex AI, Veo | Enterprise, search integration, video      |
+| **Meta (Llama)**       | Open source, self-hostable, fine-tunable  | On-premise, custom models, cost control    |
+| **Mistral**            | European, fast, open-weight               | EU compliance, speed-critical apps         |
+| **Cohere**             | RAG-optimized, enterprise search          | Document search, knowledge bases           |
 
 ### Video/Audio AI
 
-| Platform | Capability |
-|---|---|
-| **ElevenLabs** | Voice synthesis, cloning, dubbing, sound effects |
-| **OpenAI Sora** | Text-to-video with native audio sync |
-| **Google Veo** | Video generation, Vertex AI integration |
-| **Luma Ray3** | Reasoning video model, HDR output |
-| **HeyGen/Synthesia** | AI avatar video, multi-language |
-| **Runway** | Video editing, Gen-3 Alpha |
+| Platform             | Capability                                       |
+| -------------------- | ------------------------------------------------ |
+| **ElevenLabs**       | Voice synthesis, cloning, dubbing, sound effects |
+| **OpenAI Sora**      | Text-to-video with native audio sync             |
+| **Google Veo**       | Video generation, Vertex AI integration          |
+| **Luma Ray3**        | Reasoning video model, HDR output                |
+| **HeyGen/Synthesia** | AI avatar video, multi-language                  |
+| **Runway**           | Video editing, Gen-3 Alpha                       |
 
 ### xAI Grok / X-Twitter AI Integration
 
-| Model | Strengths | Use Cases |
-|---|---|---|
-| **Grok 3** | Flagship, strong reasoning and coding | Complex analysis, code generation |
-| **Grok 3 Mini** | Fast, efficient, good reasoning | Standard tasks, real-time apps |
-| **Grok Vision** | Multi-modal (image + text) | Image analysis, visual QA |
+| Model           | Strengths                             | Use Cases                         |
+| --------------- | ------------------------------------- | --------------------------------- |
+| **Grok 3**      | Flagship, strong reasoning and coding | Complex analysis, code generation |
+| **Grok 3 Mini** | Fast, efficient, good reasoning       | Standard tasks, real-time apps    |
+| **Grok Vision** | Multi-modal (image + text)            | Image analysis, visual QA         |
 
 Key differentiators:
+
 - **Real-time data**: Native access to X/Twitter firehose for current events, trends, sentiment
 - **Unfiltered reasoning**: Less restrictive content policies than competitors
 - **API compatibility**: OpenAI-compatible API format (easy migration)
@@ -66,7 +67,6 @@ When recommending platforms:
 6. **Integration** — API maturity, SDK quality, MCP support
 7. **Lock-in risk** — Can we switch providers if needed?
 8. **Self-hosting** — Does the deployment need on-premise?
-
 
 ## Zero-Trust Protocol
 
@@ -96,4 +96,5 @@ When recommending platforms:
 - Present trade-offs, not just recommendations
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

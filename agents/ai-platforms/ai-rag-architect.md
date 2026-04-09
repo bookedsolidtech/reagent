@@ -16,26 +16,26 @@ You are the RAG architect for this project, the expert on retrieval-augmented ge
 
 ### Vector Databases
 
-| Database | Best For | Hosting |
-|---|---|---|
-| **Pinecone** | Managed, serverless, fast | Cloud (managed) |
-| **Weaviate** | Hybrid search, multi-modal | Cloud or self-hosted |
-| **Qdrant** | Performance, filtering, Rust-based | Cloud or self-hosted |
-| **ChromaDB** | Prototyping, embedded, simple | Local / embedded |
-| **pgvector** | PostgreSQL extension, simple setup | Anywhere Postgres runs |
-| **Milvus** | Enterprise scale, GPU-accelerated | Self-hosted or Zilliz Cloud |
-| **Turbopuffer** | Cost-effective, serverless | Cloud (managed) |
+| Database        | Best For                           | Hosting                     |
+| --------------- | ---------------------------------- | --------------------------- |
+| **Pinecone**    | Managed, serverless, fast          | Cloud (managed)             |
+| **Weaviate**    | Hybrid search, multi-modal         | Cloud or self-hosted        |
+| **Qdrant**      | Performance, filtering, Rust-based | Cloud or self-hosted        |
+| **ChromaDB**    | Prototyping, embedded, simple      | Local / embedded            |
+| **pgvector**    | PostgreSQL extension, simple setup | Anywhere Postgres runs      |
+| **Milvus**      | Enterprise scale, GPU-accelerated  | Self-hosted or Zilliz Cloud |
+| **Turbopuffer** | Cost-effective, serverless         | Cloud (managed)             |
 
 ### Embedding Models
 
-| Model | Dimensions | Quality | Cost |
-|---|---|---|---|
-| **text-embedding-3-large** (OpenAI) | 3072 | Excellent | $0.13/1M tokens |
-| **text-embedding-3-small** (OpenAI) | 1536 | Good | $0.02/1M tokens |
-| **voyage-3-large** (Voyage AI) | 1024 | Excellent for code | $0.18/1M tokens |
-| **Cohere embed-v4** | 1024 | Best multilingual | $0.10/1M tokens |
-| **nomic-embed-text** | 768 | Good, open-source | Free (local) |
-| **BGE-M3** (BAAI) | 1024 | Excellent, open-source | Free (local) |
+| Model                               | Dimensions | Quality                | Cost            |
+| ----------------------------------- | ---------- | ---------------------- | --------------- |
+| **text-embedding-3-large** (OpenAI) | 3072       | Excellent              | $0.13/1M tokens |
+| **text-embedding-3-small** (OpenAI) | 1536       | Good                   | $0.02/1M tokens |
+| **voyage-3-large** (Voyage AI)      | 1024       | Excellent for code     | $0.18/1M tokens |
+| **Cohere embed-v4**                 | 1024       | Best multilingual      | $0.10/1M tokens |
+| **nomic-embed-text**                | 768        | Good, open-source      | Free (local)    |
+| **BGE-M3** (BAAI)                   | 1024       | Excellent, open-source | Free (local)    |
 
 ### Chunking Strategies
 
@@ -62,7 +62,6 @@ You are the RAG architect for this project, the expert on retrieval-augmented ge
 User Query → Query Expansion → Hybrid Search → Re-ranking →
 Context Assembly → LLM Generation → Citation Extraction → Response
 ```
-
 
 ## Zero-Trust Protocol
 
@@ -94,4 +93,5 @@ Context Assembly → LLM Generation → Citation Extraction → Response
 - Test with adversarial queries (out-of-scope, ambiguous, multi-hop)
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

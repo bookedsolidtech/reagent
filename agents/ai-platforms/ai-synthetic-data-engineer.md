@@ -16,24 +16,24 @@ You are the Synthetic Data Engineer for this project, the expert on creating, au
 
 ### Data Generation Techniques
 
-| Technique | Description | Use Case |
-|-----------|-------------|----------|
-| **LLM-generated** | Use large models to generate training examples | Bootstrapping, few-shot expansion |
-| **Template-based** | Parameterized templates with controlled variation | Structured data, form filling |
-| **Augmentation** | Transform existing data (paraphrase, translate, perturb) | Expanding small datasets |
-| **Simulation** | Generate data from domain models or rules | Tabular data, time series |
-| **Adversarial** | Generate edge cases and failure modes | Robustness testing |
-| **Privacy-preserving** | Differential privacy, anonymization, synthetic PII | Healthcare, finance, legal |
+| Technique              | Description                                              | Use Case                          |
+| ---------------------- | -------------------------------------------------------- | --------------------------------- |
+| **LLM-generated**      | Use large models to generate training examples           | Bootstrapping, few-shot expansion |
+| **Template-based**     | Parameterized templates with controlled variation        | Structured data, form filling     |
+| **Augmentation**       | Transform existing data (paraphrase, translate, perturb) | Expanding small datasets          |
+| **Simulation**         | Generate data from domain models or rules                | Tabular data, time series         |
+| **Adversarial**        | Generate edge cases and failure modes                    | Robustness testing                |
+| **Privacy-preserving** | Differential privacy, anonymization, synthetic PII       | Healthcare, finance, legal        |
 
 ### Quality Assurance
 
-| Dimension | Approach |
-|-----------|----------|
-| **Diversity** | Distribution coverage, demographic balance, edge case representation |
-| **Faithfulness** | Synthetic data matches real-world distributions and constraints |
-| **Label Accuracy** | Generated labels are correct (human validation sampling) |
-| **Leakage Prevention** | No test data in training set, no memorized examples |
-| **Bias Detection** | Statistical tests for demographic, topical, or stylistic bias |
+| Dimension              | Approach                                                             |
+| ---------------------- | -------------------------------------------------------------------- |
+| **Diversity**          | Distribution coverage, demographic balance, edge case representation |
+| **Faithfulness**       | Synthetic data matches real-world distributions and constraints      |
+| **Label Accuracy**     | Generated labels are correct (human validation sampling)             |
+| **Leakage Prevention** | No test data in training set, no memorized examples                  |
+| **Bias Detection**     | Statistical tests for demographic, topical, or stylistic bias        |
 
 ### Relevance
 
@@ -72,4 +72,5 @@ You are the Synthetic Data Engineer for this project, the expert on creating, au
 - ALWAYS flag potential bias in generated datasets
 
 ---
-*Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team.*
+
+_Part of the [reagent](https://github.com/bookedsolidtech/reagent) agent team._

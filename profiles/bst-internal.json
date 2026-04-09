@@ -1,0 +1,33 @@
+{
+  "name": "bst-internal",
+  "description": "BST internal project setup — full safety hooks, CI enforcement, attribution stripper",
+  "huskyCommitMsg": true,
+  "cursorRules": [
+    "001-no-hallucination",
+    "002-verify-before-act",
+    "003-attribution"
+  ],
+  "gitignoreEntries": [],
+  "claudeHooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": ["dangerous-bash-interceptor", "env-file-protection"]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": ["secret-scanner"]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": ["attribution-advisory"]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": ["lint-after-edit", "type-check-after-edit", "any-type-detector"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@bookedsolid/reagent",
+  "version": "0.1.0",
+  "description": "Zero-trust agentic infrastructure — hooks, cursor rules, and attribution removal for any AI-assisted project",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bookedsolidtech/reagent.git"
+  },
+  "bin": {
+    "reagent": "bin/init.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin/",
+    "hooks/",
+    "cursor/",
+    "husky/",
+    "profiles/",
+    "templates/"
+  ],
+  "keywords": [
+    "claude",
+    "ai-safety",
+    "hooks",
+    "cursor",
+    "attribution",
+    "zero-trust"
+  ]
+}

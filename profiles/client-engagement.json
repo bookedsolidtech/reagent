@@ -1,0 +1,32 @@
+{
+  "name": "client-engagement",
+  "description": "Zero-trust setup for client project engagements — no AI attribution, hallucination guards, safety hooks",
+  "huskyCommitMsg": true,
+  "cursorRules": [
+    "001-no-hallucination",
+    "002-verify-before-act",
+    "003-attribution"
+  ],
+  "gitignoreEntries": [
+    ".claude/agents/",
+    ".claude/hooks/",
+    ".claude/settings.json"
+  ],
+  "claudeHooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": ["dangerous-bash-interceptor", "env-file-protection"]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": ["secret-scanner"]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": ["attribution-advisory"]
+      }
+    ],
+    "PostToolUse": []
+  }
+}

@@ -53,6 +53,7 @@ This project uses a "bring your own engineering team" model. All non-trivial wor
 **CRITICAL: For any non-trivial task, delegate to the `reagent-orchestrator` agent FIRST.**
 
 The orchestrator (`subagent_type: "reagent-orchestrator"`) is the primary routing layer:
+
 - It reads `.reagent/policy.yaml` and checks HALT before any work
 - It selects the right specialist agents from `.claude/agents/` based on the task
 - It enforces engineering processes, coordinates multi-step work, and ensures quality gates

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 import { getPkgVersion } from './utils.js';
-import { runInit } from './commands/init.js';
+import { runInit } from './commands/init/index.js';
 import { runCheck } from './commands/check.js';
 import { runFreeze } from './commands/freeze.js';
 import { runUnfreeze } from './commands/unfreeze.js';
 import { runServe } from './commands/serve.js';
+import { runCache } from './commands/cache.js';
 
 const [, , cmd, ...rest] = process.argv;
 
@@ -30,6 +31,9 @@ switch (cmd) {
   case 'serve':
     await runServe(rest);
     break;
+  case 'cache':
+    runCache(rest);
+    break;
   default:
     console.error(`\nUnknown command: ${cmd}`);
     printHelp();
@@ -50,6 +54,7 @@ Commands:
   freeze     Create .reagent/HALT to suspend all agent operations
   unfreeze   Remove .reagent/HALT to resume agent operations
   serve      Start the MCP gateway server (stdio transport)
+  cache      Manage review cache (check, set, clear)
   help       Show this help
 
 Options for init:

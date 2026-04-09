@@ -229,6 +229,38 @@ if printf '%s' "$CMD" | grep -qiE '(curl|wget)[^|]*\|[[:space:]]*(bash|sh|zsh|fi
     "Alt: Download first, inspect the script, then execute: curl -o script.sh URL && cat script.sh && bash script.sh"
 fi
 
+# H13: git push --no-verify — bypasses pre-push hooks
+if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+push.*--no-verify'; then
+  add_high \
+    "git push --no-verify — skipping pre-push hooks" \
+    "Bypasses all pre-push safety gates including CI checks." \
+    "Alt: Fix the underlying hook failure rather than bypassing it."
+fi
+
+# H14: git -c core.hooksPath= — redirects or disables hook execution
+if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+-c[[:space:]]+core\.hookspath'; then
+  add_high \
+    "git -c core.hooksPath — overriding hooks directory" \
+    "Redirecting the hooks path can disable all safety hooks." \
+    "Alt: Fix the underlying hook issue. Do not bypass the hooks directory."
+fi
+
+# H15: REAGENT_BYPASS env var — attempted escape hatch
+if printf '%s' "$CMD" | grep -qiE '(^|[[:space:];]|&&|\|\|)REAGENT_BYPASS[[:space:]]*='; then
+  add_high \
+    "REAGENT_BYPASS env var — unauthorized bypass attempt" \
+    "Setting REAGENT_BYPASS is not a supported escape mechanism and indicates a bypass attempt." \
+    "Alt: If you need to override a gate, request human escalation."
+fi
+
+# H16: alias/function definitions containing bypass strings
+if printf '%s' "$CMD" | grep -qiE '(alias|function)[[:space:]]+[a-zA-Z_]+.*(--(no-verify|force)|HUSKY=0|core\.hookspath)'; then
+  add_high \
+    "Alias/function definition with bypass — circumventing safety gates" \
+    "Defining aliases or functions that embed bypass flags defeats safety hooks." \
+    "Alt: Do not wrap bypass patterns in aliases or functions."
+fi
+
 # ── 10. MEDIUM severity checks ────────────────────────────────────────────────
 
 # M1: npm install --force

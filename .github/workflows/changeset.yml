@@ -1,0 +1,54 @@
+name: Changeset check
+
+on:
+  pull_request:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changeset:
+    name: Require changeset
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for changeset
+        # Skip on the automated "Version Packages" PR created by changesets/action
+        if: "!startsWith(github.head_ref, 'changeset-release/')"
+        run: |
+          # Verify at least one changeset file exists for this PR's changes
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          SRC_CHANGED=$(echo "$CHANGED" | grep -vE '^(\.changeset/|CHANGELOG\.md|package\.json)' | head -1 || true)
+
+          if [ -n "$SRC_CHANGED" ]; then
+            # Source changed — require a changeset
+            CHANGESETS=$(ls .changeset/*.md 2>/dev/null | grep -v README.md | wc -l | tr -d ' ')
+            if [ "$CHANGESETS" -eq 0 ]; then
+              echo ""
+              echo "ERROR: Source files changed but no changeset found."
+              echo ""
+              echo "Add a changeset before merging:"
+              echo "  npx changeset"
+              echo ""
+              echo "Then commit the generated .changeset/*.md file."
+              exit 1
+            fi
+            echo "Changeset found ($CHANGESETS file(s)). OK."
+          else
+            echo "No source changes — changeset not required."
+          fi

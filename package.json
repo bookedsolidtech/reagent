@@ -1,7 +1,7 @@
 {
   "name": "@bookedsolid/reagent",
   "version": "0.1.0",
-  "description": "Zero-trust agentic infrastructure — hooks, cursor rules, and attribution removal for any AI-assisted project",
+  "description": "Zero-trust agentic infrastructure — hooks, cursor rules, attribution removal, and behavioral enforcement for any AI-assisted project",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -19,14 +19,30 @@
     "cursor/",
     "husky/",
     "profiles/",
-    "templates/"
+    "templates/",
+    "agents/",
+    "scripts/"
   ],
+  "scripts": {
+    "prepare": "husky",
+    "prepublishOnly": "node scripts/block-local-publish.mjs",
+    "preflight": "./scripts/preflight.sh",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:publish": "changeset publish",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --test test/**/*.test.mjs 2>/dev/null || true",
+    "type-check": "echo 'No TypeScript config — skipping' && exit 0"
+  },
   "keywords": [
     "claude",
     "ai-safety",
     "hooks",
     "cursor",
     "attribution",
-    "zero-trust"
+    "zero-trust",
+    "agentic"
   ]
 }

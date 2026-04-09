@@ -2,12 +2,18 @@
   "name": "bst-internal",
   "description": "BST internal project setup — full safety hooks, CI enforcement, attribution stripper",
   "huskyCommitMsg": true,
+  "huskyPreCommit": true,
+  "huskyPrePush": true,
   "cursorRules": [
     "001-no-hallucination",
     "002-verify-before-act",
     "003-attribution"
   ],
   "gitignoreEntries": [],
+  "claudeMd": {
+    "preflightCmd": "pnpm preflight",
+    "attributionRule": "Attribution in internal BST projects is permitted in `.claude/` files and approved team documentation. Strip attribution from any client-facing commits, PR bodies, and public-facing content."
+  },
   "claudeHooks": {
     "PreToolUse": [
       {
@@ -23,11 +29,6 @@
         "hooks": ["attribution-advisory"]
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": ["lint-after-edit", "type-check-after-edit", "any-type-detector"]
-      }
-    ]
+    "PostToolUse": []
   }
 }

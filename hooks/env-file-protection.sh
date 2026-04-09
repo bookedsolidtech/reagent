@@ -22,6 +22,14 @@
 set -uo pipefail
 
 INPUT=$(cat)
+
+# ── HALT check ────────────────────────────────────────────────────────────────
+if [ -f ".reagent/HALT" ]; then
+  printf 'REAGENT HALT: %s\nAll agent operations suspended. Run: reagent unfreeze\n' \
+    "$(cat ".reagent/HALT" 2>/dev/null || echo 'Reason unknown')" >&2
+  exit 2
+fi
+
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 
 if [[ -z "$CMD" ]]; then

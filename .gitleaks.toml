@@ -1,0 +1,49 @@
+title = "Reagent Secret Scanning"
+
+# Enable all default gitleaks provider rules
+[extend]
+useDefault = true
+
+# Custom rule: npm authentication tokens
+[[rules]]
+id = "npm-token"
+description = "npm authentication token"
+regex = '''npm_[A-Za-z0-9]{36}'''
+tags = ["npm", "token"]
+
+# Custom rule: Discord bot tokens and webhooks
+[[rules]]
+id = "discord-bot-token"
+description = "Discord bot token"
+regex = '''[A-Za-z0-9]{24}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27}'''
+tags = ["discord", "token"]
+
+[[rules]]
+id = "discord-webhook"
+description = "Discord webhook URL"
+regex = '''https://discord(?:app)?\.com/api/webhooks/[0-9]{17,19}/[A-Za-z0-9_-]{68}'''
+tags = ["discord", "webhook"]
+
+[allowlist]
+description = "Allowlisted paths — detection patterns, not real secrets"
+
+paths = [
+  # Package manager artifacts
+  '''node_modules/''',
+  '''pnpm-lock\.yaml''',
+  # Changelog (contains version history, not credentials)
+  '''CHANGELOG\.md''',
+  # This config file itself
+  '''\.gitleaks\.toml''',
+  # Hook source files — contain regex detection patterns, not live credentials
+  '''hooks/''',
+  # Template files — contain example/placeholder content shown to users
+  '''templates/''',
+  # Changeset directory
+  '''\.changeset/''',
+]
+
+# GitHub Actions expression syntax — not real secrets
+regexes = [
+  '''\$\{\{\s*.*?\s*\}\}''',
+]

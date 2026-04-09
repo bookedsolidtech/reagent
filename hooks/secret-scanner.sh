@@ -16,6 +16,13 @@ set -uo pipefail
 
 INPUT=$(cat)
 
+# ── HALT check ────────────────────────────────────────────────────────────────
+if [ -f ".reagent/HALT" ]; then
+  printf 'REAGENT HALT: %s\nAll agent operations suspended. Run: reagent unfreeze\n' \
+    "$(cat ".reagent/HALT" 2>/dev/null || echo 'Reason unknown')" >&2
+  exit 2
+fi
+
 FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
 CONTENT_WRITE=$(printf '%s' "$INPUT" | jq -r '.tool_input.content // empty' 2>/dev/null)
 CONTENT_EDIT=$(printf '%s' "$INPUT"  | jq -r '.tool_input.new_string // empty' 2>/dev/null)

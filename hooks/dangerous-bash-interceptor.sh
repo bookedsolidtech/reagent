@@ -18,14 +18,21 @@ set -uo pipefail
 # ── 1. Read ALL stdin immediately before doing anything else ──────────────────
 INPUT=$(cat)
 
-# ── 2. Parse tool_input.command from the hook payload ─────────────────────────
+# ── 2. HALT check ─────────────────────────────────────────────────────────────
+if [ -f ".reagent/HALT" ]; then
+  printf 'REAGENT HALT: %s\nAll agent operations suspended. Run: reagent unfreeze\n' \
+    "$(cat ".reagent/HALT" 2>/dev/null || echo 'Reason unknown')" >&2
+  exit 2
+fi
+
+# ── 3. Parse tool_input.command from the hook payload ─────────────────────────
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 
 if [[ -z "$CMD" ]]; then
   exit 0
 fi
 
-# ── 3. Helper: truncate command for display ────────────────────────────────────
+# ── 4. Helper: truncate command for display ────────────────────────────────────
 truncate_cmd() {
   local STR="$1"
   local MAX=200
@@ -36,7 +43,7 @@ truncate_cmd() {
   fi
 }
 
-# ── 4. Violation accumulators ──────────────────────────────────────────────────
+# ── 5. Violation accumulators ──────────────────────────────────────────────────
 HIGH_FILE=$(mktemp /tmp/reagent-bash-high-XXXXXX)
 MEDIUM_FILE=$(mktemp /tmp/reagent-bash-medium-XXXXXX)
 
@@ -67,7 +74,7 @@ add_medium() {
   printf 'END_VIOLATION\n' >> "$MEDIUM_FILE"
 }
 
-# ── 5. Smart exclusion flags ───────────────────────────────────────────────────
+# ── 6. Smart exclusion flags ───────────────────────────────────────────────────
 CMD_IS_REBASE_SAFE=0
 if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+(rebase)[[:space:]].*(--abort|--continue)'; then
   CMD_IS_REBASE_SAFE=1
@@ -83,7 +90,7 @@ if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+clean.*([ \t]-n|--dry-run)'; t
   CMD_IS_CLEAN_DRY=1
 fi
 
-# ── 6. HIGH severity checks ────────────────────────────────────────────────────
+# ── 7. HIGH severity checks ────────────────────────────────────────────────────
 
 # H1: git push --force or -f to main or master
 if [[ $CMD_IS_FORCE_LEASE -eq 0 ]]; then
@@ -170,7 +177,7 @@ if printf '%s' "$CMD" | grep -qiE 'git[[:space:]]+commit.*--no-verify'; then
     "Alt: Fix the underlying hook failure rather than bypassing it."
 fi
 
-# ── 7. MEDIUM severity checks ──────────────────────────────────────────────────
+# ── 8. MEDIUM severity checks ──────────────────────────────────────────────────
 
 # M1: npm install --force
 if printf '%s' "$CMD" | grep -qiE 'npm[[:space:]]+(install|i)[[:space:]].*--force'; then
@@ -180,7 +187,7 @@ if printf '%s' "$CMD" | grep -qiE 'npm[[:space:]]+(install|i)[[:space:]].*--forc
     "Alt: Resolve the dependency conflict explicitly. Use --legacy-peer-deps if needed."
 fi
 
-# ── 8. Evaluate and report ─────────────────────────────────────────────────────
+# ── 9. Evaluate and report ─────────────────────────────────────────────────────
 
 TRUNCATED_CMD=$(truncate_cmd "$CMD")
 

@@ -2,6 +2,8 @@
   "name": "client-engagement",
   "description": "Zero-trust setup for client project engagements — no AI attribution, hallucination guards, safety hooks",
   "huskyCommitMsg": true,
+  "huskyPreCommit": true,
+  "huskyPrePush": true,
   "cursorRules": [
     "001-no-hallucination",
     "002-verify-before-act",
@@ -12,6 +14,10 @@
     ".claude/hooks/",
     ".claude/settings.json"
   ],
+  "claudeMd": {
+    "preflightCmd": "pnpm preflight",
+    "attributionRule": "Do NOT include AI attribution in commits, PR bodies, code comments, or any client-facing content. The commit-msg hook strips attribution from git commits automatically. PR bodies and code comments must be cleaned manually before submission."
+  },
   "claudeHooks": {
     "PreToolUse": [
       {

@@ -1,0 +1,17 @@
+# CODEOWNERS — Booked Solid Technology / reagent
+# All PRs require review from @himerus for sensitive files.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# CI/CD workflows — changes require explicit owner approval
+.github/workflows/                    @himerus
+
+# Package metadata and publish config
+package.json                          @himerus
+.changeset/                           @himerus
+
+# Security-critical: hook enforcement and profile definitions
+profiles/                             @himerus
+hooks/                                @himerus
+
+# Scripts that run in CI
+scripts/                              @himerus

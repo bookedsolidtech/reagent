@@ -17,7 +17,14 @@ set -uo pipefail
 # ── 1. Read ALL stdin immediately before doing anything else ──────────────────
 INPUT=$(cat)
 
-# ── 2. Parse tool_input.command from the hook payload ─────────────────────────
+# ── 2. HALT check ─────────────────────────────────────────────────────────────
+if [ -f ".reagent/HALT" ]; then
+  printf 'REAGENT HALT: %s\nAll agent operations suspended. Run: reagent unfreeze\n' \
+    "$(cat ".reagent/HALT" 2>/dev/null || echo 'Reason unknown')" >&2
+  exit 2
+fi
+
+# ── 3. Parse tool_input.command from the hook payload ─────────────────────────
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 
 # If the command is empty or jq failed, allow silently
@@ -25,12 +32,12 @@ if [[ -z "$CMD" ]]; then
   exit 0
 fi
 
-# ── 3. Only check gh pr commands ──────────────────────────────────────────────
+# ── 4. Only check gh pr commands ──────────────────────────────────────────────
 if ! printf '%s' "$CMD" | grep -qiE 'gh[[:space:]]+pr[[:space:]]+(create|edit)'; then
   exit 0
 fi
 
-# ── 4. Check for attribution strings in the command ───────────────────────────
+# ── 5. Check for attribution strings in the command ───────────────────────────
 FOUND_ATTRIBUTION=0
 
 if printf '%s' "$CMD" | grep -qiE '(Co-Authored-By:[[:space:]]+Claude|Generated with Claude Code|claude\.ai|🤖[[:space:]]+Generated)'; then

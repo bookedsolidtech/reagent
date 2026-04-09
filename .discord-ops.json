@@ -1,0 +1,9 @@
+{
+  "project": "reagent",
+  "notification_routing": {
+    "ci_build": "dev",
+    "release": "releases",
+    "error": "dev",
+    "dev": "dev"
+  }
+}

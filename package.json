@@ -1,6 +1,6 @@
 {
   "name": "@bookedsolid/reagent",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "description": "Zero-trust MCP gateway — policy enforcement, secret redaction, and audit logging for AI-assisted projects",
   "license": "MIT",
   "author": "Booked Solid Technology <oss@bookedsolid.tech> (https://bookedsolid.tech)",
@@ -16,6 +16,21 @@
   "bin": {
     "reagent": "dist/cli/index.js"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/policy-loader.d.ts",
+      "import": "./dist/config/policy-loader.js"
+    },
+    "./middleware": {
+      "types": "./dist/gateway/middleware/chain.d.ts",
+      "import": "./dist/gateway/middleware/chain.js"
+    }
+  },
+  "sideEffects": false,
   "engines": {
     "node": ">=22"
   },

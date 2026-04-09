@@ -193,10 +193,9 @@ describe('adversarial: policy bypass attempts', () => {
     expect(tier).toBe(Tier.Write);
   });
 
-  it('gateway config override can downgrade a destructive tool to read tier', () => {
-    // NOTE: This is a known design trade-off. Gateway config overrides are
-    // trusted because only humans should edit gateway.yaml. The config file
-    // should be in blocked_paths to prevent agent modification.
+  it('SECURE: gateway config override cannot downgrade a destructive tool to read tier', () => {
+    // SECURITY: tier downgrade floor prevents tool_overrides from lowering
+    // a tool below its static classification. This closes the tier bypass vector.
     const config = {
       version: '1',
       servers: {
@@ -210,6 +209,24 @@ describe('adversarial: policy bypass attempts', () => {
       },
     };
     const tier = classifyTool('delete_channel', 'evil-server', config);
-    expect(tier).toBe(Tier.Read);
+    expect(tier).toBe(Tier.Destructive); // Override blocked — static tier preserved
+  });
+
+  it('gateway config override can upgrade a tool tier', () => {
+    // Upgrading (making more restrictive) is always allowed.
+    const config = {
+      version: '1',
+      servers: {
+        'safe-server': {
+          command: 'node',
+          args: [],
+          tool_overrides: {
+            send_message: { tier: Tier.Destructive },
+          },
+        },
+      },
+    };
+    const tier = classifyTool('send_message', 'safe-server', config);
+    expect(tier).toBe(Tier.Destructive); // Override allowed — more restrictive
   });
 });

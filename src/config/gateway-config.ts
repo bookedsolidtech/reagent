@@ -29,7 +29,13 @@ function resolveEnvVars(obj: Record<string, string>): Record<string, string> {
   const resolved: Record<string, string> = {};
   for (const [key, value] of Object.entries(obj)) {
     resolved[key] = value.replace(/\$\{([^}]+)\}/g, (_match, varName: string) => {
-      return process.env[varName] ?? '';
+      const envValue = process.env[varName];
+      if (envValue === undefined) {
+        console.error(
+          `[reagent] WARNING: env var "\${${varName}}" referenced in gateway config key "${key}" is not set — using empty string`
+        );
+      }
+      return envValue ?? '';
     });
   }
   return resolved;

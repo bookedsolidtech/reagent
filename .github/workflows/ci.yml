@@ -98,3 +98,28 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=high
+
+  # ── Roll-up status check for branch protection ──────────────────────────────
+  # Configure branch protection to require this single check instead of
+  # tracking each matrix/job individually. If any upstream job fails, this fails.
+  ci-passed:
+    name: CI passed
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [quality, secret-scan, npm-audit]
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.quality.result }}" != "success" ]]; then
+            echo "Quality gates failed"
+            exit 1
+          fi
+          if [[ "${{ needs.secret-scan.result }}" != "success" ]]; then
+            echo "Secret scan failed"
+            exit 1
+          fi
+          if [[ "${{ needs.npm-audit.result }}" != "success" ]]; then
+            echo "npm audit failed"
+            exit 1
+          fi
+          echo "All CI checks passed"

@@ -6,7 +6,14 @@
   "huskyPreCommit": true,
   "huskyPrePush": true,
   "cursorRules": ["001-no-hallucination", "002-verify-before-act", "003-attribution"],
+  "blockedPaths": [".reagent/", ".github/workflows/", ".env", ".env.*"],
   "gitignoreEntries": [".claude/agents/", ".claude/hooks/", ".claude/settings.json", "RESTART.md"],
+  "qualityGates": {
+    "commitReview": { "enabled": true, "trivialThreshold": 20, "significantThreshold": 200 },
+    "pushReview": { "enabled": true },
+    "architectureAdvisory": { "enabled": true }
+  },
+  "pm": { "enabled": true, "taskLinkGate": false, "maxOpenTasks": 50 },
   "claudeMd": {
     "preflightCmd": "pnpm preflight",
     "attributionRule": "Do NOT include AI attribution in commits, PR bodies, code comments, or any content. When block_ai_attribution is enabled in .reagent/policy.yaml, the commit-msg hook REJECTS commits containing structural AI attribution (Co-Authored-By with AI names, 'Generated with [Tool]' footers, etc.). The attribution-advisory hook also blocks gh pr create/edit and git commit commands with attribution. You must remove all attribution markers before committing — the hooks will NOT silently fix them."
@@ -15,17 +22,28 @@
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "hooks": ["dangerous-bash-interceptor", "env-file-protection"]
+        "hooks": [
+          "dangerous-bash-interceptor",
+          "env-file-protection",
+          "dependency-audit-gate",
+          "commit-review-gate",
+          "push-review-gate"
+        ]
       },
       {
         "matcher": "Write|Edit",
-        "hooks": ["secret-scanner"]
+        "hooks": ["secret-scanner", "settings-protection", "blocked-paths-enforcer"]
       },
       {
         "matcher": "Bash",
         "hooks": ["attribution-advisory"]
       }
     ],
-    "PostToolUse": []
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": ["architecture-review-gate"]
+      }
+    ]
   }
 }

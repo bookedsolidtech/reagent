@@ -53,6 +53,11 @@ export function runInit(args: string[]): void {
 
   const results: InstallResult[] = [];
 
+  // Ensure .claude/ base directory exists before any step tries to create subdirs within it
+  if (!dryRun) {
+    fs.mkdirSync(path.join(targetDir, '.claude'), { recursive: true });
+  }
+
   // Step 1: .gitignore entries
   if (profile.gitignoreEntries?.length) {
     results.push(...installGitignoreEntries(targetDir, profile.gitignoreEntries, dryRun));

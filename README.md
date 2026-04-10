@@ -2,28 +2,30 @@
 
 Zero-trust MCP gateway and agentic infrastructure for AI-assisted development.
 
-Reagent is three things:
+Reagent is four things:
 
-1. **MCP Gateway** (`reagent serve`) -- a proxy server that sits between your AI assistant (Claude Code, Cursor, etc.) and downstream MCP tool servers. Every tool call flows through a zero-trust middleware chain: policy enforcement, tier classification, blocked path enforcement, secret redaction, and hash-chained audit logging.
+1. **MCP Gateway** (`reagent serve`) — a proxy server that sits between your AI assistant (Claude Code, Cursor, etc.) and downstream MCP tool servers. Every tool call flows through a zero-trust middleware chain: policy enforcement, tier classification, blocked path enforcement, secret redaction, and hash-chained audit logging.
 
-2. **Config Scaffolder** (`reagent init`) -- installs safety hooks, behavioral policies, quality gates, and developer tooling into any project.
+2. **Config Scaffolder** (`reagent init`) — installs safety hooks, behavioral policies, quality gates, agent teams, and developer tooling into any project.
 
-3. **Project Management Layer** -- lightweight task tracking with JSONL event store, native MCP tools, GitHub issue sync, and a product-owner agent for task planning.
+3. **Stack Analyzer** (`reagent catalyze`) — detects your project's tech stack and generates a gap analysis report showing which hooks, gates, and agents are missing. Produces Markdown and HTML reports.
+
+4. **Project Management Layer** — lightweight task tracking with JSONL event store, native MCP tools, GitHub issue sync, and a product-owner agent for task planning.
 
 ## Why Reagent?
 
 AI coding assistants are powerful but unconstrained. Reagent adds the missing governance layer:
 
-- **Policy enforcement** -- graduated autonomy levels (L0 read-only through L3 full access) control which tiers of tools an agent can invoke
-- **Kill switch** -- `reagent freeze` immediately blocks all tool calls across every connected MCP server
-- **Blocked path enforcement** -- tool arguments referencing protected paths (including `.reagent/` itself) are denied before execution
-- **Secret redaction** -- tool arguments and outputs are scanned for AWS keys, GitHub tokens, API keys, PEM private keys, Discord tokens, and more -- redacted before they reach the AI or the downstream tool
-- **Audit trail** -- every tool invocation is logged as hash-chained JSONL with serialized writes for chain integrity
-- **Tool blocking** -- individual tools can be permanently blocked regardless of autonomy level
-- **Tier downgrade protection** -- `tool_overrides` cannot lower a tool's tier below its static or convention-based classification
-- **Security hooks** -- 11 Claude Code hooks enforce settings protection, secret scanning, dangerous command interception, blocked path enforcement, and more
-- **Quality gates** -- commit and push review gates with triage scoring, review caching, and agent-spawned code review
-- **Task management** -- native MCP tools for task CRUD, GitHub issue sync, and a product-owner agent with guardrails
+- **Policy enforcement** — graduated autonomy levels (L0 read-only through L3 full access) control which tiers of tools an agent can invoke
+- **Kill switch** — `reagent freeze` immediately blocks all tool calls across every connected MCP server
+- **Blocked path enforcement** — tool arguments referencing protected paths (including `.reagent/` itself) are denied before execution
+- **Secret redaction** — tool arguments and outputs are scanned for AWS keys, GitHub tokens, API keys, PEM private keys, Discord tokens, and more — redacted before they reach the AI or the downstream tool
+- **Audit trail** — every tool invocation is logged as hash-chained JSONL with serialized writes for chain integrity
+- **Tool blocking** — individual tools can be permanently blocked regardless of autonomy level
+- **Tier downgrade protection** — `tool_overrides` cannot lower a tool's tier below its static or convention-based classification
+- **Security hooks** — 20 Claude Code hooks enforce settings protection, secret scanning, dangerous command interception, blocked path enforcement, symlink traversal prevention, network exfiltration blocking, and more
+- **Quality gates** — commit and push review gates with triage scoring, review caching, and agent-spawned code review
+- **Task management** — native MCP tools for task CRUD, GitHub issue sync, and a product-owner agent with guardrails
 
 ## Quick Start
 
@@ -60,9 +62,17 @@ All downstream tool calls now flow through Reagent's middleware chain.
 ```bash
 npx @bookedsolid/reagent init
 
-# With a profile
+# With a base profile
 npx @bookedsolid/reagent init --profile bst-internal
 npx @bookedsolid/reagent init --profile client-engagement
+
+# With a tech stack profile
+npx @bookedsolid/reagent init --profile nextjs
+npx @bookedsolid/reagent init --profile lit-wc
+
+# With optional integrations
+npx @bookedsolid/reagent init --github    # scaffold GitHub labels + milestones
+npx @bookedsolid/reagent init --discord   # configure Discord notifications
 
 # Preview without changes
 npx @bookedsolid/reagent init --dry-run
@@ -74,9 +84,10 @@ npx @bookedsolid/reagent init --dry-run
 | ------------------------------- | ------------------------------------------------- |
 | `reagent serve`                 | Start the MCP gateway server (stdio transport)    |
 | `reagent init`                  | Install reagent config into the current directory |
+| `reagent catalyze`              | Analyze project stack and generate gap report     |
 | `reagent check`                 | Verify what reagent components are installed      |
-| `reagent freeze --reason "..."` | Create `.reagent/HALT` -- suspends all tool calls |
-| `reagent unfreeze`              | Remove `.reagent/HALT` -- resumes tool calls      |
+| `reagent freeze --reason "..."` | Create `.reagent/HALT` — suspends all tool calls  |
+| `reagent unfreeze`              | Remove `.reagent/HALT` — resumes tool calls       |
 | `reagent cache check <sha>`     | Check review cache for a file SHA                 |
 | `reagent cache set <sha> <res>` | Store a review result (pass/fail/advisory)        |
 | `reagent cache clear`           | Clear all cached review results                   |
@@ -84,10 +95,28 @@ npx @bookedsolid/reagent init --dry-run
 
 ### `reagent init` Options
 
-| Flag               | Description                                    | Default             |
-| ------------------ | ---------------------------------------------- | ------------------- |
-| `--profile <name>` | Profile to install                             | `client-engagement` |
-| `--dry-run`        | Preview what would be installed without writes | --                  |
+| Flag                      | Description                                    | Default             |
+| ------------------------- | ---------------------------------------------- | ------------------- |
+| `--profile <name>`        | Profile to install                             | `client-engagement` |
+| `--dry-run`               | Preview what would be installed without writes | —                   |
+| `--github`                | Scaffold GitHub labels, milestones, and topics | —                   |
+| `--discord`               | Configure Discord notifications in gateway     | —                   |
+| `--guild-id <id>`         | Discord server ID (used with `--discord`)      | —                   |
+| `--alerts-channel <id>`   | Discord channel for security alerts            | —                   |
+| `--tasks-channel <id>`    | Discord channel for task events                | —                   |
+| `--releases-channel <id>` | Discord channel for release events             | —                   |
+| `--dev-channel <id>`      | Discord channel for dev activity               | —                   |
+
+### `reagent catalyze` Options
+
+| Flag          | Description                                          | Default |
+| ------------- | ---------------------------------------------------- | ------- |
+| `--plan`      | Analyze stack and generate gap report (default)      | ✓       |
+| `--audit`     | Compare current state against last plan, show drift  | —       |
+| `--dry-run`   | Print analysis without writing files                 | —       |
+| `[targetDir]` | Directory to analyze (defaults to current directory) | `cwd`   |
+
+`--plan` generates `catalyze-report.md` and `catalyze-report.html` listing gaps by severity. `--audit` re-runs analysis and diffs against the previous report to surface new or resolved gaps.
 
 ### `reagent freeze` Options
 
@@ -150,6 +179,9 @@ AI Assistant (Claude Code, Cursor, etc.)
 |    task_list, task_get      |
 |    task_delete              |
 |    task_sync_github         |
+|    repo_scaffold            |
+|    project_sync             |
+|    discord_notify           |
 |                             |
 +----------+------------------+
            |  stdio (MCP protocol)
@@ -163,22 +195,25 @@ The gateway:
 1. Connects to all downstream MCP servers defined in `.reagent/gateway.yaml`
 2. Discovers their tools via MCP `tools/list`
 3. Re-registers each tool on the gateway with namespace prefixes (`servername__toolname`)
-4. Registers native first-party tools (task management) through the same middleware chain
+4. Registers native first-party tools through the same middleware chain
 5. Wraps every tool call in the middleware chain
 6. Listens on stdio for incoming MCP requests from the AI assistant
 
 ### Native MCP Tools
 
-Reagent registers 6 first-party tools directly on the gateway. These go through the same middleware chain (audit, policy, blocked paths, redaction) as proxied tools.
+Reagent registers 9 first-party tools directly on the gateway. These go through the same middleware chain (audit, policy, blocked paths, redaction) as proxied tools.
 
-| Tool               | Description                                          |
-| ------------------ | ---------------------------------------------------- |
-| `task_create`      | Create a new task in `.reagent/tasks.jsonl`          |
-| `task_update`      | Update a task's status, title, urgency, or fields    |
-| `task_list`        | List tasks with optional status/urgency/phase filter |
-| `task_get`         | Get a single task by ID (T-NNN format)               |
-| `task_delete`      | Cancel a task (soft delete via cancelled event)      |
-| `task_sync_github` | Sync local tasks to GitHub issues (requires `gh`)    |
+| Tool               | Description                                             |
+| ------------------ | ------------------------------------------------------- |
+| `task_create`      | Create a new task in `.reagent/tasks.jsonl`             |
+| `task_update`      | Update a task's status, title, urgency, or fields       |
+| `task_list`        | List tasks with optional status/urgency/phase filter    |
+| `task_get`         | Get a single task by ID (T-NNN format)                  |
+| `task_delete`      | Cancel a task (soft delete via cancelled event)         |
+| `task_sync_github` | Sync local tasks to GitHub issues (requires `gh`)       |
+| `repo_scaffold`    | Set GitHub repo description, topics, labels, milestones |
+| `project_sync`     | Sync tasks to a GitHub Project board                    |
+| `discord_notify`   | Send a notification to a configured Discord channel     |
 
 ### Gateway Configuration
 
@@ -205,9 +240,25 @@ servers:
         blocked: true
 ```
 
-**Environment variable resolution:** Use `${VAR_NAME}` syntax in env values -- Reagent resolves them from `process.env` at startup. Missing env vars produce a warning and resolve to empty string.
+**Environment variable resolution:** Use `${VAR_NAME}` syntax in env values — Reagent resolves them from `process.env` at startup. Missing env vars produce a warning and resolve to empty string.
 
 **Tool overrides:** Each downstream tool can be assigned a tier (`read`, `write`, `destructive`) and optionally blocked entirely. Overrides cannot lower a tool's tier below its static or convention-based classification (the override is ignored with a warning if attempted).
+
+#### Discord Notifications (optional)
+
+When `--discord` is passed to `reagent init`, a `discord_ops` block is appended to gateway.yaml:
+
+```yaml
+discord_ops:
+  guild_id: '1234567890'
+  channels:
+    alerts: '111'
+    tasks: '222'
+    releases: '333'
+    dev: '444'
+```
+
+The `discord_notify` native tool reads this config to route notifications. All Discord notifications are fire-and-forget (fail-silent).
 
 ### Tool Namespacing
 
@@ -246,7 +297,7 @@ Every tool call passes through the middleware chain in onion (Koa-style) order. 
 
 ### 1. Audit (outermost)
 
-Records every invocation -- including denials and errors -- as a hash-chained JSONL entry. Written to `.reagent/audit/YYYY-MM-DD.jsonl`. Each record contains:
+Records every invocation — including denials and errors — as a hash-chained JSONL entry. Written to `.reagent/audit/YYYY-MM-DD.jsonl`. Each record contains:
 
 ```json
 {
@@ -263,7 +314,7 @@ Records every invocation -- including denials and errors -- as a hash-chained JS
 }
 ```
 
-The `prev_hash` field chains records together -- tamper with one record and every subsequent hash becomes invalid. Audit writes are serialized via a queue to maintain hash chain linearity under concurrent invocations. The `autonomy_level` is sourced from the loaded policy object, not from mutable invocation context.
+The `prev_hash` field chains records together — tamper with one record and every subsequent hash becomes invalid. Audit writes are serialized via a queue to maintain hash chain linearity under concurrent invocations. The `autonomy_level` is sourced from the loaded policy object, not from mutable invocation context.
 
 ### 2. Session Context
 
@@ -274,7 +325,7 @@ Attaches a unique session ID (UUID via `crypto.randomUUID()`) to every invocatio
 Checks for `.reagent/HALT` file. If present, the invocation is immediately denied. The HALT file contents become the denial reason. Reads are capped at 1024 bytes. The file is validated as a regular file (symlinks outside `.reagent/` are rejected).
 
 ```bash
-# Emergency stop -- all tool calls blocked immediately
+# Emergency stop — all tool calls blocked immediately
 reagent freeze --reason "security incident at 2026-04-09T12:00:00Z"
 
 # Resume
@@ -309,7 +360,7 @@ Classifies the tool into one of three tiers using a layered approach:
 
 ### 5. Policy Enforcement
 
-Checks the tool's tier against the project's autonomy level. The policy middleware re-derives the tier from the tool name independently -- it never trusts `ctx.tier` from prior middleware.
+Checks the tool's tier against the project's autonomy level. The policy middleware re-derives the tier from the tool name independently — it never trusts `ctx.tier` from prior middleware.
 
 | Autonomy Level     | Allowed Tiers                    |
 | ------------------ | -------------------------------- |
@@ -318,7 +369,7 @@ Checks the tool's tier against the project's autonomy level. The policy middlewa
 | `L2` (elevated)    | `read` + `write`                 |
 | `L3` (full access) | `read` + `write` + `destructive` |
 
-Also checks for explicitly blocked tools -- a tool marked `blocked: true` in gateway config is denied regardless of autonomy level.
+Also checks for explicitly blocked tools — a tool marked `blocked: true` in gateway config is denied regardless of autonomy level.
 
 ### 6. Blocked Paths
 
@@ -341,17 +392,17 @@ Redaction uses `redactDeep` to walk object structures in-place with a circular r
 
 ### Security Invariants
 
-- **Denial is permanent** -- once any middleware denies an invocation, no subsequent middleware can revert it (enforced by `executeChain`)
-- **Audit records everything** -- audit is outermost, so even kill-switch denials are recorded
-- **Policy re-derives tier** -- never trusts mutable context; always re-classifies from tool name
-- **Fail-closed** -- errors in kill-switch or policy checks result in denial, not passthrough
-- **All logging to stderr** -- stdout is reserved for the MCP stdio transport
-- **Per-tool timeout** -- each downstream tool call has a 30-second timeout with timer cleanup to prevent leaks
-- **Graceful shutdown** -- `process.exitCode = 0` (not `process.exit(0)`) to allow event loop drain
+- **Denial is permanent** — once any middleware denies an invocation, no subsequent middleware can revert it (enforced by `executeChain`)
+- **Audit records everything** — audit is outermost, so even kill-switch denials are recorded
+- **Policy re-derives tier** — never trusts mutable context; always re-classifies from tool name
+- **Fail-closed** — errors in kill-switch or policy checks result in denial, not passthrough
+- **All logging to stderr** — stdout is reserved for the MCP stdio transport
+- **Per-tool timeout** — each downstream tool call has a 30-second timeout with timer cleanup to prevent leaks
+- **Graceful shutdown** — `process.exitCode = 0` (not `process.exit(0)`) to allow event loop drain
 
 ## Claude Code Hooks
 
-Reagent installs 11 Claude Code hooks that enforce security, quality, and project management policies. Hooks are shell scripts that run as PreToolUse or PostToolUse interceptors.
+Reagent installs 20 Claude Code hooks that enforce security, quality, and project management policies. Hooks are shell scripts that run as PreToolUse or PostToolUse interceptors.
 
 ### Hook Architecture
 
@@ -436,6 +487,26 @@ When `block_ai_attribution` is enabled in policy.yaml, blocks `gh pr create`, `g
 - `Generated with [Tool]` footers
 - `AI-generated` markers
 
+#### `symlink-guard.sh` (PreToolUse: Write, Edit)
+
+Detects symlink traversal attempts — blocks writes to paths that resolve through a symlink outside the project root.
+
+#### `network-exfil-guard.sh` (PreToolUse: Bash)
+
+Blocks `curl`/`wget`/`fetch` commands targeting non-allowlisted external hosts from within Claude tool calls. Prevents data exfiltration via outbound HTTP.
+
+#### `import-guard.sh` (PreToolUse: Write, Edit)
+
+Flags dangerous import patterns being written to source files — `eval`, `Function()`, dynamic `require()` with user-controlled input, and known supply-chain risk patterns.
+
+#### `git-config-guard.sh` (PreToolUse: Bash)
+
+Blocks `git config` commands that override hook paths, rewrite signing, or modify credential helpers in ways that could bypass security controls.
+
+#### `ci-config-protection.sh` (PreToolUse: Write, Edit)
+
+Blocks writes to `.github/workflows/` and other CI configuration files. Prevents agents from modifying pipeline definitions that run in elevated contexts.
+
 ### Quality Gate Hooks
 
 #### `commit-review-gate.sh` (PreToolUse: Bash)
@@ -471,7 +542,7 @@ Intercepts `git push` commands. Analyzes the full diff against the target branch
 
 Returns a stderr advisory suggesting the agent consider architectural implications.
 
-### Project Management Hook
+### Project Management Hooks
 
 #### `task-link-gate.sh` (PreToolUse: Bash)
 
@@ -481,6 +552,20 @@ Returns a stderr advisory suggesting the agent consider architectural implicatio
 
 Intercepts `npm install`, `pnpm add`, `yarn add`, and `npx` commands. Extracts package names and verifies each exists in the npm registry via `npm view` before allowing the install.
 
+### Safety Hooks
+
+#### `output-validation.sh` (PostToolUse)
+
+Scans tool output returned to the AI for secrets before they enter the model's context. Same pattern set as `secret-scanner.sh`.
+
+#### `file-size-guard.sh` (PreToolUse: Write)
+
+Blocks writes of files exceeding a configurable size threshold. Prevents runaway code generation from creating oversized blobs.
+
+#### `rate-limit-guard.sh` (PreToolUse)
+
+Tracks tool call frequency per session and blocks when a per-minute threshold is exceeded. Logged to `.reagent/rate-limit.log`.
+
 ## Policy File
 
 `.reagent/policy.yaml` controls agent behavior:
@@ -488,7 +573,7 @@ Intercepts `npm install`, `pnpm add`, `yarn add`, and `npx` commands. Extracts p
 ```yaml
 version: '1'
 profile: bst-internal
-installed_by: 'reagent@0.5.0'
+installed_by: 'reagent@0.7.2'
 installed_at: '2026-04-09T00:00:00.000Z'
 autonomy_level: L1
 max_autonomy_level: L2
@@ -502,19 +587,19 @@ notification_channel: ''
 task_link_gate: false
 ```
 
-| Field                               | Type       | Description                                                    |
-| ----------------------------------- | ---------- | -------------------------------------------------------------- |
-| `version`                           | `string`   | Schema version (currently `"1"`)                               |
-| `profile`                           | `string`   | Profile name used during init                                  |
-| `installed_by`                      | `string`   | Tool and version that generated this file                      |
-| `installed_at`                      | `string`   | ISO 8601 timestamp of installation                             |
-| `autonomy_level`                    | `enum`     | Current level (L0-L3) -- controls which tool tiers are allowed |
-| `max_autonomy_level`                | `enum`     | Ceiling -- `autonomy_level` is clamped to this on load         |
-| `promotion_requires_human_approval` | `boolean`  | Whether level changes need human sign-off                      |
-| `block_ai_attribution`              | `boolean`  | When true, commit-msg hook rejects AI attribution markers      |
-| `blocked_paths`                     | `string[]` | Paths the agent must never modify (`.reagent/` always added)   |
-| `notification_channel`              | `string`   | Optional notification channel identifier                       |
-| `task_link_gate`                    | `boolean`  | When true, commits must reference a task ID (T-NNN)            |
+| Field                               | Type       | Description                                                   |
+| ----------------------------------- | ---------- | ------------------------------------------------------------- |
+| `version`                           | `string`   | Schema version (currently `"1"`)                              |
+| `profile`                           | `string`   | Profile name used during init                                 |
+| `installed_by`                      | `string`   | Tool and version that generated this file                     |
+| `installed_at`                      | `string`   | ISO 8601 timestamp of installation                            |
+| `autonomy_level`                    | `enum`     | Current level (L0-L3) — controls which tool tiers are allowed |
+| `max_autonomy_level`                | `enum`     | Ceiling — `autonomy_level` is clamped to this on load         |
+| `promotion_requires_human_approval` | `boolean`  | Whether level changes need human sign-off                     |
+| `block_ai_attribution`              | `boolean`  | When true, commit-msg hook rejects AI attribution markers     |
+| `blocked_paths`                     | `string[]` | Paths the agent must never modify (`.reagent/` always added)  |
+| `notification_channel`              | `string`   | Optional notification channel identifier                      |
+| `task_link_gate`                    | `boolean`  | When true, commits must reference a task ID (T-NNN)           |
 
 The `max_autonomy_level` field is enforced at config load time: if `autonomy_level` exceeds `max_autonomy_level`, it is clamped down with a warning.
 
@@ -532,7 +617,7 @@ Tasks are stored as an append-only event log in `.reagent/tasks.jsonl`. Each lin
 {"id":"T-001","type":"completed","title":"Implement review cache","commit_refs":["abc123"],"timestamp":"2026-04-09T14:00:00.000Z"}
 ```
 
-The current state of each task is materialized by replaying events -- the latest event for each task ID determines its status. This append-only design means no data is ever lost and concurrent writes are safe with advisory file locking.
+The current state of each task is materialized by replaying events — the latest event for each task ID determines its status. This append-only design means no data is ever lost and concurrent writes are safe with advisory file locking.
 
 #### Task Schema
 
@@ -568,29 +653,19 @@ The GitHub bridge syncs local tasks to GitHub issues:
 
 ### MCP Tools
 
-The 6 native task management tools are registered directly on the gateway and go through the full middleware chain:
+The 9 native tools are registered directly on the gateway and go through the full middleware chain:
 
 ```
-task_create    -- Create a task: title (required), description, urgency, phase, milestone, assignee, parent_id
-task_update    -- Update a task: id (required), type (started|completed|blocked|cancelled), plus any updatable fields
-task_list      -- List tasks: optional filters for status, urgency, phase
-task_get       -- Get one task by ID (T-NNN format)
-task_delete    -- Soft-delete (cancelled event) a task by ID
-task_sync_github -- Trigger GitHub issue sync (requires gh CLI)
+task_create       — Create a task: title (required), description, urgency, phase, milestone, assignee, parent_id
+task_update       — Update a task: id (required), type (started|completed|blocked|cancelled), plus any updatable fields
+task_list         — List tasks: optional filters for status, urgency, phase
+task_get          — Get one task by ID (T-NNN format)
+task_delete       — Soft-delete (cancelled event) a task by ID
+task_sync_github  — Trigger GitHub issue sync (requires gh CLI)
+repo_scaffold     — Set GitHub repo description, topics, labels, and milestones
+project_sync      — Sync tasks to a GitHub Project board
+discord_notify    — Send a notification to a configured Discord channel
 ```
-
-### Product Owner Agent
-
-The `product-owner` agent (`agents/product-owner.md`) manages the task backlog with built-in guardrails:
-
-| Guardrail         | Rule                                                     |
-| ----------------- | -------------------------------------------------------- |
-| Anti-duplication  | Must call `task_list` before any `task_create`           |
-| Rate limit        | Max 10 task creations per invocation                     |
-| Critical urgency  | Cannot set `urgency: critical` without human approval    |
-| Scope boundary    | Cannot modify policy, hooks, or agent definitions        |
-| Parent grouping   | Must use `parent_id` when creating 5+ tasks for one goal |
-| Evidence required | Cannot auto-close tasks without commit ref or sign-off   |
 
 ### Slash Commands
 
@@ -605,16 +680,16 @@ The `product-owner` agent (`agents/product-owner.md`) manages the task backlog w
 
 `reagent init` configures your repository with:
 
-- **Git hooks** -- commit-msg validation, pre-commit checks, and pre-push quality gates (via Husky)
-- **Cursor rules** -- AI behavioral constraints for Cursor IDE (no-hallucination, verify-before-act, attribution)
-- **Claude hooks** -- 11 safety and quality hooks (see [Claude Code Hooks](#claude-code-hooks) section)
-- **Claude settings** -- permission boundaries for Claude Code (`.claude/settings.json`)
-- **Policy file** -- `.reagent/policy.yaml` with graduated autonomy levels
-- **CLAUDE.md** -- project-level AI agent instructions (managed block with markers)
-- **Agent definitions** -- AI agent team definitions (`.claude/agents/`)
-- **Commands** -- `/restart`, `/rea`, `/tasks`, `/plan-work` slash commands
-- **Gateway config** -- `.reagent/gateway.yaml` template for MCP server configuration
-- **Task store** -- `.reagent/tasks.jsonl` (empty, gitignored) for project management
+- **Git hooks** — commit-msg validation, pre-commit checks, and pre-push quality gates (via Husky)
+- **Cursor rules** — AI behavioral constraints for Cursor IDE (no-hallucination, verify-before-act, attribution)
+- **Claude hooks** — 20 safety and quality hooks (see [Claude Code Hooks](#claude-code-hooks) section)
+- **Claude settings** — permission boundaries for Claude Code (`.claude/settings.json`)
+- **Policy file** — `.reagent/policy.yaml` with graduated autonomy levels
+- **CLAUDE.md** — project-level AI agent instructions (managed block with markers)
+- **Agent team** — 89 AI agent definitions installed to `.claude/agents/` (see [AGENTS.md](./AGENTS.md))
+- **Commands** — `/restart`, `/rea`, `/tasks`, `/plan-work` slash commands
+- **Gateway config** — `.reagent/gateway.yaml` template for MCP server configuration
+- **Task store** — `.reagent/tasks.jsonl` (empty, gitignored) for project management
 
 ### What Gets Installed
 
@@ -631,32 +706,38 @@ The `product-owner` agent (`agents/product-owner.md`) manages the task backlog w
 | `.husky/pre-push`            | Yes             | Pre-push quality gates               |
 | `.claude/hooks/`             | No (gitignored) | Claude Code safety hooks             |
 | `.claude/settings.json`      | No (gitignored) | Claude Code permissions              |
-| `.claude/agents/`            | No (gitignored) | Agent team definitions               |
+| `.claude/agents/`            | No (gitignored) | Agent team definitions (89 agents)   |
 | `.claude/commands/`          | Yes             | Slash commands                       |
 | `CLAUDE.md`                  | Yes             | AI agent project instructions        |
 
 ### Profiles
+
+#### Base Profiles
 
 | Profile             | Use Case                   | Default Autonomy | Blocked Paths                                       |
 | ------------------- | -------------------------- | ---------------- | --------------------------------------------------- |
 | `client-engagement` | Client consulting projects | L1 / max L2      | `.reagent/`, `.github/workflows/`, `.env`, `.env.*` |
 | `bst-internal`      | BST's own repositories     | L1 / max L2      | `.reagent/`, `.env`                                 |
 
-Both profiles install the full hook suite, quality gates, Cursor rules, and Claude commands. Profile configuration includes:
+Both profiles install the full hook suite, quality gates, Cursor rules, and Claude commands.
 
-```json
-{
-  "qualityGates": {
-    "commitReview": { "enabled": true, "trivialThreshold": 20, "significantThreshold": 200 },
-    "pushReview": { "enabled": true },
-    "architectureAdvisory": { "enabled": true }
-  },
-  "pm": {
-    "enabled": true,
-    "taskLinkGate": false,
-    "maxOpenTasks": 50
-  }
-}
+#### Tech Stack Profiles
+
+Tech stack profiles extend the base installation with domain-specific hooks and gates. Pass them with `--profile`:
+
+| Profile  | Stack              | Extra Hooks                                           |
+| -------- | ------------------ | ----------------------------------------------------- |
+| `nextjs` | Next.js App Router | `server-component-drift.sh` — RSC boundary violations |
+| `lit-wc` | Lit/Web Components | `shadow-dom-guard.sh`, `cem-integrity-gate.sh`        |
+| `drupal` | Drupal CMS         | `drupal-coding-standards.sh`, `hook-update-guard.sh`  |
+| `astro`  | Astro              | `astro-ssr-guard.sh` — SSR/static boundary violations |
+
+Each tech profile also ships a `gates.yaml` (preflight checks for CI) and a recommended agent list.
+
+```bash
+# Install with a tech stack profile
+npx @bookedsolid/reagent init --profile nextjs
+npx @bookedsolid/reagent init --profile lit-wc
 ```
 
 ### Idempotent
@@ -668,6 +749,26 @@ Run `reagent init` as many times as you want. It skips files that are already up
 ```bash
 reagent check
 ```
+
+## Agent Team
+
+Reagent installs 89 AI agent definitions into `.claude/agents/` covering engineering, AI platforms, and project management roles. Each agent has:
+
+- A domain-specific system prompt and tool access list
+- Zero-trust protocol (read before writing, verify before claiming, HALT compliance)
+- Persona metadata (name, inspiration) grounded in real domain pioneers
+
+See **[AGENTS.md](./AGENTS.md)** for the full roster with descriptions.
+
+Key agents available in every project:
+
+| Agent                  | Role                                                                    |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `reagent-orchestrator` | Team orchestrator — routes tasks to specialists, governs AI operations  |
+| `product-owner`        | Task backlog management with built-in guardrails                        |
+| `code-reviewer`        | Code review with TypeScript, accessibility, performance, security focus |
+| `security-engineer`    | Application security, OWASP, penetration testing                        |
+| `principal-engineer`   | Architecture decisions and cross-cutting concerns                       |
 
 ## Removing Reagent
 
@@ -693,7 +794,7 @@ rm -f .husky/commit-msg .husky/pre-commit .husky/pre-push
 │   ├── cli/                           # CLI entry point and commands
 │   │   ├── index.ts                   # ESM entry point, routes to commands
 │   │   ├── commands/
-│   │   │   ├── init/                  # Modular init step-runner
+│   │   │   ├── init/                  # Modular init step-runner (14 steps)
 │   │   │   │   ├── index.ts           # Step sequencer
 │   │   │   │   ├── types.ts           # InstallResult, ProfileConfig
 │   │   │   │   ├── gitignore.ts       # .gitignore entries
@@ -705,7 +806,16 @@ rm -f .husky/commit-msg .husky/pre-commit .husky/pre-push
 │   │   │   │   ├── gateway-config.ts  # gateway.yaml generation
 │   │   │   │   ├── agents.ts          # Agent file installation
 │   │   │   │   ├── commands.ts        # Slash command installation
-│   │   │   │   └── pm.ts             # Task store scaffolding
+│   │   │   │   ├── pm.ts             # Task store scaffolding
+│   │   │   │   ├── profiles.ts        # Tech stack profile installer
+│   │   │   │   ├── github.ts          # GitHub repo scaffolding (--github)
+│   │   │   │   └── discord.ts         # Discord config (--discord)
+│   │   │   ├── catalyze/              # Stack analyzer and gap detector
+│   │   │   │   ├── index.ts           # --plan / --audit / --dry-run modes
+│   │   │   │   ├── stack-analyzer.ts  # Detects project type from package.json
+│   │   │   │   ├── gap-detector.ts    # Per-stack hook/gate/agent catalog
+│   │   │   │   ├── report-generator.ts # Markdown + HTML report output
+│   │   │   │   └── types.ts           # ProjectType, Gap, GapAnalysis
 │   │   │   ├── cache.ts               # Review cache CLI (check/set/clear)
 │   │   │   ├── check.ts               # Installation verification
 │   │   │   ├── freeze.ts              # Kill switch (freeze/unfreeze)
@@ -719,7 +829,7 @@ rm -f .husky/commit-msg .husky/pre-commit .husky/pre-push
 │   │   ├── server.ts                  # Gateway orchestrator (startup, shutdown)
 │   │   ├── client-manager.ts          # Downstream MCP server connections
 │   │   ├── tool-proxy.ts              # Tool discovery, namespacing, registration
-│   │   ├── native-tools.ts            # First-party task management MCP tools
+│   │   ├── native-tools.ts            # 9 first-party MCP tools
 │   │   └── middleware/                # Middleware chain
 │   │       ├── chain.ts               # Onion-style middleware executor
 │   │       ├── session.ts             # Session ID attachment
@@ -732,36 +842,63 @@ rm -f .husky/commit-msg .husky/pre-commit .husky/pre-push
 │   ├── pm/                            # Project management layer
 │   │   ├── types.ts                   # Zod task schema (single source of truth)
 │   │   ├── task-store.ts              # JSONL event store with advisory locking
-│   │   └── github-bridge.ts           # GitHub CLI integration
+│   │   ├── github-bridge.ts           # GitHub CLI integration (issues + projects)
+│   │   └── discord-notifier.ts        # Discord notification dispatch
 │   └── types/                         # TypeScript type definitions
-├── hooks/                             # Claude Code hook scripts
+├── hooks/                             # Claude Code hook scripts (20 total)
 │   ├── _lib/
 │   │   └── common.sh                 # Shared hook library
-│   ├── settings-protection.sh         # P0: Settings/hook modification guard
-│   ├── blocked-paths-enforcer.sh      # P0: Policy blocked_paths enforcement
-│   ├── dangerous-bash-interceptor.sh  # Dangerous command interception (16 rules)
-│   ├── secret-scanner.sh              # Secret detection in file writes
-│   ├── env-file-protection.sh         # .env file write protection
-│   ├── attribution-advisory.sh        # AI attribution blocking
-│   ├── commit-review-gate.sh          # Commit-time review with triage scoring
-│   ├── push-review-gate.sh            # Push-time review gate
-│   ├── architecture-review-gate.sh    # Architecture advisory (PostToolUse)
-│   ├── dependency-audit-gate.sh       # Package install verification
-│   └── task-link-gate.sh              # Opt-in task ID in commits
-├── profiles/                          # Init profiles (bst-internal, client-engagement)
+│   ├── settings-protection.sh
+│   ├── blocked-paths-enforcer.sh
+│   ├── dangerous-bash-interceptor.sh
+│   ├── secret-scanner.sh
+│   ├── env-file-protection.sh
+│   ├── attribution-advisory.sh
+│   ├── symlink-guard.sh
+│   ├── network-exfil-guard.sh
+│   ├── import-guard.sh
+│   ├── git-config-guard.sh
+│   ├── ci-config-protection.sh
+│   ├── commit-review-gate.sh
+│   ├── push-review-gate.sh
+│   ├── architecture-review-gate.sh
+│   ├── dependency-audit-gate.sh
+│   ├── task-link-gate.sh
+│   ├── output-validation.sh
+│   ├── file-size-guard.sh
+│   └── rate-limit-guard.sh
+├── profiles/                          # Init profiles
+│   ├── client-engagement.json         # Base profile
+│   ├── bst-internal.json             # Base profile
+│   ├── nextjs/                        # Tech stack profile
+│   │   ├── hooks/server-component-drift.sh
+│   │   ├── gates.yaml
+│   │   └── agents.txt
+│   ├── lit-wc/                        # Tech stack profile
+│   │   ├── hooks/{shadow-dom-guard,cem-integrity-gate}.sh
+│   │   ├── gates.yaml
+│   │   └── agents.txt
+│   ├── drupal/                        # Tech stack profile
+│   │   ├── hooks/{drupal-coding-standards,hook-update-guard}.sh
+│   │   ├── gates.yaml
+│   │   └── agents.txt
+│   └── astro/                         # Tech stack profile
+│       ├── hooks/astro-ssr-guard.sh
+│       ├── gates.yaml
+│       └── agents.txt
+├── agents/                            # 89 agent definitions (see AGENTS.md)
+│   ├── product-owner.md
+│   ├── reagent-orchestrator.md
+│   ├── engineering/                   # 64 engineering specialist agents
+│   └── ai-platforms/                  # 25 AI platform specialist agents
 ├── templates/                         # Template files for scaffolding
 ├── husky/                             # Husky git hook scripts
 ├── cursor/                            # Cursor IDE rules
-├── agents/                            # Agent definitions
-│   ├── product-owner.md               # Task management agent with guardrails
-│   ├── reagent-orchestrator.md        # Team orchestration agent
-│   ├── engineering/                   # Engineering specialist agents
-│   └── ai-platforms/                  # AI platform specialist agents
 └── commands/                          # Claude slash commands
-    ├── restart.md                     # Session handoff
-    ├── rea.md                         # REA orchestration
-    ├── tasks.md                       # Task table view
-    └── plan-work.md                   # Guided task planning
+    ├── restart.md
+    ├── rea.md
+    ├── tasks.md
+    └── plan-work.md
 ```
 
 ## Package Exports
@@ -779,15 +916,15 @@ rm -f .husky/commit-msg .husky/pre-commit .husky/pre-push
 - Node.js >= 22
 - Git repository (for hooks and init)
 - `jq` (for hook scripts that parse JSON)
-- `gh` CLI (optional, for GitHub issue sync)
+- `gh` CLI (optional, for GitHub issue sync and repo scaffolding)
 
 ## Dependencies
 
 3 runtime dependencies:
 
-- `@modelcontextprotocol/sdk` -- MCP client/server protocol
-- `yaml` -- YAML parsing for policy and gateway config
-- `zod` -- Schema validation for all configuration files
+- `@modelcontextprotocol/sdk` — MCP client/server protocol
+- `yaml` — YAML parsing for policy and gateway config
+- `zod` — Schema validation for all configuration files
 
 ## Testing
 
@@ -795,15 +932,15 @@ rm -f .husky/commit-msg .husky/pre-commit .husky/pre-push
 pnpm test
 ```
 
-309 tests across 30 test files covering:
+462 tests across 41 test files covering:
 
-- CLI commands (init step-runner, cache, check, freeze)
+- CLI commands (init step-runner, catalyze, cache, check, freeze, profiles)
 - Middleware chain (session, kill-switch, tier, policy, blocked-paths, redact, audit)
 - Tier classification (static map, convention-based, overrides)
 - Policy enforcement (autonomy levels, blocked tools, max clamping)
 - Secret redaction (AWS, GitHub, PEM, Discord, generic patterns)
-- Hook scripts (settings-protection, blocked-paths, dangerous-bash, dependency-audit, secret-scanner, env-file, attribution)
-- Project management (task store CRUD, event materialization, advisory locking)
+- Hook scripts (all 20 hooks, including v0.6.0 additions)
+- Project management (task store CRUD, event materialization, advisory locking, Discord notifier)
 - End-to-end gateway smoke tests (native + proxied tools)
 
 Quality gates (run via `pnpm preflight`):

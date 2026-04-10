@@ -1,0 +1,61 @@
+---
+title: Security Model
+description: Reagent's security invariants and defense-in-depth architecture.
+sidebar:
+  order: 2
+---
+
+Reagent's security model is built on defense in depth — multiple independent layers that each provide protection even if another layer is compromised.
+
+## Security invariants
+
+These properties are enforced by the architecture and cannot be overridden by configuration:
+
+- **Denial is permanent** — once any middleware denies an invocation, no subsequent middleware can revert it (enforced by `executeChain`)
+- **Audit records everything** — audit is outermost, so even kill-switch denials are recorded
+- **Policy re-derives tier** — never trusts mutable context; always re-classifies from tool name
+- **Fail-closed** — errors in kill-switch or policy checks result in denial, not passthrough
+- **All logging to stderr** — stdout is reserved for the MCP stdio transport
+- **Per-tool timeout** — each downstream tool call has a 30-second timeout with timer cleanup
+- **Graceful shutdown** — `process.exitCode = 0` (not `process.exit(0)`) to allow event loop drain
+- **Tier downgrade protection** — `tool_overrides` cannot lower a tool's tier below its static or convention-based classification
+
+## Defense layers
+
+| Layer              | Mechanism                                | Scope                        |
+| ------------------ | ---------------------------------------- | ---------------------------- |
+| Gateway middleware | Policy, paths, redaction, audit          | All MCP tool calls           |
+| Claude Code hooks  | 20 shell scripts                         | Claude Code tool invocations |
+| Git hooks          | Commit-msg, pre-commit, pre-push         | Git operations               |
+| Quality gates      | Triage-based review, code-reviewer agent | Commits and pushes           |
+
+Each layer operates independently. Disabling one does not compromise the others.
+
+## Protected paths
+
+The `.reagent/` directory is always protected — no tool call can modify files within it, regardless of autonomy level or configuration. This prevents agents from modifying their own safety rails.
+
+Additional paths can be protected via `blocked_paths` in `policy.yaml`.
+
+## Secret handling
+
+### Redaction
+
+Secrets are redacted at two points:
+
+1. **Pre-execution** — tool arguments are scanned before reaching the downstream tool
+2. **Post-execution** — tool output is scanned before reaching the AI
+
+Patterns detected: AWS keys, GitHub tokens, PEM private keys, Discord tokens, API keys, bearer tokens, and base64-encoded variants.
+
+### Prevention
+
+The `secret-scanner.sh` hook prevents secrets from being written to files. The `env-file-protection.sh` hook prevents writes to `.env` files entirely.
+
+## Kill switch
+
+`reagent freeze` creates a `.reagent/HALT` file that immediately blocks all tool calls across every connected MCP server. The file is validated as a regular file (symlinks outside `.reagent/` are rejected). Reads are capped at 1024 bytes.
+
+## Attribution control
+
+When `block_ai_attribution` is enabled, the system prevents AI attribution markers from appearing in commits, PRs, or code. This is enforced by both the commit-msg hook and the `attribution-advisory.sh` Claude Code hook.

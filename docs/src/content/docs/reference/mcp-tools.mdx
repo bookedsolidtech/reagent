@@ -1,0 +1,76 @@
+---
+title: MCP Tools
+description: Native MCP tools registered by the Reagent gateway.
+sidebar:
+  order: 5
+---
+
+Reagent registers 9 first-party tools directly on the gateway. These go through the same middleware chain (audit, policy, blocked paths, redaction) as proxied tools.
+
+## Tool reference
+
+### `task_create`
+
+Create a new task in `.reagent/tasks.jsonl`.
+
+**Parameters:**
+
+- `title` (required) — Task title (1-200 characters)
+- `description` — Detailed description
+- `urgency` — `critical`, `normal`, or `low` (default: `normal`)
+- `phase` — Project phase
+- `milestone` — Milestone reference
+- `assignee` — Assigned agent or person
+- `parent_id` — Parent task ID (T-NNN format)
+
+### `task_update`
+
+Update a task's status, title, urgency, or fields.
+
+**Parameters:**
+
+- `id` (required) — Task ID (T-NNN format)
+- `type` (required) — `started`, `completed`, `blocked`, or `cancelled`
+- Plus any updatable fields from `task_create`
+
+### `task_list`
+
+List tasks with optional filters.
+
+**Parameters:**
+
+- `status` — Filter by status
+- `urgency` — Filter by urgency
+- `phase` — Filter by phase
+
+### `task_get`
+
+Get a single task by ID.
+
+**Parameters:**
+
+- `id` (required) — Task ID (T-NNN format)
+
+### `task_delete`
+
+Cancel a task (soft delete via cancelled event).
+
+**Parameters:**
+
+- `id` (required) — Task ID (T-NNN format)
+
+### `task_sync_github`
+
+Sync local tasks to GitHub issues. Requires the `gh` CLI to be installed and authenticated.
+
+### `repo_scaffold`
+
+Set GitHub repo description, topics, labels, and milestones.
+
+### `project_sync`
+
+Sync tasks to a GitHub Project board.
+
+### `discord_notify`
+
+Send a notification to a configured Discord channel. Requires `discord_ops` configuration in `gateway.yaml`.

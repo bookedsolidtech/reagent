@@ -1,0 +1,53 @@
+---
+title: Package Exports
+description: Reagent's npm package export map for programmatic usage.
+sidebar:
+  order: 7
+---
+
+Reagent exposes three entry points for programmatic use:
+
+## Export map
+
+```json
+{
+  ".": "types/index.js",
+  "./config": "config/policy-loader.js",
+  "./middleware": "gateway/middleware/chain.js"
+}
+```
+
+## Entry points
+
+### `.` (main)
+
+The main entry point exports TypeScript type definitions for Reagent's core types.
+
+```typescript
+import type { PolicyConfig, GatewayConfig } from '@bookedsolid/reagent';
+```
+
+### `./config`
+
+The config entry point exports the Zod-validated policy loader:
+
+```typescript
+import { loadPolicy } from '@bookedsolid/reagent/config';
+```
+
+### `./middleware`
+
+The middleware entry point exports the middleware chain executor:
+
+```typescript
+import { executeChain } from '@bookedsolid/reagent/middleware';
+```
+
+## Package metadata
+
+| Field        | Value                         |
+| ------------ | ----------------------------- |
+| Package name | `@bookedsolid/reagent`        |
+| Type         | ESM (`"type": "module"`)      |
+| Node.js      | >= 22                         |
+| Side effects | None (`"sideEffects": false`) |

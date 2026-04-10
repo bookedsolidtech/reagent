@@ -1,0 +1,92 @@
+---
+title: Middleware Chain
+description: How Reagent's onion-style middleware chain processes every tool call.
+sidebar:
+  order: 3
+---
+
+Every tool call through the Reagent gateway passes through a middleware chain in onion (Koa-style) order. The chain is designed with strict security invariants.
+
+## Chain order
+
+```
+AI Assistant (Claude Code, Cursor, etc.)
+    |
+    |  stdio (MCP protocol)
+    v
++-----------------------------+
+|       Reagent Gateway       |
+|                             |
+|  +------------------------+ |
+|  |   Middleware Chain      | |
+|  |                        | |
+|  |  1. Audit (outermost)  | |
+|  |  2. Session context    | |
+|  |  3. Kill switch        | |
+|  |  4. Tier classify      | |
+|  |  5. Policy enforce     | |
+|  |  6. Blocked paths      | |
+|  |  7. Secret redaction   | |
+|  |  8. [Execute]          | |
+|  +------------------------+ |
++-----------------------------+
+```
+
+## Middleware details
+
+### 1. Audit (outermost)
+
+Records every invocation — including denials and errors — as a hash-chained JSONL entry. Written to `.reagent/audit/YYYY-MM-DD.jsonl`. Each record contains timestamp, session ID, tool name, server name, tier, status, autonomy level, duration, and a hash chain.
+
+The `prev_hash` field chains records together — tamper with one record and every subsequent hash becomes invalid. Audit writes are serialized via a queue to maintain hash chain linearity under concurrent invocations.
+
+### 2. Session context
+
+Attaches a unique session ID (UUID via `crypto.randomUUID()`) to every invocation. Each gateway instance generates one session ID at startup.
+
+### 3. Kill switch
+
+Checks for `.reagent/HALT` file. If present, the invocation is immediately denied. The HALT file contents become the denial reason.
+
+```bash
+# Emergency stop — all tool calls blocked immediately
+reagent freeze --reason "security incident"
+
+# Resume
+reagent unfreeze
+```
+
+### 4. Tier classification
+
+Classifies the tool into `read`, `write`, or `destructive` using static map, convention-based patterns, or default fallback. See [Autonomy Levels](/concepts/autonomy-levels/) for details.
+
+### 5. Policy enforcement
+
+Checks the tool's tier against the project's autonomy level. The policy middleware **re-derives the tier from the tool name independently** — it never trusts `ctx.tier` from prior middleware.
+
+Also checks for explicitly blocked tools.
+
+### 6. Blocked paths
+
+Scans all string-valued tool arguments for references to paths listed in the policy's `blocked_paths`. The `.reagent/` directory is always protected regardless of policy configuration.
+
+### 7. Secret redaction
+
+Operates both **pre-execution** (scanning tool arguments) and **post-execution** (scanning tool output). Detected secrets are replaced with `[REDACTED]`:
+
+- AWS Access Keys and Secret Keys
+- GitHub Tokens (`ghp_`, `gho_`, `ghs_`, `ghu_`, `ghr_`)
+- Generic API Keys and Bearer Tokens
+- PEM Private Keys (RSA, EC, DSA)
+- Discord Bot Tokens
+- Base64-encoded AWS Keys
+
+## Security invariants
+
+- **Denial is permanent** — once any middleware denies an invocation, no subsequent middleware can revert it
+- **Audit records everything** — audit is outermost, so even kill-switch denials are recorded
+- **Policy re-derives tier** — never trusts mutable context; always re-classifies from tool name
+- **Fail-closed** — errors in kill-switch or policy checks result in denial, not passthrough
+- **All logging to stderr** — stdout is reserved for the MCP stdio transport
+- **Per-tool timeout** — each downstream tool call has a 30-second timeout
+- **Graceful shutdown** — `process.exitCode = 0` (not `process.exit(0)`) to allow event loop drain

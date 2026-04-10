@@ -1,0 +1,77 @@
+---
+title: Project Management
+description: Lightweight task tracking with JSONL event store, MCP tools, and GitHub sync.
+sidebar:
+  order: 4
+---
+
+Reagent includes a lightweight project management layer for tracking tasks alongside code.
+
+## Task store
+
+Tasks are stored as an append-only event log in `.reagent/tasks.jsonl`. Each line is a JSON event:
+
+```json
+{"id":"T-001","type":"created","title":"Implement review cache","urgency":"normal","phase":"Phase 2","timestamp":"2026-04-09T12:00:00.000Z"}
+{"id":"T-001","type":"started","title":"Implement review cache","timestamp":"2026-04-09T13:00:00.000Z"}
+{"id":"T-001","type":"completed","title":"Implement review cache","commit_refs":["abc123"],"timestamp":"2026-04-09T14:00:00.000Z"}
+```
+
+The current state of each task is materialized by replaying events — the latest event for each task ID determines its status. This append-only design means no data is ever lost and concurrent writes are safe with advisory file locking.
+
+## Task schema
+
+| Field          | Type                                                         | Required | Description                   |
+| -------------- | ------------------------------------------------------------ | -------- | ----------------------------- |
+| `id`           | `string` (T-NNN)                                             | Yes      | Auto-incrementing task ID     |
+| `type`         | `created`, `started`, `completed`, `blocked`, or `cancelled` | Yes      | Event type                    |
+| `title`        | `string` (1-200 chars)                                       | Yes      | Task title                    |
+| `description`  | `string`                                                     | No       | Detailed description          |
+| `urgency`      | `critical\|normal\|low`                                      | No       | Defaults to `normal`          |
+| `phase`        | `string`                                                     | No       | Project phase                 |
+| `milestone`    | `string`                                                     | No       | Milestone reference           |
+| `assignee`     | `string`                                                     | No       | Assigned agent or person      |
+| `parent_id`    | `string` (T-NNN)                                             | No       | Parent task for hierarchy     |
+| `commit_refs`  | `string[]`                                                   | No       | Related commit SHAs           |
+| `pr_ref`       | `string`                                                     | No       | Related PR reference          |
+| `blocked_by`   | `string`                                                     | No       | What's blocking this task     |
+| `github_issue` | `number`                                                     | No       | Linked GitHub issue number    |
+| `timestamp`    | `string` (ISO 8601)                                          | Yes      | Event timestamp               |
+| `session_id`   | `string`                                                     | No       | Agent session that created it |
+
+All fields are validated with Zod on read. Malformed lines are skipped with a stderr warning.
+
+## GitHub bridge
+
+The GitHub bridge syncs local tasks to GitHub issues:
+
+- **Detection:** checks for `gh` CLI with `gh auth status`. Falls back to `local-only` mode if unavailable.
+- **Sync scope:** only creates issues with the `reagent:` label. Never imports all repository issues.
+- **Rate limiting:** 300-second cooldown between sync operations.
+- **Conflict resolution:** local JSONL is the source of truth; GitHub is the display layer.
+- **Auto-close:** when a task is marked completed and has a linked `github_issue`, the corresponding issue is closed via `gh issue close`.
+
+## MCP tools
+
+The 9 native tools are registered directly on the gateway and go through the full middleware chain:
+
+| Tool               | Description                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------- |
+| `task_create`      | Create a task: title (required), description, urgency, phase, milestone, assignee, parent_id        |
+| `task_update`      | Update a task: id (required), type (started/completed/blocked/cancelled), plus any updatable fields |
+| `task_list`        | List tasks: optional filters for status, urgency, phase                                             |
+| `task_get`         | Get one task by ID (T-NNN format)                                                                   |
+| `task_delete`      | Soft-delete (cancelled event) a task by ID                                                          |
+| `task_sync_github` | Trigger GitHub issue sync (requires gh CLI)                                                         |
+| `repo_scaffold`    | Set GitHub repo description, topics, labels, and milestones                                         |
+| `project_sync`     | Sync tasks to a GitHub Project board                                                                |
+| `discord_notify`   | Send a notification to a configured Discord channel                                                 |
+
+## Slash commands
+
+| Command      | Description                                                      |
+| ------------ | ---------------------------------------------------------------- |
+| `/tasks`     | Render a markdown table of current tasks from tasks.jsonl        |
+| `/plan-work` | Invoke the product-owner agent to propose tasks for a goal       |
+| `/restart`   | Session handoff command for agent continuity                     |
+| `/rea`       | Invoke the REA (Reactive Execution Agent) for team orchestration |

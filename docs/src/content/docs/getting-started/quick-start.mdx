@@ -1,0 +1,74 @@
+---
+title: Quick Start
+description: Get up and running with Reagent in minutes.
+sidebar:
+  order: 2
+---
+
+## As an MCP Gateway
+
+```bash
+# Initialize a project with policy and gateway config
+reagent init --profile bst-internal
+
+# Configure your downstream MCP servers in .reagent/gateway.yaml
+# Then start the gateway
+reagent serve
+```
+
+Point your AI assistant's MCP configuration at the gateway:
+
+```json
+{
+  "mcpServers": {
+    "reagent": {
+      "command": "reagent",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+All downstream tool calls now flow through Reagent's middleware chain.
+
+## As a Config Scaffolder
+
+```bash
+npx @bookedsolid/reagent init
+
+# With a base profile
+npx @bookedsolid/reagent init --profile bst-internal
+npx @bookedsolid/reagent init --profile client-engagement
+
+# With a tech stack profile
+npx @bookedsolid/reagent init --profile nextjs
+npx @bookedsolid/reagent init --profile lit-wc
+
+# With optional integrations
+npx @bookedsolid/reagent init --github    # scaffold GitHub labels + milestones
+npx @bookedsolid/reagent init --discord   # configure Discord notifications
+
+# Preview without changes
+npx @bookedsolid/reagent init --dry-run
+```
+
+## As a Stack Analyzer
+
+```bash
+# Analyze your project and generate a gap report
+reagent catalyze
+
+# Audit current state against the last plan
+reagent catalyze --audit
+
+# Preview without writing files
+reagent catalyze --dry-run
+```
+
+This generates `catalyze-report.md` and `catalyze-report.html` listing gaps by severity.
+
+## Next steps
+
+- Learn about the [zero-trust security model](/concepts/zero-trust/)
+- Configure the [MCP Gateway](/guides/mcp-gateway/)
+- Explore [CLI commands](/reference/cli-commands/)

@@ -13,3 +13,5 @@ src/coverage/
 
 # Docs site (managed separately — built by Astro/Starlight)
 docs/
+docs/.astro/
+/.scratch/

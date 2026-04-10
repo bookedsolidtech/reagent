@@ -1,0 +1,154 @@
+---
+title: Multi-Token Workstreams
+description: Local process isolation for running multiple Claude Code agents with separate billing.
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="note">
+  This is a proposal document. The architecture requires proof-of-concept validation before
+  implementation.
+</Aside>
+
+## Problem statement
+
+Today, every Claude Code session on a machine shares a single OAuth token. This means:
+
+- All work bills to one account, making client billing impossible
+- No isolation between projects — a runaway agent in Project A can affect Project B
+- No budget controls per client or per task
+- No way to track token usage per workstream
+
+**The goal:** Run multiple Claude Code agent processes locally, each with its own OAuth token, its own git worktree, and its own session state — all orchestrated by Reagent. No Docker required.
+
+## Architecture overview
+
+```
+Your Terminal (Personal Token — Max Plan)
+  └── claude (your interactive session)
+       └── reagent serve (MCP gateway — middleware chain)
+            │
+            ├── Workstream: "acme-review"
+            │   token: ACME_CLAUDE_OAUTH_TOKEN
+            │   worktree: ~/.reagent/worktrees/acme-review/
+            │   process: claude -p "Review the auth module..."
+            │
+            ├── Workstream: "internal-refactor"
+            │   token: CLAUDE_CODE_OAUTH_TOKEN (your default)
+            │   worktree: ~/.reagent/worktrees/internal-refactor/
+            │   process: claude -p "Refactor the middleware..."
+            │
+            └── Workstream: "client-beta-fix"
+                token: BETA_CLIENT_CLAUDE_TOKEN
+                worktree: ~/.reagent/worktrees/client-beta-fix/
+                process: claude -p "Fix the payment bug..."
+```
+
+Each workstream is a separate OS process with:
+
+- Its own `CLAUDE_CODE_OAUTH_TOKEN` env var (bills to that account)
+- Its own git worktree (isolated filesystem)
+- Its own `.claude/` directory (no session state collision)
+- Its own budget tracking (advisory, logged by Reagent)
+
+## Process-level environment isolation
+
+Unix processes inherit environment variables from their parent. Node.js `child_process.spawn()` accepts an `env` object that completely replaces the child's environment:
+
+```typescript
+const child = spawn('claude', ['-p', prompt, '--output-format', 'json'], {
+  cwd: worktreePath,
+  env: {
+    ...baseEnv,
+    CLAUDE_CODE_OAUTH_TOKEN: clientToken,
+    CLAUDE_CONFIG_DIR: sessionConfigDir,
+  },
+});
+```
+
+### Auth token precedence
+
+| Priority | Source                                          | Type       | Billing              |
+| -------- | ----------------------------------------------- | ---------- | -------------------- |
+| 1        | `ANTHROPIC_AUTH_TOKEN` env var                  | OAuth      | Max Plan             |
+| 2        | `CLAUDE_CODE_OAUTH_TOKEN` env var               | OAuth      | Max Plan (flat rate) |
+| 3        | `CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR`       | OAuth (fd) | Max Plan             |
+| 4        | `apiKeyHelper` (external command from settings) | Varies     | Varies               |
+| 5        | Keychain-stored OAuth (`claude auth login`)     | OAuth      | Max Plan             |
+
+For multi-token workstreams, `CLAUDE_CODE_OAUTH_TOKEN` is the correct lever. The spawner must explicitly delete `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from the child env to prevent accidental per-token billing.
+
+## Git worktree isolation
+
+Git worktrees provide lightweight, isolated working directories from a single repo:
+
+```bash
+git worktree add .reagent/worktrees/acme-review -b ws/acme-review
+```
+
+Key properties:
+
+- Each worktree is ~2 MB on disk (shared `.git/objects/` is not duplicated)
+- Branch exclusivity is enforced — each workstream must get its own branch
+- `git add`, `git commit`, `git push` are safe concurrently
+- `node_modules` is NOT included — use `pnpm install` per worktree
+
+## Configuration
+
+### Account definitions (`.reagent/accounts.yaml`)
+
+```yaml
+version: '1'
+accounts:
+  personal:
+    env_var: CLAUDE_CODE_OAUTH_TOKEN
+    description: 'BST engineering — personal Max Plan'
+  client-acme:
+    env_var: ACME_CLAUDE_OAUTH_TOKEN
+    description: 'ACME Corp project — client-provided token'
+    budget:
+      warn_usd: 40.00
+      halt_usd: 50.00
+      period: monthly
+```
+
+**Security invariant:** Tokens live only in environment variables — never in config files. Reagent stores the env var name, never the value.
+
+### Workstream definitions
+
+```yaml
+workstream:
+  name: acme-review
+  account: client-acme
+  source:
+    repo: .
+    branch: feature/acme-auth-module
+  prompt: |
+    Review the authentication module in src/auth/ for security issues.
+  options:
+    max_turns: 100
+    timeout_seconds: 1800
+```
+
+## Implementation phases
+
+| Phase   | Scope                             | Dependencies   |
+| ------- | --------------------------------- | -------------- |
+| Phase 1 | Account context system            | POC validation |
+| Phase 2 | Workstream spawner                | Phase 1        |
+| Phase 3 | Budget tracking and observability | Phase 2        |
+
+## What Docker adds (later, opt-in)
+
+| Capability                        | Local               | Docker |
+| --------------------------------- | ------------------- | ------ |
+| Token isolation (billing)         | Yes                 | Yes    |
+| Session state isolation           | Yes (via worktrees) | Yes    |
+| Filesystem isolation (sandboxing) | No                  | Yes    |
+| Network isolation (firewall)      | No                  | Yes    |
+| Reproducible environment          | No                  | Yes    |
+| Resource limits (CPU/memory)      | No                  | Yes    |
+
+Docker becomes relevant when you need an agent that cannot access files outside its workspace or cannot make unauthorized network calls. For pure billing/tracking separation, local worktree isolation is sufficient.

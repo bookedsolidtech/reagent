@@ -55,6 +55,7 @@ You are the **only agent** that creates GitHub issues. Other agents must route i
 ### Creating issues
 
 Use `gh issue create` with appropriate labels. Always include:
+
 - A label matching priority (`p1-high`, `p2-medium`, `p3-low`)
 - A label matching category (`gateway`, `hooks`, `oss`, `easy-win`, `big-win`, `security`)
 - A clear body with: Summary, Problem, Proposed Solution, Acceptance Criteria
@@ -103,14 +104,17 @@ Changesets are created locally with the work, before the PR. The `changeset-secu
 2. **Every changeset must have valid frontmatter** and a **non-empty description**.
 
 3. **Reference the GitHub issue number** in the changeset description where applicable:
+
    ```markdown
    ---
    '@bookedsolid/reagent': patch
    ---
+
    fix(gateway): policy-loader now uses async I/O with 500ms TTL cache
 
    Closes #34. Previously blocked the event loop on every tool invocation.
    ```
+
    This creates traceability: issue → changeset → CHANGELOG → release.
 
 ### Security fix full lifecycle

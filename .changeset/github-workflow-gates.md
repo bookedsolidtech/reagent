@@ -7,17 +7,20 @@ feat(hooks): GitHub workflow gates — changeset security, PR issue linking, con
 Adds three new capabilities for GitHub-connected projects:
 
 **changeset-security-gate** (PreToolUse Write|Edit on `.changeset/*.md`):
+
 - Blocks GHSA IDs and CVE numbers from being written to changeset files before
   advisory publication — prevents pre-disclosure via git history and CHANGELOG
 - Validates changeset frontmatter format and requires a non-empty description
 - Enforces the vague-changeset pattern for security fixes
 
 **pr-issue-link-gate** (PreToolUse Bash on `gh pr create`):
+
 - Advisory (non-blocking) when a PR is created without `closes #N` / `fixes #N`
 - Ensures issues auto-close on merge and creates traceability through the
   issue → PR → changeset → CHANGELOG → release chain
 
 **Configurable disclosure mode** (`REAGENT_DISCLOSURE_MODE`):
+
 - `advisory` (default) — public OSS repos: blocks public issue creation for
   security findings and redirects to GitHub Security Advisories
 - `issues` — private client repos: redirects to labeled internal issue queue

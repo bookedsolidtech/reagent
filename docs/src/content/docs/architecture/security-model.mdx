@@ -22,12 +22,12 @@ These properties are enforced by the architecture and cannot be overridden by co
 
 ## Defense layers
 
-| Layer | Mechanism | Scope |
-|---|---|---|
-| Gateway middleware | Policy, paths, redaction, audit | All MCP tool calls |
-| Claude Code hooks | 20 shell scripts | Claude Code tool invocations |
-| Git hooks | Commit-msg, pre-commit, pre-push | Git operations |
-| Quality gates | Triage-based review, code-reviewer agent | Commits and pushes |
+| Layer              | Mechanism                                | Scope                        |
+| ------------------ | ---------------------------------------- | ---------------------------- |
+| Gateway middleware | Policy, paths, redaction, audit          | All MCP tool calls           |
+| Claude Code hooks  | 20 shell scripts                         | Claude Code tool invocations |
+| Git hooks          | Commit-msg, pre-commit, pre-push         | Git operations               |
+| Quality gates      | Triage-based review, code-reviewer agent | Commits and pushes           |
 
 Each layer operates independently. Disabling one does not compromise the others.
 
@@ -42,6 +42,7 @@ Additional paths can be protected via `blocked_paths` in `policy.yaml`.
 ### Redaction
 
 Secrets are redacted at two points:
+
 1. **Pre-execution** — tool arguments are scanned before reaching the downstream tool
 2. **Post-execution** — tool output is scanned before reaching the AI
 

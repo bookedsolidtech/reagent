@@ -9,22 +9,22 @@ Reagent uses four autonomy levels to control which tool tiers an agent can invok
 
 ## Levels
 
-| Level | Name | Allowed Tiers | Use Case |
-|---|---|---|---|
-| **L0** | Read-only | `read` | Auditing, investigation, read-only exploration |
-| **L1** | Standard | `read` + `write` | Normal development work |
-| **L2** | Elevated | `read` + `write` | Same as L1 with higher trust signals |
-| **L3** | Full access | `read` + `write` + `destructive` | Admin operations, cleanup tasks |
+| Level  | Name        | Allowed Tiers                    | Use Case                                       |
+| ------ | ----------- | -------------------------------- | ---------------------------------------------- |
+| **L0** | Read-only   | `read`                           | Auditing, investigation, read-only exploration |
+| **L1** | Standard    | `read` + `write`                 | Normal development work                        |
+| **L2** | Elevated    | `read` + `write`                 | Same as L1 with higher trust signals           |
+| **L3** | Full access | `read` + `write` + `destructive` | Admin operations, cleanup tasks                |
 
 ## Tool tiers
 
 Every tool call is classified into a tier before policy enforcement:
 
-| Tier | Description | Examples |
-|---|---|---|
-| `read` | Observes state, no side effects | `get_messages`, `list_channels`, `health_check` |
-| `write` | Modifies state | `send_message`, `create_channel`, `edit_message` |
-| `destructive` | Irreversible state changes | `delete_channel`, `purge_messages`, `ban_member` |
+| Tier          | Description                     | Examples                                         |
+| ------------- | ------------------------------- | ------------------------------------------------ |
+| `read`        | Observes state, no side effects | `get_messages`, `list_channels`, `health_check`  |
+| `write`       | Modifies state                  | `send_message`, `create_channel`, `edit_message` |
+| `destructive` | Irreversible state changes      | `delete_channel`, `purge_messages`, `ban_member` |
 
 ### Classification sources
 
@@ -36,11 +36,11 @@ Tier classification uses a layered approach:
 
 ### Convention-based prefixes
 
-| Prefix pattern | Tier |
-|---|---|
-| `get_`, `list_`, `search_`, `query_`, `read_`, `fetch_`, `check_`, `health_`, `describe_`, `show_`, `count_` | `read` |
-| `delete_`, `drop_`, `purge_`, `remove_`, `destroy_`, `ban_`, `kick_`, `revoke_`, `truncate_` | `destructive` |
-| Everything else | `write` |
+| Prefix pattern                                                                                               | Tier          |
+| ------------------------------------------------------------------------------------------------------------ | ------------- |
+| `get_`, `list_`, `search_`, `query_`, `read_`, `fetch_`, `check_`, `health_`, `describe_`, `show_`, `count_` | `read`        |
+| `delete_`, `drop_`, `purge_`, `remove_`, `destroy_`, `ban_`, `kick_`, `revoke_`, `truncate_`                 | `destructive` |
+| Everything else                                                                                              | `write`       |
 
 ## Max autonomy level
 

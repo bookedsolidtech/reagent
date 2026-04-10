@@ -8,7 +8,8 @@ sidebar:
 import { Aside } from '@astrojs/starlight/components';
 
 <Aside type="note">
-This is a proposal document. The architecture requires proof-of-concept validation before implementation.
+  This is a proposal document. The architecture requires proof-of-concept validation before
+  implementation.
 </Aside>
 
 ## Problem statement
@@ -69,13 +70,13 @@ const child = spawn('claude', ['-p', prompt, '--output-format', 'json'], {
 
 ### Auth token precedence
 
-| Priority | Source | Type | Billing |
-|---|---|---|---|
-| 1 | `ANTHROPIC_AUTH_TOKEN` env var | OAuth | Max Plan |
-| 2 | `CLAUDE_CODE_OAUTH_TOKEN` env var | OAuth | Max Plan (flat rate) |
-| 3 | `CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR` | OAuth (fd) | Max Plan |
-| 4 | `apiKeyHelper` (external command from settings) | Varies | Varies |
-| 5 | Keychain-stored OAuth (`claude auth login`) | OAuth | Max Plan |
+| Priority | Source                                          | Type       | Billing              |
+| -------- | ----------------------------------------------- | ---------- | -------------------- |
+| 1        | `ANTHROPIC_AUTH_TOKEN` env var                  | OAuth      | Max Plan             |
+| 2        | `CLAUDE_CODE_OAUTH_TOKEN` env var               | OAuth      | Max Plan (flat rate) |
+| 3        | `CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR`       | OAuth (fd) | Max Plan             |
+| 4        | `apiKeyHelper` (external command from settings) | Varies     | Varies               |
+| 5        | Keychain-stored OAuth (`claude auth login`)     | OAuth      | Max Plan             |
 
 For multi-token workstreams, `CLAUDE_CODE_OAUTH_TOKEN` is the correct lever. The spawner must explicitly delete `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from the child env to prevent accidental per-token billing.
 
@@ -133,21 +134,21 @@ workstream:
 
 ## Implementation phases
 
-| Phase | Scope | Dependencies |
-|---|---|---|
-| Phase 1 | Account context system | POC validation |
-| Phase 2 | Workstream spawner | Phase 1 |
-| Phase 3 | Budget tracking and observability | Phase 2 |
+| Phase   | Scope                             | Dependencies   |
+| ------- | --------------------------------- | -------------- |
+| Phase 1 | Account context system            | POC validation |
+| Phase 2 | Workstream spawner                | Phase 1        |
+| Phase 3 | Budget tracking and observability | Phase 2        |
 
 ## What Docker adds (later, opt-in)
 
-| Capability | Local | Docker |
-|---|---|---|
-| Token isolation (billing) | Yes | Yes |
-| Session state isolation | Yes (via worktrees) | Yes |
-| Filesystem isolation (sandboxing) | No | Yes |
-| Network isolation (firewall) | No | Yes |
-| Reproducible environment | No | Yes |
-| Resource limits (CPU/memory) | No | Yes |
+| Capability                        | Local               | Docker |
+| --------------------------------- | ------------------- | ------ |
+| Token isolation (billing)         | Yes                 | Yes    |
+| Session state isolation           | Yes (via worktrees) | Yes    |
+| Filesystem isolation (sandboxing) | No                  | Yes    |
+| Network isolation (firewall)      | No                  | Yes    |
+| Reproducible environment          | No                  | Yes    |
+| Resource limits (CPU/memory)      | No                  | Yes    |
 
 Docker becomes relevant when you need an agent that cannot access files outside its workspace or cannot make unauthorized network calls. For pure billing/tracking separation, local worktree isolation is sufficient.

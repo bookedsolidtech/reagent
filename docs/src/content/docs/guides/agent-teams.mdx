@@ -13,13 +13,13 @@ Reagent installs 89 AI agent definitions into `.claude/agents/` covering enginee
 
 ## Key agents
 
-| Agent | Role |
-|---|---|
-| `reagent-orchestrator` | Team orchestrator — routes tasks to specialists, governs AI operations |
-| `product-owner` | Task backlog management with built-in guardrails |
-| `code-reviewer` | Code review with TypeScript, accessibility, performance, security focus |
-| `security-engineer` | Application security, OWASP, penetration testing |
-| `principal-engineer` | Architecture decisions and cross-cutting concerns |
+| Agent                  | Role                                                                    |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `reagent-orchestrator` | Team orchestrator — routes tasks to specialists, governs AI operations  |
+| `product-owner`        | Task backlog management with built-in guardrails                        |
+| `code-reviewer`        | Code review with TypeScript, accessibility, performance, security focus |
+| `security-engineer`    | Application security, OWASP, penetration testing                        |
+| `principal-engineer`   | Architecture decisions and cross-cutting concerns                       |
 
 ## Agent categories
 
@@ -36,6 +36,7 @@ Specialized agents for Anthropic Claude, OpenAI, Google Gemini, open-source mode
 Agents are Markdown files with frontmatter metadata. When invoked via `subagent_type` in Claude Code, the agent's system prompt is loaded and the specialist operates within its defined scope.
 
 All agents follow the zero-trust protocol:
+
 - Read files before editing
 - Verify state before claiming status
 - Check HALT before taking action

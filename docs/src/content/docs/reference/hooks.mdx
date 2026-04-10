@@ -11,20 +11,20 @@ Reagent installs 20 Claude Code hooks that enforce security, quality, and projec
 
 Hooks use a shared library (`hooks/_lib/common.sh`) providing:
 
-| Function | Purpose |
-|---|---|
+| Function       | Purpose                                               |
+| -------------- | ----------------------------------------------------- |
 | `reagent_root` | Find the `.reagent/` directory by walking up from cwd |
-| `check_halt` | Exit with code 2 if `.reagent/HALT` exists |
-| `require_jq` | Verify jq is available |
-| `json_output` | Build structured JSON response (block/allow/advisory) |
-| `triage_score` | Score a diff as trivial/standard/significant |
+| `check_halt`   | Exit with code 2 if `.reagent/HALT` exists            |
+| `require_jq`   | Verify jq is available                                |
+| `json_output`  | Build structured JSON response (block/allow/advisory) |
+| `triage_score` | Score a diff as trivial/standard/significant          |
 
 ## Exit code convention
 
-| Code | Meaning |
-|---|---|
-| `0` | Allow the tool call |
-| `2` | Block the tool call |
+| Code | Meaning             |
+| ---- | ------------------- |
+| `0`  | Allow the tool call |
+| `2`  | Block the tool call |
 
 ## Security hooks
 
@@ -40,23 +40,23 @@ Hooks use a shared library (`hooks/_lib/common.sh`) providing:
 
 Intercepts dangerous shell commands:
 
-| ID | Blocked Pattern |
-|---|---|
-| H1 | `git push --force` / `-f` to protected branches |
-| H2 | `rm -rf /` or `rm -rf ~` |
-| H3 | `chmod 777` |
-| H4 | `curl \| sh`, `wget \| sh` (pipe-to-shell) |
-| H5 | `> /dev/sda` (disk overwrite) |
-| H6 | Fork bomb |
-| H7 | `mkfs` (disk format) |
-| H8 | `dd if=` (disk copy) |
-| H9 | `.env` file access via cat/less/head/tail |
-| H10 | `shutdown`, `reboot`, `halt`, `poweroff` |
-| H11 | `kill -9`, `killall`, `pkill` |
-| H12 | `iptables` / `ufw` (firewall modification) |
-| H13 | `git push --no-verify` |
-| H14 | `git -c core.hooksPath=` (hook path override) |
-| H15 | `REAGENT_BYPASS` environment variable |
+| ID  | Blocked Pattern                                      |
+| --- | ---------------------------------------------------- |
+| H1  | `git push --force` / `-f` to protected branches      |
+| H2  | `rm -rf /` or `rm -rf ~`                             |
+| H3  | `chmod 777`                                          |
+| H4  | `curl \| sh`, `wget \| sh` (pipe-to-shell)           |
+| H5  | `> /dev/sda` (disk overwrite)                        |
+| H6  | Fork bomb                                            |
+| H7  | `mkfs` (disk format)                                 |
+| H8  | `dd if=` (disk copy)                                 |
+| H9  | `.env` file access via cat/less/head/tail            |
+| H10 | `shutdown`, `reboot`, `halt`, `poweroff`             |
+| H11 | `kill -9`, `killall`, `pkill`                        |
+| H12 | `iptables` / `ufw` (firewall modification)           |
+| H13 | `git push --no-verify`                               |
+| H14 | `git -c core.hooksPath=` (hook path override)        |
+| H15 | `REAGENT_BYPASS` environment variable                |
 | H16 | Alias/function definitions containing bypass strings |
 
 ### `secret-scanner.sh` (PreToolUse: Write, Edit)
@@ -97,11 +97,11 @@ Blocks writes to `.github/workflows/` and other CI configuration files.
 
 Intercepts `git commit` and applies triage-based review:
 
-| Level | Criteria | Action |
-|---|---|---|
-| **Trivial** | Fewer than 20 changed lines, no sensitive paths | Pass immediately |
-| **Standard** | 20–200 changed lines | Check review cache; pass if cached |
-| **Significant** | More than 200 lines OR sensitive paths | Block; instruct agent to spawn `code-reviewer` |
+| Level           | Criteria                                        | Action                                         |
+| --------------- | ----------------------------------------------- | ---------------------------------------------- |
+| **Trivial**     | Fewer than 20 changed lines, no sensitive paths | Pass immediately                               |
+| **Standard**    | 20–200 changed lines                            | Check review cache; pass if cached             |
+| **Significant** | More than 200 lines OR sensitive paths          | Block; instruct agent to spawn `code-reviewer` |
 
 ### `push-review-gate.sh` (PreToolUse: Bash)
 

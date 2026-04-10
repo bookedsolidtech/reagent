@@ -14,6 +14,7 @@ Reagent registers 9 first-party tools directly on the gateway. These go through 
 Create a new task in `.reagent/tasks.jsonl`.
 
 **Parameters:**
+
 - `title` (required) — Task title (1-200 characters)
 - `description` — Detailed description
 - `urgency` — `critical`, `normal`, or `low` (default: `normal`)
@@ -27,6 +28,7 @@ Create a new task in `.reagent/tasks.jsonl`.
 Update a task's status, title, urgency, or fields.
 
 **Parameters:**
+
 - `id` (required) — Task ID (T-NNN format)
 - `type` (required) — `started`, `completed`, `blocked`, or `cancelled`
 - Plus any updatable fields from `task_create`
@@ -36,6 +38,7 @@ Update a task's status, title, urgency, or fields.
 List tasks with optional filters.
 
 **Parameters:**
+
 - `status` — Filter by status
 - `urgency` — Filter by urgency
 - `phase` — Filter by phase
@@ -45,6 +48,7 @@ List tasks with optional filters.
 Get a single task by ID.
 
 **Parameters:**
+
 - `id` (required) — Task ID (T-NNN format)
 
 ### `task_delete`
@@ -52,6 +56,7 @@ Get a single task by ID.
 Cancel a task (soft delete via cancelled event).
 
 **Parameters:**
+
 - `id` (required) — Task ID (T-NNN format)
 
 ### `task_sync_github`

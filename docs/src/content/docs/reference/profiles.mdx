@@ -9,10 +9,10 @@ Profiles control what Reagent installs during `reagent init`. There are two type
 
 ## Base profiles
 
-| Profile | Use Case | Default Autonomy | Blocked Paths |
-|---|---|---|---|
-| `client-engagement` | Client consulting projects | L1 / max L2 | `.reagent/`, `.github/workflows/`, `.env`, `.env.*` |
-| `bst-internal` | BST's own repositories | L1 / max L2 | `.reagent/`, `.env` |
+| Profile             | Use Case                   | Default Autonomy | Blocked Paths                                       |
+| ------------------- | -------------------------- | ---------------- | --------------------------------------------------- |
+| `client-engagement` | Client consulting projects | L1 / max L2      | `.reagent/`, `.github/workflows/`, `.env`, `.env.*` |
+| `bst-internal`      | BST's own repositories     | L1 / max L2      | `.reagent/`, `.env`                                 |
 
 Both profiles install the full hook suite, quality gates, Cursor rules, and Claude commands.
 
@@ -20,12 +20,12 @@ Both profiles install the full hook suite, quality gates, Cursor rules, and Clau
 
 Tech stack profiles extend the base installation with domain-specific hooks and gates:
 
-| Profile | Stack | Extra Hooks |
-|---|---|---|
+| Profile  | Stack              | Extra Hooks                                           |
+| -------- | ------------------ | ----------------------------------------------------- |
 | `nextjs` | Next.js App Router | `server-component-drift.sh` — RSC boundary violations |
-| `lit-wc` | Lit/Web Components | `shadow-dom-guard.sh`, `cem-integrity-gate.sh` |
-| `drupal` | Drupal CMS | `drupal-coding-standards.sh`, `hook-update-guard.sh` |
-| `astro` | Astro | `astro-ssr-guard.sh` — SSR/static boundary violations |
+| `lit-wc` | Lit/Web Components | `shadow-dom-guard.sh`, `cem-integrity-gate.sh`        |
+| `drupal` | Drupal CMS         | `drupal-coding-standards.sh`, `hook-update-guard.sh`  |
+| `astro`  | Astro              | `astro-ssr-guard.sh` — SSR/static boundary violations |
 
 Each tech profile also ships a `gates.yaml` (preflight checks for CI) and a recommended agent list.
 

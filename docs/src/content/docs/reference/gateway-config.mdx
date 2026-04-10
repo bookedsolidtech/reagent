@@ -40,19 +40,19 @@ discord_ops:
 
 ## Server fields
 
-| Field | Type | Description |
-|---|---|---|
-| `command` | `string` | Command to start the MCP server |
-| `args` | `string[]` | Arguments to pass to the command |
-| `env` | `Record<string, string>` | Environment variables for the server process |
-| `tool_overrides` | `Record<string, ToolOverride>` | Per-tool tier and blocked overrides |
+| Field            | Type                           | Description                                  |
+| ---------------- | ------------------------------ | -------------------------------------------- |
+| `command`        | `string`                       | Command to start the MCP server              |
+| `args`           | `string[]`                     | Arguments to pass to the command             |
+| `env`            | `Record<string, string>`       | Environment variables for the server process |
+| `tool_overrides` | `Record<string, ToolOverride>` | Per-tool tier and blocked overrides          |
 
 ## Tool override fields
 
-| Field | Type | Description |
-|---|---|---|
-| `tier` | `read`, `write`, or `destructive` | Override the tool's tier classification |
-| `blocked` | `boolean` | Block the tool entirely regardless of autonomy level |
+| Field     | Type                              | Description                                          |
+| --------- | --------------------------------- | ---------------------------------------------------- |
+| `tier`    | `read`, `write`, or `destructive` | Override the tool's tier classification              |
+| `blocked` | `boolean`                         | Block the tool entirely regardless of autonomy level |
 
 ### Override constraints
 
@@ -66,10 +66,10 @@ Use `${VAR_NAME}` syntax in env values. Reagent resolves them from `process.env`
 
 The `discord_ops` top-level block configures Discord notification routing:
 
-| Field | Type | Description |
-|---|---|---|
-| `guild_id` | `string` | Discord server (guild) ID |
-| `channels.alerts` | `string` | Channel ID for security alerts |
-| `channels.tasks` | `string` | Channel ID for task events |
-| `channels.releases` | `string` | Channel ID for release events |
-| `channels.dev` | `string` | Channel ID for dev activity |
+| Field               | Type     | Description                    |
+| ------------------- | -------- | ------------------------------ |
+| `guild_id`          | `string` | Discord server (guild) ID      |
+| `channels.alerts`   | `string` | Channel ID for security alerts |
+| `channels.tasks`    | `string` | Channel ID for task events     |
+| `channels.releases` | `string` | Channel ID for release events  |
+| `channels.dev`      | `string` | Channel ID for dev activity    |

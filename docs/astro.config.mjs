@@ -8,8 +8,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Reagent',
-      description:
-        'Zero-trust MCP gateway and agentic infrastructure for AI-assisted development.',
+      description: 'Zero-trust MCP gateway and agentic infrastructure for AI-assisted development.',
       social: [
         {
           icon: 'github',

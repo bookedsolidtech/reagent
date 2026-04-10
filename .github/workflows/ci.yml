@@ -4,7 +4,11 @@ on:
   pull_request:
     branches: [main, dev, staging]
   push:
-    branches: [main, staging]
+    # main and staging: post-merge validation
+    # changeset-release/**: Changesets bot pushes using GITHUB_TOKEN, which does
+    # not trigger pull_request events — run CI on push so the release PR gets
+    # check results and can merge without admin bypass.
+    branches: [main, staging, changeset-release/**]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

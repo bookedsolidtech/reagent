@@ -1,5 +1,104 @@
 # @bookedsolid/reagent
 
+## 0.10.0
+
+### Minor Changes
+
+- af9a07b: feat(daemon): add persistent Rust HTTP/SSE multi-project MCP gateway daemon
+
+  Adds `reagent daemon` — a persistent Rust (axum/tokio) daemon that serves
+  multiple simultaneous editor sessions over HTTP/SSE, each isolated to their
+  own project context loaded from that project's `.reagent/` config.
+
+  **Architecture:**
+  - Rust daemon (~5MB RAM idle) handles HTTP, SSE, session registry, and process
+    lifecycle; TypeScript gateway handles all existing middleware (untouched)
+  - Per-session `reagent serve` child process spawned on first POST /mcp
+  - SSE receiver stored in `ProjectContext` until claimed by GET /mcp
+  - Session TTL eviction runs every 60s in a background tokio task
+
+  **Routes:**
+  - `GET /health` — liveness check with version, session count, uptime
+  - `GET /sessions` — list active sessions with project roots and idle times
+  - `POST /mcp` — receive JSON-RPC, create or resume session, forward to child stdin
+  - `GET /mcp` — SSE stream delivering child stdout to the editor
+
+  **CLI (`reagent daemon`):**
+  - `start` — spawn daemon binary in background, write PID to `~/.reagent/daemon.pid`
+  - `stop` — SIGTERM + poll for process exit
+  - `restart` — graceful stop then start (waits for confirmed exit before re-launch)
+  - `status` — hit `/health` + `/sessions`, pretty-print with elapsed idle times
+
+  **Configuration (`~/.reagent/daemon.yaml`):**
+  - `port` (default 7777), `bind` (default 127.0.0.1), `session_ttl_minutes` (default 30)
+  - `log_level` passed through as `RUST_LOG`
+  - Binary path overridable via `REAGENT_BIN` env var
+
+  **Graceful shutdown:**
+  - SIGTERM/SIGINT handlers (with ctrl-c fallback if registration fails)
+  - Broadcasts SSE close event to all open streams
+  - 5s drain window, then kills child processes
+
+## 0.9.0
+
+### Minor Changes
+
+- 45050b5: feat(agents): add pr-voice-reviewer agent and /review-pr skill
+
+  Adds a two-layer PR review system: code-reviewer agent produces structured
+  technical findings, pr-voice-reviewer agent rewrites them in the project
+  owner's natural voice, then posts as a single batched GitHub pull review
+  with inline line comments. Reviews are indistinguishable from a human
+  going through the diff deliberately.
+
+  Closes #49.
+
+## 0.8.0
+
+### Minor Changes
+
+- cb543d6: feat(hooks): GitHub workflow gates — changeset security, PR issue linking, configurable disclosure mode
+
+  Adds three new capabilities for GitHub-connected projects:
+
+  **changeset-security-gate** (PreToolUse Write|Edit on `.changeset/*.md`):
+  - Blocks GHSA IDs and CVE numbers from being written to changeset files before
+    advisory publication — prevents pre-disclosure via git history and CHANGELOG
+  - Validates changeset frontmatter format and requires a non-empty description
+  - Enforces the vague-changeset pattern for security fixes
+
+  **pr-issue-link-gate** (PreToolUse Bash on `gh pr create`):
+  - Advisory (non-blocking) when a PR is created without `closes #N` / `fixes #N`
+  - Ensures issues auto-close on merge and creates traceability through the
+    issue → PR → changeset → CHANGELOG → release chain
+
+  **Configurable disclosure mode** (`REAGENT_DISCLOSURE_MODE`):
+  - `advisory` (default) — public OSS repos: blocks public issue creation for
+    security findings and redirects to GitHub Security Advisories
+  - `issues` — private client repos: redirects to labeled internal issue queue
+    (`--label security,internal`) instead of Security Advisories
+  - `disabled` — no gate
+  - Set via `security.disclosureMode` in the profile JSON; written to
+    `.reagent/policy.yaml` and injected into `.claude/settings.json` env
+
+  Both new hooks wired into `bst-internal` and `client-engagement` profiles.
+  Product-owner agent updated with full GitHub workflow: issue creation standards,
+  PR/issue linking discipline, changeset lifecycle, and security fix disclosure flow.
+
+### Patch Changes
+
+- 63aa341: feat(security): add security-disclosure-gate hook and SECURITY.md policy
+
+  Adds a new `security-disclosure-gate` Claude Code hook that intercepts
+  `gh issue create` commands containing ~30 security-sensitive keywords
+  (bypass, exploit, CVE-, prompt inject, jailbreak, etc.) and blocks them
+  with instructions to use GitHub Security Advisories for private disclosure.
+
+  Also adds SECURITY.md with coordinated disclosure policy, response timeline,
+  scope definition, and two-layer security architecture documentation.
+
+  Hook is wired into `bst-internal` and `client-engagement` profiles.
+
 ## 0.7.2
 
 ### Patch Changes

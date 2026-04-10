@@ -6,7 +6,7 @@ mod session;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use tracing_subscriber::{fmt, EnvFilter};
 
 use crate::config::DaemonConfig;
@@ -114,12 +114,22 @@ async fn shutdown_signal(state: AppState) {
     #[cfg(unix)]
     {
         use tokio::signal::unix::{signal, SignalKind};
-        let mut sigterm = signal(SignalKind::terminate()).expect("SIGTERM handler failed");
-        let mut sigint = signal(SignalKind::interrupt()).expect("SIGINT handler failed");
 
-        tokio::select! {
-            _ = sigterm.recv() => { info!("SIGTERM received"); }
-            _ = sigint.recv()  => { info!("SIGINT received"); }
+        let sigterm = signal(SignalKind::terminate());
+        let sigint = signal(SignalKind::interrupt());
+
+        match (sigterm, sigint) {
+            (Ok(mut st), Ok(mut si)) => {
+                tokio::select! {
+                    _ = st.recv() => { info!("SIGTERM received"); }
+                    _ = si.recv() => { info!("SIGINT received"); }
+                }
+            }
+            _ => {
+                warn!("Failed to register Unix signal handlers — falling back to ctrl-c");
+                tokio::signal::ctrl_c().await.ok();
+                info!("Ctrl-C received");
+            }
         }
     }
     #[cfg(not(unix))]
@@ -132,15 +142,14 @@ async fn shutdown_signal(state: AppState) {
 
     // Broadcast close event to all open SSE streams, then kill child processes.
     let mut guard = state.registry.write().await;
-    for ctx in guard.sessions.values_mut() {
-        // Send close event — receiver (SSE handler) will terminate its stream
-        let _ = ctx
-            .sse_tx
-            .send(Ok(axum::response::sse::Event::default()
-                .event("close")
-                .data("restarting")));
-
-        // Give in-flight requests a moment before killing children
+    for ctx in guard.values_mut() {
+        // Send close event — receiver (SSE handler) will terminate its stream.
+        // Use try_send (non-blocking) because we hold a write lock and cannot await.
+        // The SSE channel has capacity 64 so this will succeed unless the client
+        // is extremely slow; on failure we proceed with the kill anyway.
+        let _ = ctx.sse_tx.try_send(Ok(axum::response::sse::Event::default()
+            .event("close")
+            .data("restarting")));
     }
     drop(guard);
 
@@ -149,12 +158,12 @@ async fn shutdown_signal(state: AppState) {
 
     // Kill remaining child processes.
     let mut guard = state.registry.write().await;
-    for ctx in guard.sessions.values_mut() {
+    for ctx in guard.values_mut() {
         if let Err(e) = ctx.child.kill().await {
             tracing::warn!("Failed to kill child process: {}", e);
         }
     }
-    guard.sessions.clear();
+    guard.clear();
 
     info!("Graceful shutdown complete");
 }

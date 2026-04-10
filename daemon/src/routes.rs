@@ -44,7 +44,7 @@ struct HealthResponse {
 async fn health_handler(State(state): State<AppState>) -> Json<HealthResponse> {
     let session_count = {
         let guard = state.registry.read().await;
-        guard.sessions.len()
+        guard.len()
     };
 
     let uptime_seconds = std::time::SystemTime::now()
@@ -115,9 +115,9 @@ async fn mcp_post_handler(
     let session_id: SessionId = match headers.get("x-session-id").and_then(|v| v.to_str().ok()) {
         Some(id) if !id.is_empty() => id.to_string(),
         _ => {
-            // Create new session
+            // Create new session — spawn child and store sse_rx inside the context
             let new_id = Uuid::new_v4().to_string();
-            let (ctx, _sse_rx) = ProjectContext::spawn(&project_path, &new_id)
+            let ctx = ProjectContext::spawn(&project_path, &new_id)
                 .await
                 .map_err(|e| {
                     error!(session_id = %new_id, "Failed to spawn child: {}", e);
@@ -137,7 +137,7 @@ async fn mcp_post_handler(
     // Forward the body to child stdin and update last_activity
     let sent = {
         let mut guard = state.registry.write().await;
-        match guard.sessions.get_mut(&session_id) {
+        match guard.get_mut(&session_id) {
             Some(ctx) => {
                 ctx.touch();
                 let tx = ctx.stdin_tx.clone();
@@ -178,44 +178,23 @@ async fn mcp_post_handler(
 ///
 /// Returns an SSE stream. The editor keeps this connection open to receive
 /// server-initiated MCP messages from the child process.
+///
+/// The session must first be created via POST /mcp (which spawns the child and
+/// stores the SSE receiver inside the session context). This handler takes the
+/// receiver out of the session and wraps it in an SSE stream.
 async fn mcp_sse_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let session_id = extract_header(&headers, "x-session-id")?;
 
-    // Spawn a new child for this SSE connection and register the session.
-    // The POST /mcp handler may have already created the session — if the
-    // session already exists, we hand out a new SSE channel that the existing
-    // child writes to.
-    //
-    // Implementation note: POST creates sessions; GET /mcp either joins an
-    // existing session or returns 404. This avoids the race where two editors
-    // connect with the same session ID and each thinks it owns the child.
+    // Take the SSE receiver from the session under a write lock.
+    // The receiver was stored in ProjectContext when POST /mcp created the session.
+    // INVARIANT: write lock is not held across any await point.
     let sse_rx = {
-        let guard = state.registry.read().await;
-        match guard.sessions.get(&session_id) {
-            Some(_) => {
-                // Session exists — but we need a new SSE receiver for this
-                // HTTP connection. We re-use the same child by spawning a
-                // new channel pair and re-wiring the reader task.
-                //
-                // For now, return 409 if the session already has an SSE
-                // listener — one session, one active SSE stream.
-                return Err((
-                    StatusCode::CONFLICT,
-                    format!(
-                        "Session {} already has an active SSE stream. \
-                         Disconnect the existing stream first.",
-                        session_id
-                    ),
-                ));
-            }
+        let mut guard = state.registry.write().await;
+        match guard.get_mut(&session_id) {
             None => {
-                drop(guard);
-                // No existing session — create one for this SSE connection.
-                // The project root must be provided via query param or a
-                // prior POST /mcp that created the session.
                 return Err((
                     StatusCode::NOT_FOUND,
                     format!(
@@ -224,16 +203,24 @@ async fn mcp_sse_handler(
                     ),
                 ));
             }
+            Some(ctx) => match ctx.take_sse_rx() {
+                Some(rx) => rx,
+                None => {
+                    return Err((
+                        StatusCode::CONFLICT,
+                        format!(
+                            "Session {} already has an active SSE stream. \
+                             Disconnect the existing stream first.",
+                            session_id
+                        ),
+                    ));
+                }
+            },
         }
     };
 
-    // Unreachable in the current implementation — both branches above return.
-    // Left as a type placeholder; the sse_rx type below is inferred.
-    #[allow(unreachable_code)]
-    {
-        let stream = ReceiverStream::new(sse_rx);
-        Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
-    }
+    let stream = ReceiverStream::new(sse_rx);
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
 
 fn extract_header(headers: &HeaderMap, name: &'static str) -> Result<String, (StatusCode, String)> {

@@ -23,14 +23,15 @@ export interface DaemonAuth {
   api_keys?: readonly string[];
 }
 
-/** Represents a single active session as returned by GET /sessions. */
+/** Represents a single active session as returned by GET /sessions.
+ *
+ * Field names match the Rust SessionSummary struct in daemon/src/session.rs.
+ */
 export interface DaemonSession {
   session_id: string;
   project_root: string;
-  /** ISO-8601 timestamp of last MCP activity on this session. */
-  last_activity: string;
-  /** Seconds remaining before TTL eviction. */
-  ttl_remaining_seconds: number;
+  /** Seconds elapsed since last MCP activity on this session. */
+  last_activity_elapsed_secs: number;
 }
 
 /** Shape of GET /health response body. */

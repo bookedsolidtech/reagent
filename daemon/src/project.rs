@@ -27,6 +27,10 @@ pub struct ProjectContext {
     pub child: Child,
     /// Send SSE events to the connected editor client.
     pub sse_tx: SseSender,
+    /// Pending SSE receiver — held until claimed by the GET /mcp SSE handler.
+    /// Becomes None once the first SSE connection takes it. A new (sse_tx, sse_rx)
+    /// pair would be needed to support reconnects (future work).
+    sse_rx: Option<SseReceiver>,
     /// Send JSON-RPC messages into the child process stdin.
     pub stdin_tx: StdinSender,
     /// Updated on every MCP message; used for TTL eviction.
@@ -39,21 +43,33 @@ impl ProjectContext {
     ///
     /// The caller must already have verified that `project_root` contains a
     /// `.reagent/policy.yaml` before calling this.
-    pub async fn spawn(project_root: &Path, session_id: &str) -> Result<(Self, SseReceiver)> {
+    ///
+    /// `reagent_bin` overrides the binary path; defaults to `"reagent"` (resolved
+    /// via PATH). Set `REAGENT_BIN` env var or pass explicitly for tests / dev.
+    pub async fn spawn(project_root: &Path, session_id: &str) -> Result<Self> {
+        let reagent_bin =
+            std::env::var("REAGENT_BIN").unwrap_or_else(|_| "reagent".to_string());
+
         info!(
             session_id = %session_id,
             project_root = %project_root.display(),
+            binary = %reagent_bin,
             "Spawning reagent serve child process"
         );
 
-        let mut child = Command::new("reagent")
+        let mut child = Command::new(&reagent_bin)
             .args(["serve"])
             .current_dir(project_root)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::inherit())
             .spawn()
-            .context("Failed to spawn `reagent serve`. Is reagent installed and on PATH?")?;
+            .with_context(|| {
+                format!(
+                    "Failed to spawn `{reagent_bin} serve`. \
+                     Is reagent installed and on PATH, or set REAGENT_BIN?"
+                )
+            })?;
 
         let child_stdout = child
             .stdout
@@ -66,7 +82,8 @@ impl ProjectContext {
             .context("Child stdin was not piped — this is a bug")?;
 
         // SSE channel: child stdout → editor client
-        let (sse_tx, sse_rx) = mpsc::channel::<Result<Event, std::convert::Infallible>>(SSE_CHANNEL_CAPACITY);
+        let (sse_tx, sse_rx) =
+            mpsc::channel::<Result<Event, std::convert::Infallible>>(SSE_CHANNEL_CAPACITY);
 
         // Stdin channel: HTTP POST handler → child stdin
         let (stdin_tx, stdin_rx) = mpsc::channel::<String>(64);
@@ -119,19 +136,27 @@ impl ProjectContext {
             let _ = stdin.flush().await;
         });
 
-        let ctx = ProjectContext {
+        Ok(ProjectContext {
             project_root: project_root.to_path_buf(),
             child,
             sse_tx,
+            sse_rx: Some(sse_rx),
             stdin_tx,
             last_activity: Instant::now(),
-        };
-
-        Ok((ctx, sse_rx))
+        })
     }
 
     /// Update the last-activity timestamp. Call on every MCP message.
     pub fn touch(&mut self) {
         self.last_activity = Instant::now();
+    }
+
+    /// Take the pending SSE receiver for streaming to a connected client.
+    ///
+    /// Returns `Some(receiver)` on the first call (new connection), then `None`
+    /// on all subsequent calls (stream already claimed). The caller is responsible
+    /// for serving the stream until the client disconnects.
+    pub fn take_sse_rx(&mut self) -> Option<SseReceiver> {
+        self.sse_rx.take()
     }
 }

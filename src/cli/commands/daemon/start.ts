@@ -157,6 +157,11 @@ export function runDaemonStart(args: string[]): void {
 
   child.unref();
 
+  if (child.pid === undefined) {
+    console.error('[reagent] Failed to obtain daemon PID after spawn — daemon may not be running');
+    process.exit(1);
+  }
+
   const pidPath = getPidFilePath();
   fs.writeFileSync(pidPath, String(child.pid), 'utf8');
 

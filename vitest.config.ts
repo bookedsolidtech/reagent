@@ -17,6 +17,11 @@ export default defineConfig({
       exclude: [
         '**/*.test.ts',
         '**/index.ts', // CLI entry — tested via e2e
+        '**/cli/commands/**', // CLI command handlers — thin orchestrators, covered by e2e smoke tests
+        '**/gateway/server.ts', // Gateway server orchestrator — covered by e2e smoke tests
+        '**/gateway/client-manager.ts', // Downstream client manager — covered by e2e smoke tests
+        '**/gateway/native-tools.ts', // MCP tool registrations — covered by e2e smoke tests
+        '**/pm/github-bridge.ts', // GitHub CLI bridge — integration tested, no unit test surface
         '**/__tests__/**',
       ],
       // Thresholds — enforced when --coverage is passed

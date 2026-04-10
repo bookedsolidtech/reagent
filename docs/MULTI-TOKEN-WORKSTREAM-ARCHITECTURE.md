@@ -79,15 +79,44 @@ Claude Code reads `CLAUDE_CODE_OAUTH_TOKEN` from its process environment. Two pr
 
 ### 3.2 Claude Code Auth Token Precedence
 
-Based on Claude Code CLI behavior:
+**Verified from Claude Code CLI source** (`cli.js` v2.1.74, `Ab()` function). OAuth cascade — first match wins:
 
-| Priority | Env Var                      | Type         | Billing                 |
-| -------- | ---------------------------- | ------------ | ----------------------- |
-| 1        | `ANTHROPIC_API_KEY`          | API key      | Per-token (usage-based) |
-| 2        | `CLAUDE_CODE_OAUTH_TOKEN`    | OAuth token  | Max Plan (flat rate)    |
-| 3        | `~/.claude.json` credentials | Cached OAuth | Max Plan                |
+| Priority | Source                                          | Type       | Billing              |
+| -------- | ----------------------------------------------- | ---------- | -------------------- |
+| 1        | `ANTHROPIC_AUTH_TOKEN` env var                  | OAuth      | Max Plan             |
+| 2        | `CLAUDE_CODE_OAUTH_TOKEN` env var               | OAuth      | Max Plan (flat rate) |
+| 3        | `CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR`       | OAuth (fd) | Max Plan             |
+| 4        | `apiKeyHelper` (external command from settings) | Varies     | Varies               |
+| 5        | Keychain-stored OAuth (`claude auth login`)     | OAuth      | Max Plan             |
 
-**Critical:** If `ANTHROPIC_API_KEY` is set, it takes precedence over OAuth. The workstream spawner must **explicitly unset** `ANTHROPIC_API_KEY` when spawning OAuth-token workstreams to prevent accidental per-token billing.
+Separately, `ANTHROPIC_API_KEY` is resolved by a different function (`hw()`) for direct API billing. **It overrides subscription auth entirely.**
+
+**For multi-token workstreams, `CLAUDE_CODE_OAUTH_TOKEN` is the correct lever.** It takes precedence over any cached keychain credential without requiring you to clear local auth state. The spawner must **explicitly delete** `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from the child env to prevent accidental per-token billing.
+
+Additionally, `CLAUDE_CODE_OAUTH_REFRESH_TOKEN` (paired with `CLAUDE_CODE_OAUTH_SCOPES`) enables auto-refreshing for long-running sessions.
+
+**`--bare` flag warning:** The `--bare` flag "skips OAuth and keychain reads" and requires `ANTHROPIC_API_KEY` or `apiKeyHelper`. If your workstreams use `CLAUDE_CODE_OAUTH_TOKEN` (subscription billing), you **cannot** use `--bare`. Omit it and accept slightly slower startup.
+
+### 3.2.1 Config Directory Isolation
+
+Claude Code uses two distinct directories:
+
+| Directory        | Purpose                                            | Override                      |
+| ---------------- | -------------------------------------------------- | ----------------------------- |
+| `~/.claude/`     | User-level: settings, credentials, session history | `CLAUDE_CONFIG_DIR` env var   |
+| `<cwd>/.claude/` | Project-level: CLAUDE.md, project settings, agents | None — always relative to cwd |
+
+Per the official docs, separate config dirs are an officially supported pattern:
+
+```bash
+# Official pattern from Anthropic docs:
+alias claude-work='CLAUDE_CONFIG_DIR=~/.claude-work claude'
+```
+
+For multi-token workstreams, set **both**:
+
+- `CLAUDE_CONFIG_DIR` per workstream — isolates credentials, history, session state
+- `cwd` (spawn option) pointing to the worktree — isolates project-level config
 
 ### 3.3 Git Worktree Isolation
 
@@ -95,30 +124,36 @@ Git worktrees provide lightweight, isolated working directories from a single re
 
 ```bash
 # Create an isolated checkout for a workstream
-git worktree add ~/.reagent/worktrees/acme-review -b ws/acme-review
+git worktree add .reagent/worktrees/acme-review -b ws/acme-review
 
 # The worktree gets its own working directory but shares .git objects
 # No full clone needed — disk-efficient, instant creation
 ```
 
-Properties:
+**Verified properties (tested against this repo):**
 
-- Each worktree can be on a different branch
-- Git operations (commit, push) are safe concurrently across worktrees
-- Worktrees share the object store — no duplicate disk usage for repo history
-- Cleanup: `git worktree remove <path>` or `git worktree prune` for stale entries
+- Each worktree is ~2 MB on disk (checked-out files only). The shared `.git/objects/` (23 MB for this repo) is not duplicated.
+- **Branch exclusivity is enforced** — a branch checked out in one worktree cannot be checked out in another. Each workstream must get its own branch.
+- `git add`, `git commit`, `git push` are safe concurrently (each worktree has its own `index` file).
+- **Serialize `git fetch`** — it updates shared `refs/remotes/` and can contend. The coordinator should fetch once.
+- Suppress auto-gc in agent processes: `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=gc.auto GIT_CONFIG_VALUE_0=0`.
+- `node_modules` is NOT included — use `pnpm install` per worktree (hardlink deduplication via `~/.pnpm-store/`).
+- Hooks (`.husky/`, `.git/hooks/`) are shared — all agents run through the same gates.
+- **Cleanup requires explicit branch deletion:** `git worktree remove` does NOT delete the associated branch.
+
+**Recommended worktree location:** `.reagent/worktrees/<id>/` (same APFS volume, co-located, add to `.gitignore`).
 
 ### 3.4 Session State Isolation
 
 Claude Code stores project-level state in `.claude/` within the project directory. Two concurrent `claude -p` processes writing to the same `.claude/` will corrupt state.
 
-**Solution:** Each workstream gets its own session directory by setting `HOME` or using a project-level `.claude/` within the worktree:
+**Solution:** Worktree isolation **automatically** gives us session isolation — each worktree is a separate directory, and Claude Code creates `.claude/` relative to its `cwd`:
 
 ```
-~/.reagent/
+.reagent/
   worktrees/
     acme-review/           # git worktree (full repo checkout)
-      .claude/             # claude session state (isolated per worktree)
+      .claude/             # claude session state (isolated per worktree — automatic)
       src/
       package.json
     internal-refactor/
@@ -130,7 +165,23 @@ Claude Code stores project-level state in `.claude/` within the project director
     internal-refactor.json
 ```
 
-Since each worktree is a separate directory, and Claude Code creates `.claude/` relative to the project root, worktree isolation **automatically** gives us session isolation.
+No need to override `HOME`. The `cwd` argument to `spawn()` plus `CLAUDE_CONFIG_DIR` is sufficient.
+
+### 3.5 macOS-Specific Considerations
+
+- **Spotlight indexing:** Place `.metadata_never_index` in each worktree root at creation time to prevent `mds_stores` overhead.
+- **File descriptors:** Not a concern (limits are 1,048,575).
+- **APFS:** Stay on the same volume — cross-volume worktrees lose benefits.
+- **File watchers:** Disable watch modes in agents (`vitest --run`, no `tsc --watch`).
+
+### 3.6 Crash Cleanup
+
+PID-based ownership with startup reconciliation:
+
+1. `git worktree list --porcelain` — enumerate worktrees matching `ws/` branch prefix
+2. Check `.reagent-agent.pid` in each worktree, verify with `process.kill(pid, 0)`
+3. Dead process: `git worktree remove <path> --force`, then `git branch -D <branch>`
+4. Run `git worktree prune` as final sweep
 
 ---
 
@@ -310,7 +361,11 @@ export async function spawnWorkstream(config: WorkstreamConfig): Promise<Workstr
     worktreePath,
   });
 
-  // Spawn claude -p
+  // Build config dir for session isolation
+  const configDir = path.join(worktreePath, '.reagent-claude-config');
+  await fs.mkdir(configDir, { recursive: true });
+
+  // Spawn claude -p with full isolation
   const child = spawn(
     'claude',
     [
@@ -319,10 +374,19 @@ export async function spawnWorkstream(config: WorkstreamConfig): Promise<Workstr
       '--output-format',
       config.options?.output_format ?? 'json',
       '--dangerously-skip-permissions',
+      '--no-session-persistence',
+      '--max-turns',
+      String(config.options?.max_turns ?? 100),
+      '--max-budget-usd',
+      String(config.options?.budget_usd ?? 5.0),
     ],
     {
       cwd: worktreePath,
-      env,
+      env: buildWorkstreamEnv({
+        baseEnv: process.env,
+        oauthToken: tokenValue,
+        configDir,
+      }),
       timeout: (config.options?.timeout_seconds ?? 3600) * 1000,
     }
   );
@@ -334,7 +398,7 @@ export async function spawnWorkstream(config: WorkstreamConfig): Promise<Workstr
 function buildWorkstreamEnv(opts: {
   baseEnv: NodeJS.ProcessEnv;
   oauthToken: string;
-  worktreePath: string;
+  configDir: string;
 }): Record<string, string> {
   const env: Record<string, string> = {};
 
@@ -346,8 +410,17 @@ function buildWorkstreamEnv(opts: {
   // Set the workstream's OAuth token
   env.CLAUDE_CODE_OAUTH_TOKEN = opts.oauthToken;
 
-  // CRITICAL: Unset API key to prevent per-token billing override
+  // Isolate config directory (credentials, history, session state)
+  env.CLAUDE_CONFIG_DIR = opts.configDir;
+
+  // CRITICAL: Unset keys that override OAuth billing
   delete env.ANTHROPIC_API_KEY;
+  delete env.ANTHROPIC_AUTH_TOKEN;
+
+  // Suppress git auto-gc (can block concurrent worktrees)
+  env.GIT_CONFIG_COUNT = '1';
+  env.GIT_CONFIG_KEY_0 = 'gc.auto';
+  env.GIT_CONFIG_VALUE_0 = '0';
 
   return env;
 }
@@ -372,15 +445,19 @@ function buildWorkstreamEnv(opts: {
 | `src/workstream/budget.ts`  | Create | Per-account spend estimation + thresholds      |
 | `src/workstream/monitor.ts` | Create | Real-time workstream status (optional Discord) |
 
-**Budget tracking approach:**
+**Budget tracking — two layers:**
+
+**Layer 1: Claude Code native enforcement (per-invocation).** The `--max-budget-usd` flag is a real CLI flag that hard-caps spend per `claude -p` invocation. Claude Code tracks token usage internally and stops when the budget is reached. This is the primary safeguard.
+
+**Layer 2: Reagent aggregate tracking (per-account, over time).**
 
 - Claude Code outputs token usage in its JSON output (`usage.input_tokens`, `usage.output_tokens`)
 - Reagent parses this and estimates USD cost based on published model pricing
 - Running totals stored in `~/.reagent/state/<account>.budget.json`
 - When `warn_usd` threshold crossed: log warning + optional Discord notification
-- When `halt_usd` threshold crossed: kill the workstream process + notify
+- When `halt_usd` threshold crossed: refuse to spawn new workstreams for that account
 
-**Note:** Budget tracking is **advisory**. Reagent cannot enforce server-side spend limits. The circuit breaker is process-level: kill the child process if the budget is exceeded.
+The combination is robust: `--max-budget-usd` prevents any single invocation from running away, while reagent's aggregate tracking prevents cumulative overspend across multiple workstreams.
 
 ---
 
@@ -558,16 +635,20 @@ git worktree remove /tmp/ws-a /tmp/ws-b /tmp/ws-c
 
 ## 7. Known Risks and Mitigations
 
-| Risk                                                     | Severity | Mitigation                                                                    |
-| -------------------------------------------------------- | -------- | ----------------------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY` overrides OAuth silently             | High     | Spawner explicitly deletes it from child env                                  |
-| Two workstreams write to same `.claude/` dir             | High     | Worktree isolation gives each its own `.claude/` automatically                |
-| Token in env var visible via `/proc/<pid>/environ`       | Medium   | Acceptable for local dev; Docker adds process isolation if needed             |
-| Budget tracking is advisory (no server-side enforcement) | Medium   | Circuit breaker kills process at threshold; user acknowledges advisory nature |
-| `claude -p` exit codes unreliable                        | Medium   | Use `.done` marker files as primary success signal                            |
-| Git worktree accumulation (disk space)                   | Low      | Auto-cleanup after success; `reagent workstream prune` for manual cleanup     |
-| Claude Code CLI version changes break headless mode      | Low      | Abstract CLI args behind an interface; pin version in package.json            |
-| Onboarding bypass (`~/.claude.json`) is brittle          | Low      | Document as known technique; check on each Claude Code update                 |
+| Risk                                               | Severity | Mitigation                                                                                     |
+| -------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY` overrides OAuth silently       | High     | Spawner deletes both `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from child env             |
+| Two workstreams share `CLAUDE_CONFIG_DIR`          | High     | Each workstream gets its own `CLAUDE_CONFIG_DIR`; concurrent writes to `history.jsonl` corrupt |
+| Two workstreams write to same project `.claude/`   | High     | Worktree isolation gives each its own `.claude/` automatically (cwd-relative)                  |
+| Spotlight indexing overhead with concurrent agents | Medium   | Place `.metadata_never_index` in each worktree root at creation                                |
+| `git fetch` contention on shared refs              | Medium   | Coordinator fetches once; agents inherit via shared object store                               |
+| Token in env var visible via `/proc/<pid>/environ` | Medium   | Acceptable for local dev; Docker adds process isolation if needed                              |
+| `claude -p` exit codes unreliable                  | Medium   | Use `.done` marker files as primary success signal                                             |
+| Orphaned worktrees on crash                        | Medium   | PID file + startup reconciliation routine (see section 3.6)                                    |
+| Orphaned branches accumulate                       | Low      | Cleanup must explicitly `git branch -D` — `git worktree remove` does not                       |
+| `--bare` flag incompatible with OAuth tokens       | Low      | Do not use `--bare`; accept slightly slower startup                                            |
+| Git auto-gc blocks concurrent object creation      | Low      | Suppress with `GIT_CONFIG_COUNT=1 gc.auto=0` per agent process                                 |
+| Git worktree disk accumulation                     | Low      | Auto-cleanup after success; `reagent workstream prune` for manual cleanup                      |
 
 ---
 
@@ -604,6 +685,40 @@ This feature builds directly on existing infrastructure:
 | Audit middleware (`audit.ts`)                 | Records which account context was used per invocation |
 
 No new dependencies required. The workstream spawner uses only `node:child_process` (built-in).
+
+### 9.1 Per-Workstream Environment Matrix
+
+Each spawned `claude -p` process receives exactly these overrides:
+
+| Env Var                   | Value                               | Purpose                                        |
+| ------------------------- | ----------------------------------- | ---------------------------------------------- |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Account's token value               | Bills to correct account                       |
+| `CLAUDE_CONFIG_DIR`       | `<worktree>/.reagent-claude-config` | Isolates credentials + session history         |
+| `ANTHROPIC_API_KEY`       | _(deleted)_                         | Prevents per-token billing override            |
+| `ANTHROPIC_AUTH_TOKEN`    | _(deleted)_                         | Prevents auth cascade override                 |
+| `GIT_CONFIG_COUNT=1`      | `gc.auto=0`                         | Prevents auto-gc blocking concurrent worktrees |
+
+Plus CLI flags: `--no-session-persistence`, `--max-turns N`, `--max-budget-usd N`, `--dangerously-skip-permissions`.
+
+### 9.2 Alternative: Agent SDK
+
+The `@anthropic-ai/claude-agent-sdk` (v0.2.98) provides a typed, structured alternative to `child_process.spawn()`:
+
+```typescript
+import { query } from '@anthropic-ai/claude-agent-sdk';
+
+for await (const message of query({
+  prompt: 'Your prompt here',
+  options: {
+    allowedTools: ['Read', 'Edit', 'Bash'],
+    permissionMode: 'acceptEdits',
+  },
+})) {
+  if ('result' in message) console.log(message.result);
+}
+```
+
+**Caveat:** The Agent SDK currently requires `ANTHROPIC_API_KEY` (API billing), not OAuth tokens. For subscription-billed workstreams, use the CLI spawn approach. The SDK may add OAuth support in a future release.
 
 ---
 

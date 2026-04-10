@@ -3,13 +3,14 @@ Fetch a pull request diff, run code-reviewer analysis, translate findings to own
 ## Usage
 
 ```
-/review-pr <PR#> [--tier standard|senior|chief]
+/review-pr <PR#> [--tier standard|senior|chief] [--task T-NNN]
 ```
 
 **Arguments:**
 
 - `<PR#>` — pull request number (required)
 - `--tier` — review depth: `standard` (default), `senior`, or `chief`
+- `--task` — optional JSONL task ID to mark `completed` after the review posts (e.g. `--task T-047`)
 
 ---
 
@@ -141,7 +142,24 @@ On failure:
 
 ---
 
-## Step 6 — Report summary
+## Step 6 — Close task (if --task was provided)
+
+If `--task T-NNN` was passed, call `task_update` to mark it resolved:
+
+```
+task_update({
+  id: "<T-NNN>",
+  status: "completed",
+  commit_ref: "<COMMIT_SHA>",
+  description: "Code review posted — <N> findings on PR #<PR#>. See <html_url>"
+})
+```
+
+If `task_update` fails (task not found, MCP unavailable), warn the user but do not fail the overall command — the review already posted.
+
+---
+
+## Step 7 — Report summary
 
 Output a clean summary:
 
@@ -151,20 +169,23 @@ Tier: <standard|senior|chief>
 Findings: <count> (<high> high, <medium> medium, <low> low)
 Event: REQUEST_CHANGES | COMMENT | APPROVE
 Review: <html_url>
+Task: T-NNN → completed  (or "no task linked")
 ```
 
 ---
 
 ## Error handling
 
-| Situation                          | Action                                                            |
-| ---------------------------------- | ----------------------------------------------------------------- |
-| PR not found                       | Stop — "PR #N not found. Check the number and repo."              |
-| HALT file present                  | Stop — "Agent operations frozen. Check .reagent/HALT."            |
-| Empty diff                         | Stop — "Empty diff — nothing to review."                          |
-| code-reviewer returns invalid JSON | Stop — "code-reviewer output was not valid JSON. Raw output: ..." |
-| GitHub API error                   | Stop — print full error, do not retry                             |
-| Already reviewed this commit       | Warn but continue — GitHub allows multiple reviews per commit     |
+| Situation                          | Action                                                             |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| PR not found                       | Stop — "PR #N not found. Check the number and repo."               |
+| HALT file present                  | Stop — "Agent operations frozen. Check .reagent/HALT."             |
+| Empty diff                         | Stop — "Empty diff — nothing to review."                           |
+| code-reviewer returns invalid JSON | Stop — "code-reviewer output was not valid JSON. Raw output: ..."  |
+| GitHub API error                   | Stop — print full error, do not retry                              |
+| Already reviewed this commit       | Warn but continue — GitHub allows multiple reviews per commit      |
+| task_update fails                  | Warn but continue — review already posted; close the task manually |
+| --task references unknown task ID  | Warn but continue — skip the update, don't block the review        |
 
 ---
 

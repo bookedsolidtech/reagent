@@ -1,0 +1,136 @@
+---
+title: Hooks
+description: Complete reference for all 20 Claude Code hooks installed by Reagent.
+sidebar:
+  order: 4
+---
+
+Reagent installs 20 Claude Code hooks that enforce security, quality, and project management policies. Hooks are shell scripts that run as PreToolUse or PostToolUse interceptors.
+
+## Hook architecture
+
+Hooks use a shared library (`hooks/_lib/common.sh`) providing:
+
+| Function | Purpose |
+|---|---|
+| `reagent_root` | Find the `.reagent/` directory by walking up from cwd |
+| `check_halt` | Exit with code 2 if `.reagent/HALT` exists |
+| `require_jq` | Verify jq is available |
+| `json_output` | Build structured JSON response (block/allow/advisory) |
+| `triage_score` | Score a diff as trivial/standard/significant |
+
+## Exit code convention
+
+| Code | Meaning |
+|---|---|
+| `0` | Allow the tool call |
+| `2` | Block the tool call |
+
+## Security hooks
+
+### `settings-protection.sh` (PreToolUse: Write, Edit)
+
+**P0 Critical.** Prevents agents from modifying their own safety rails. Blocks writes to `.claude/settings.json`, `.claude/hooks/*`, `.husky/*`, `.reagent/policy.yaml`, `.reagent/HALT`, and `.reagent/review-cache.json`. Includes case-insensitive bypass detection and URL-decode normalization.
+
+### `blocked-paths-enforcer.sh` (PreToolUse: Write, Edit)
+
+**P0 Critical.** Reads `blocked_paths` from `.reagent/policy.yaml` and blocks writes to matching paths. Supports directory prefix matching, glob patterns, and exact match.
+
+### `dangerous-bash-interceptor.sh` (PreToolUse: Bash)
+
+Intercepts dangerous shell commands:
+
+| ID | Blocked Pattern |
+|---|---|
+| H1 | `git push --force` / `-f` to protected branches |
+| H2 | `rm -rf /` or `rm -rf ~` |
+| H3 | `chmod 777` |
+| H4 | `curl \| sh`, `wget \| sh` (pipe-to-shell) |
+| H5 | `> /dev/sda` (disk overwrite) |
+| H6 | Fork bomb |
+| H7 | `mkfs` (disk format) |
+| H8 | `dd if=` (disk copy) |
+| H9 | `.env` file access via cat/less/head/tail |
+| H10 | `shutdown`, `reboot`, `halt`, `poweroff` |
+| H11 | `kill -9`, `killall`, `pkill` |
+| H12 | `iptables` / `ufw` (firewall modification) |
+| H13 | `git push --no-verify` |
+| H14 | `git -c core.hooksPath=` (hook path override) |
+| H15 | `REAGENT_BYPASS` environment variable |
+| H16 | Alias/function definitions containing bypass strings |
+
+### `secret-scanner.sh` (PreToolUse: Write, Edit)
+
+Scans file content for secrets: AWS Access Keys, PEM private key headers, GitHub PATs, Stripe live keys, and generic `SECRET=`/`PASSWORD=`/`TOKEN=` assignments. Allows placeholders, `process.env` references, and `.env.example` files.
+
+### `env-file-protection.sh` (PreToolUse: Write, Edit)
+
+Blocks writes to `.env` files. Allows `.env.example` and `.env.template`.
+
+### `attribution-advisory.sh` (PreToolUse: Bash)
+
+When `block_ai_attribution` is enabled, blocks `gh pr create`, `gh pr edit`, and `git commit` commands containing AI attribution patterns.
+
+### `symlink-guard.sh` (PreToolUse: Write, Edit)
+
+Detects symlink traversal attempts — blocks writes to paths that resolve through a symlink outside the project root.
+
+### `network-exfil-guard.sh` (PreToolUse: Bash)
+
+Blocks `curl`/`wget`/`fetch` commands targeting non-allowlisted external hosts.
+
+### `import-guard.sh` (PreToolUse: Write, Edit)
+
+Flags dangerous import patterns: `eval`, `Function()`, dynamic `require()` with user-controlled input.
+
+### `git-config-guard.sh` (PreToolUse: Bash)
+
+Blocks `git config` commands that override hook paths, rewrite signing, or modify credential helpers.
+
+### `ci-config-protection.sh` (PreToolUse: Write, Edit)
+
+Blocks writes to `.github/workflows/` and other CI configuration files.
+
+## Quality gate hooks
+
+### `commit-review-gate.sh` (PreToolUse: Bash)
+
+Intercepts `git commit` and applies triage-based review:
+
+| Level | Criteria | Action |
+|---|---|---|
+| **Trivial** | Fewer than 20 changed lines, no sensitive paths | Pass immediately |
+| **Standard** | 20–200 changed lines | Check review cache; pass if cached |
+| **Significant** | More than 200 lines OR sensitive paths | Block; instruct agent to spawn `code-reviewer` |
+
+### `push-review-gate.sh` (PreToolUse: Bash)
+
+Intercepts `git push`. Analyzes the full diff against the target branch and checks review cache. On cache miss for standard/significant changes, blocks with instructions to spawn `code-reviewer` and `security-engineer` agents.
+
+### `architecture-review-gate.sh` (PostToolUse: Write, Edit)
+
+**Advisory only (never blocks).** Flags writes to architecture-sensitive paths (`src/types/`, `src/gateway/`, `src/config/`, `package.json`, etc.).
+
+## Project management hooks
+
+### `task-link-gate.sh` (PreToolUse: Bash)
+
+**Opt-in** (requires `task_link_gate: true` in policy.yaml). Checks that commit messages contain a task ID reference (`T-NNN` format). Allows merge commits, version bumps, and `chore:`/`style:`/`ci:` prefixed commits.
+
+### `dependency-audit-gate.sh` (PreToolUse: Bash)
+
+Intercepts `npm install`, `pnpm add`, `yarn add`, and `npx` commands. Verifies each package exists in the npm registry before allowing the install.
+
+## Safety hooks
+
+### `output-validation.sh` (PostToolUse)
+
+Scans tool output returned to the AI for secrets before they enter the model's context.
+
+### `file-size-guard.sh` (PreToolUse: Write)
+
+Blocks writes of files exceeding a configurable size threshold.
+
+### `rate-limit-guard.sh` (PreToolUse)
+
+Tracks tool call frequency per session and blocks when a per-minute threshold is exceeded.

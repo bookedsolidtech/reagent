@@ -1,0 +1,98 @@
+---
+title: MCP Gateway
+description: Set up and configure the Reagent MCP gateway server.
+sidebar:
+  order: 1
+---
+
+The MCP gateway (`reagent serve`) is a proxy server that sits between your AI assistant and downstream MCP tool servers. Every tool call flows through the [middleware chain](/concepts/middleware-chain/).
+
+## How it works
+
+1. Connects to all downstream MCP servers defined in `.reagent/gateway.yaml`
+2. Discovers their tools via MCP `tools/list`
+3. Re-registers each tool on the gateway with namespace prefixes (`servername__toolname`)
+4. Registers native first-party tools through the same middleware chain
+5. Wraps every tool call in the middleware chain
+6. Listens on stdio for incoming MCP requests from the AI assistant
+
+## Configuration
+
+Create `.reagent/gateway.yaml`:
+
+```yaml
+version: '1'
+servers:
+  discord-ops:
+    command: node
+    args:
+      - /path/to/discord-ops/dist/index.js
+    env:
+      DISCORD_BOT_TOKEN: '${DISCORD_BOT_TOKEN}'
+    tool_overrides:
+      get_messages:
+        tier: read
+      send_message:
+        tier: write
+      purge_messages:
+        tier: destructive
+      delete_channel:
+        tier: destructive
+        blocked: true
+```
+
+### Environment variable resolution
+
+Use `${VAR_NAME}` syntax in env values — Reagent resolves them from `process.env` at startup. Missing env vars produce a warning and resolve to empty string.
+
+### Tool overrides
+
+Each downstream tool can be assigned a tier (`read`, `write`, `destructive`) and optionally blocked entirely. Overrides cannot lower a tool's tier below its static or convention-based classification (the override is ignored with a warning if attempted).
+
+## Tool namespacing
+
+Downstream tools are namespaced as `servername__toolname` to prevent collisions:
+
+```
+discord-ops__send_message
+discord-ops__get_messages
+filesystem__read_file
+filesystem__write_file
+```
+
+## Multiple downstream servers
+
+```yaml
+version: '1'
+servers:
+  discord-ops:
+    command: node
+    args: [/path/to/discord-ops/dist/index.js]
+  filesystem:
+    command: npx
+    args: [-y, '@modelcontextprotocol/server-filesystem', '/allowed/path']
+  github:
+    command: npx
+    args: [-y, '@modelcontextprotocol/server-github']
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: '${GITHUB_TOKEN}'
+```
+
+All tools from all servers are aggregated into a single gateway.
+
+## Connecting your AI assistant
+
+Point your AI assistant's MCP configuration at the gateway:
+
+```json
+{
+  "mcpServers": {
+    "reagent": {
+      "command": "reagent",
+      "args": ["serve"]
+    }
+  }
+}
+```
+
+All downstream tool calls now flow through Reagent's middleware chain.

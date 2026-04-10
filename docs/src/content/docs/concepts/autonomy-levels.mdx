@@ -1,0 +1,69 @@
+---
+title: Autonomy Levels
+description: L0–L3 graduated autonomy levels control what an AI agent can do.
+sidebar:
+  order: 2
+---
+
+Reagent uses four autonomy levels to control which tool tiers an agent can invoke. The level is set in `.reagent/policy.yaml` and enforced by the gateway middleware.
+
+## Levels
+
+| Level | Name | Allowed Tiers | Use Case |
+|---|---|---|---|
+| **L0** | Read-only | `read` | Auditing, investigation, read-only exploration |
+| **L1** | Standard | `read` + `write` | Normal development work |
+| **L2** | Elevated | `read` + `write` | Same as L1 with higher trust signals |
+| **L3** | Full access | `read` + `write` + `destructive` | Admin operations, cleanup tasks |
+
+## Tool tiers
+
+Every tool call is classified into a tier before policy enforcement:
+
+| Tier | Description | Examples |
+|---|---|---|
+| `read` | Observes state, no side effects | `get_messages`, `list_channels`, `health_check` |
+| `write` | Modifies state | `send_message`, `create_channel`, `edit_message` |
+| `destructive` | Irreversible state changes | `delete_channel`, `purge_messages`, `ban_member` |
+
+### Classification sources
+
+Tier classification uses a layered approach:
+
+1. **Static map** — known tools with explicit tier assignments
+2. **Convention-based** — prefix patterns for unknown tools (e.g., `get_*` → `read`, `delete_*` → `destructive`)
+3. **Default** — falls back to `write`
+
+### Convention-based prefixes
+
+| Prefix pattern | Tier |
+|---|---|
+| `get_`, `list_`, `search_`, `query_`, `read_`, `fetch_`, `check_`, `health_`, `describe_`, `show_`, `count_` | `read` |
+| `delete_`, `drop_`, `purge_`, `remove_`, `destroy_`, `ban_`, `kick_`, `revoke_`, `truncate_` | `destructive` |
+| Everything else | `write` |
+
+## Max autonomy level
+
+The `max_autonomy_level` field in policy.yaml sets a ceiling. If `autonomy_level` exceeds `max_autonomy_level`, it is clamped down with a warning at config load time.
+
+```yaml
+autonomy_level: L1
+max_autonomy_level: L2
+promotion_requires_human_approval: true
+```
+
+With `promotion_requires_human_approval: true`, level changes require explicit human sign-off.
+
+## Blocked tools
+
+Individual tools can be blocked regardless of autonomy level:
+
+```yaml
+# In .reagent/gateway.yaml
+tool_overrides:
+  delete_channel:
+    tier: destructive
+    blocked: true
+```
+
+A tool marked `blocked: true` is denied even at L3.

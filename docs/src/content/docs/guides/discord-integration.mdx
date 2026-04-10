@@ -1,0 +1,50 @@
+---
+title: Discord Integration
+description: Configure Discord notifications for security alerts, task events, and releases.
+sidebar:
+  order: 5
+---
+
+Reagent can send notifications to Discord channels for security alerts, task events, release activity, and dev updates.
+
+## Setup
+
+Pass `--discord` to `reagent init` along with your channel IDs:
+
+```bash
+npx @bookedsolid/reagent init --discord \
+  --guild-id 1234567890 \
+  --alerts-channel 111 \
+  --tasks-channel 222 \
+  --releases-channel 333 \
+  --dev-channel 444
+```
+
+This appends a `discord_ops` block to `.reagent/gateway.yaml`:
+
+```yaml
+discord_ops:
+  guild_id: '1234567890'
+  channels:
+    alerts: '111'
+    tasks: '222'
+    releases: '333'
+    dev: '444'
+```
+
+## How it works
+
+The `discord_notify` native MCP tool reads this config to route notifications to the appropriate channel. All Discord notifications are fire-and-forget (fail-silent).
+
+## Channel types
+
+| Channel | Purpose |
+|---|---|
+| `alerts` | Security alerts from hooks and middleware |
+| `tasks` | Task creation, status changes, completions |
+| `releases` | Release events and changelog updates |
+| `dev` | General development activity |
+
+## Requirements
+
+Discord integration requires a Discord bot token set as `DISCORD_BOT_TOKEN` in your environment. The bot must have permissions to send messages in the configured channels.

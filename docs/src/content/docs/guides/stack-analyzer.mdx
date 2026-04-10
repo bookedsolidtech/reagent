@@ -1,0 +1,43 @@
+---
+title: Stack Analyzer
+description: Use reagent catalyze to detect your tech stack and generate gap analysis reports.
+sidebar:
+  order: 3
+---
+
+`reagent catalyze` detects your project's tech stack and generates a gap analysis report showing which hooks, gates, and agents are missing. It produces both Markdown and HTML reports.
+
+## Usage
+
+```bash
+# Analyze stack and generate gap report (default)
+reagent catalyze
+
+# Compare current state against last plan, show drift
+reagent catalyze --audit
+
+# Print analysis without writing files
+reagent catalyze --dry-run
+
+# Analyze a specific directory
+reagent catalyze /path/to/project
+```
+
+## Options
+
+| Flag | Description | Default |
+|---|---|---|
+| `--plan` | Analyze stack and generate gap report (default) | Yes |
+| `--audit` | Compare current state against last plan, show drift | — |
+| `--dry-run` | Print analysis without writing files | — |
+| `[targetDir]` | Directory to analyze | Current directory |
+
+## How it works
+
+1. **Stack detection** — examines `package.json`, project files, and directory structure to identify your tech stack (Astro, Next.js, Drupal, Lit/Web Components, React, Node API, monorepo)
+2. **Gap analysis** — compares installed hooks, gates, and agents against the recommended catalog for your detected stack
+3. **Report generation** — produces `catalyze-report.md` and `catalyze-report.html` listing gaps by severity
+
+## Audit mode
+
+`--audit` re-runs the analysis and diffs against the previous report to surface new or resolved gaps. This is useful for tracking drift over time.

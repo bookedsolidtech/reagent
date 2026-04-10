@@ -10,6 +10,7 @@ those cases, causing the gate to permanently block commits >200 lines even after
 a successful code review completed and cached its result.
 
 Fixes:
+
 - Add `command -v reagent` PATH lookup as third CLI resolution option (covers
   global `npm install -g @bookedsolid/reagent` installs)
 - Add a `jq`-based direct read of `.reagent/review-cache.json` as a fallback

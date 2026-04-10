@@ -1,23 +1,21 @@
-use std::sync::Arc;
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::UNIX_EPOCH;
 use axum::{
-    extract::{State, Query},
+    extract::State,
     http::{HeaderMap, StatusCode},
     response::{
-        sse::{Event, KeepAlive, Sse},
+        sse::{KeepAlive, Sse},
         IntoResponse, Json,
     },
-    routing::{get, post},
+    routing::get,
     Router,
 };
-use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use serde::Serialize;
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use crate::project::ProjectContext;
-use crate::session::{cleanup_session, SessionId, SessionRegistry, SessionSummary};
+use crate::session::{cleanup_session, SessionId, SessionSummary};
 use crate::AppState;
 
 /// Build the axum Router with all reagent daemon routes.

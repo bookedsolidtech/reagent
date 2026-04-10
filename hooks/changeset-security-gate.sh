@@ -30,8 +30,8 @@ fi
 
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""')
 
-# Only care about .changeset/*.md files (not README.md in .changeset/)
-if ! echo "$FILE_PATH" | grep -qE '\.changeset/[^/]+\.md$'; then
+# Only care about .changeset/*.md files — exclude README.md (changeset tool metadata)
+if ! echo "$FILE_PATH" | grep -qE '\.changeset/[^/]+\.md$' || echo "$FILE_PATH" | grep -qE '\.changeset/README\.md$'; then
   exit 0
 fi
 
@@ -123,7 +123,7 @@ Valid bump types: patch | minor | major"
 fi
 
 # Must have a non-empty description after the closing ---
-DESCRIPTION=$(echo "$CONTENT" | awk 'BEGIN{count=0} /^---/{count++; next} count>=2{print}' | grep -v '^[[:space:]]*$' | head -1)
+DESCRIPTION=$(echo "$CONTENT" | awk 'BEGIN{count=0} /^---/{count++; next} count>=2{print}' | grep -v '^[[:space:]]*$' | head -1 || true)
 if [[ -z "$DESCRIPTION" ]]; then
   json_output "block" \
     "CHANGESET FORMAT GATE: Missing description after frontmatter.

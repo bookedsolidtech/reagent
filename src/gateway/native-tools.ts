@@ -32,7 +32,7 @@ export function registerNativeTools(
         tool_name: toolName,
         server_name: 'reagent',
         arguments: params,
-        session_id: '',
+        session_id: crypto.randomUUID(),
         status: InvocationStatus.Allowed,
         start_time: Date.now(),
         metadata: {},

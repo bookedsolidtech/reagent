@@ -82,6 +82,13 @@ PUSH_SHA=$(printf '%s' "$DIFF_FULL" | shasum -a 256 | cut -d' ' -f1 2>/dev/null 
 if [[ -n "$PUSH_SHA" ]]; then
   CACHE_RESULT=$(node "${REAGENT_ROOT}/node_modules/.bin/reagent" cache check "$PUSH_SHA" --branch "$CURRENT_BRANCH" --base "$TARGET_BRANCH" 2>/dev/null || echo '{"hit":false}')
   if printf '%s' "$CACHE_RESULT" | jq -e '.hit == true' >/dev/null 2>&1; then
+    # Review was already approved — notify and allow the push through
+    DISCORD_LIB="${REAGENT_ROOT}/hooks/_lib/discord.sh"
+    if [ -f "$DISCORD_LIB" ]; then
+      # shellcheck source=/dev/null
+      source "$DISCORD_LIB"
+      discord_notify "dev" "Push passed quality gates on \`${CURRENT_BRANCH}\` -- $(cd "$REAGENT_ROOT" && git log -1 --oneline 2>/dev/null)" "green"
+    fi
     exit 0
   fi
 fi

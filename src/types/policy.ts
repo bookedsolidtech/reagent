@@ -11,4 +11,6 @@ export interface Policy {
   block_ai_attribution: boolean;
   blocked_paths: string[];
   notification_channel: string;
+  // Optional — not present in all policy files; defaults to 'block' when absent
+  injection_detection?: 'block' | 'warn';
 }

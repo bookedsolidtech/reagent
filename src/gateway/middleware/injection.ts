@@ -1,4 +1,5 @@
 import type { Middleware } from './chain.js';
+import { InvocationStatus } from '../../types/index.js';
 
 /**
  * Known prompt injection phrases (lowercase for case-insensitive matching).
@@ -11,7 +12,11 @@ const INJECTION_PHRASES: string[] = [
   'your new instructions are',
   'system prompt override',
   'forget all previous',
-  'you are now',
+  // 'you are now' is too broad — fires on "you are now connected", "you are now in /home/foo", etc.
+  // The role-reassignment vector is "you are now a [different persona]" — the trailing space+article
+  // is what distinguishes injection from ordinary status messages.
+  'you are now a ',
+  'you are now an ',
 ];
 
 /**
@@ -131,7 +136,6 @@ export function createInjectionMiddleware(action: InjectionAction = 'block'): Mi
     );
 
     if (action === 'block') {
-      const { InvocationStatus } = await import('../../types/index.js');
       ctx.status = InvocationStatus.Denied;
       ctx.error = `Prompt injection detected in tool result (${unique.length} pattern(s) matched). Result blocked.`;
       ctx.result = undefined;

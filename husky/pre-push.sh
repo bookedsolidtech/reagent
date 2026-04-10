@@ -115,8 +115,8 @@ if [ -f "$POLICY_FILE" ]; then
   fi
 
   # Extract coverage.threshold (default 80)
-  # Use || true to prevent set -e from firing when coverage block is absent
-  THRESHOLD_LINE=$(grep -A5 "^coverage:" "$POLICY_FILE" 2>/dev/null | grep "threshold:" | head -1 || true)
+  # The || true prevents set -euo pipefail from exiting when coverage: block is absent
+  THRESHOLD_LINE=$(grep -A5 "^coverage:" "$POLICY_FILE" 2>/dev/null | grep "threshold:" | head -1) || true
   if [ -n "$THRESHOLD_LINE" ]; then
     EXTRACTED=$(echo "$THRESHOLD_LINE" | awk '{print $2}' | tr -d '"' | tr -d "'")
     if [ -n "$EXTRACTED" ] && [ "$EXTRACTED" -eq "$EXTRACTED" ] 2>/dev/null; then
@@ -137,11 +137,23 @@ if [ "$COVERAGE_ENABLED" = "true" ] && script_exists "test"; then
 fi
 
 # ── Report ────────────────────────────────────────────────────────────────────
+HOOKS_LIB="$(git rev-parse --show-toplevel 2>/dev/null)/hooks/_lib/discord.sh"
+
 if [ -n "$FAILED" ]; then
   echo "pre-push: FAILED gates:${FAILED}"
   echo "All quality gates must pass before push. Fix failures and retry."
+  if [ -f "$HOOKS_LIB" ]; then
+    # shellcheck source=/dev/null
+    source "$HOOKS_LIB"
+    discord_notify "alert" "Push BLOCKED -- gate failures: \`${FAILED}\` on \`$(git rev-parse --abbrev-ref HEAD 2>/dev/null)\`" "red"
+  fi
   exit 1
 fi
 
 echo "pre-push: all quality gates passed"
+if [ -f "$HOOKS_LIB" ]; then
+  # shellcheck source=/dev/null
+  source "$HOOKS_LIB"
+  discord_notify "dev" "Pre-push gates passed on \`$(git rev-parse --abbrev-ref HEAD 2>/dev/null)\`" "green"
+fi
 exit 0

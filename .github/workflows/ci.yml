@@ -76,6 +76,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build
+        run: npm run build
+
       - name: Run tests with coverage
         run: npm test -- --coverage
         env:
@@ -177,6 +180,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: github.event_name == 'pull_request'
+    # continue-on-error: Dependency graph must be enabled in repo settings
+    # (Settings → Security Analysis → Dependency graph). Until enabled,
+    # this job fails with "not supported" — we soft-fail so it doesn't block CI.
+    continue-on-error: true
     permissions:
       contents: read
       pull-requests: write

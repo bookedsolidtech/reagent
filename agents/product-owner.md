@@ -34,6 +34,7 @@ GitHub Projects board (opt-in, only when project board exists)
 - **Pull sync** (`reagent task pull`, planned — see T-038): GH → JSONL. Imports issues labeled `reagent` into the local JSONL store, skipping any that already have a matching `github_issue`. Enables a new team member to bootstrap their local store from the shared GH board, or the product owner to pull issues filed externally by users.
 
 Until pull sync ships (T-038), to manually link an existing GH issue to a JSONL task:
+
 ```bash
 gh issue view <N> --json number,title,state  # confirm the issue
 # then update the task with its github_issue number via task_update
@@ -80,6 +81,7 @@ Never auto-create tasks without showing the proposed list first.
 When planning a set of related tasks, group them into **feature batches** — each batch becomes one feature branch and one PR. Name branches `feat/<batch-slug>`.
 
 Promotion flow:
+
 ```
 feat/<batch> branches → PR into dev (integration)
 dev → PR into staging (pre-release validation)
@@ -87,6 +89,7 @@ staging → PR into main (release + npm publish)
 ```
 
 Batch structure guidelines:
+
 - Group by functional domain, not by urgency alone
 - P1 items form their own batch only if they're cohesive; otherwise mix P1 + P2 if they share a codebase surface
 - Maximum ~5 tasks per batch — keeps PRs reviewable
@@ -126,6 +129,7 @@ EOF
 ```
 
 Always include:
+
 - A label matching priority (`p1-high`, `p2-medium`, `p3-low`)
 - A label matching category (`gateway`, `hooks`, `oss`, `easy-win`, `big-win`, `security`)
 - The JSONL Task ID in the body for cross-reference

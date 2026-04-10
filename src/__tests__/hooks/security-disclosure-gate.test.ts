@@ -7,8 +7,16 @@ describe('security-disclosure-gate', () => {
   // ── ADVISORY MODE (default) — should BLOCK ────────────────────────
 
   describe('advisory mode (default)', () => {
+    // Explicitly set advisory mode — REAGENT_DISCLOSURE_MODE may be set in the
+    // shell environment (e.g. from Claude Code settings.json env block)
+    const advisoryEnv = { REAGENT_DISCLOSURE_MODE: 'advisory' };
+
     it('blocks gh issue create with "bypass" keyword', () => {
-      const result = runHook(hook, bashPayload('gh issue create --title "bypass the auth hook"'));
+      const result = runHook(
+        hook,
+        bashPayload('gh issue create --title "bypass the auth hook"'),
+        advisoryEnv
+      );
       expect(result.exitCode).toBe(2);
       expect(result.stderr).toContain('SECURITY DISCLOSURE GATE');
       expect(result.stderr).toContain('Security Advisories');

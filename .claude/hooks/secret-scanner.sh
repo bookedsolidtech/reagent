@@ -33,7 +33,7 @@ REAGENT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 HALT_FILE="${REAGENT_ROOT}/.reagent/HALT"
 if [ -f "$HALT_FILE" ]; then
   printf 'REAGENT HALT: %s\nAll agent operations suspended. Run: reagent unfreeze\n' \
-    "$(cat "$HALT_FILE" 2>/dev/null || echo 'Reason unknown')" >&2
+    "$(head -c 1024 "$HALT_FILE" 2>/dev/null || echo 'Reason unknown')" >&2
   exit 2
 fi
 

@@ -30,3 +30,6 @@ blocked_paths: []
 
 # Optional: Discord webhook for halt/promote notifications
 notification_channel: ''
+
+quality_gates:
+  push_review: false

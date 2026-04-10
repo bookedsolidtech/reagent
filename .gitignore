@@ -27,3 +27,5 @@ src/__tests__/gateway/_mock-downstream.mjs
 .reagent/tasks.jsonl
 .reagent/.last-checkin
 .reagent/audit/
+.reagent/tasks.lock
+/.scratch/

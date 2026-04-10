@@ -1,0 +1,75 @@
+---
+title: Gateway Config
+description: Complete specification of .reagent/gateway.yaml fields.
+sidebar:
+  order: 3
+---
+
+`.reagent/gateway.yaml` defines the downstream MCP servers that the Reagent gateway connects to.
+
+## Example
+
+```yaml
+version: '1'
+servers:
+  discord-ops:
+    command: node
+    args:
+      - /path/to/discord-ops/dist/index.js
+    env:
+      DISCORD_BOT_TOKEN: '${DISCORD_BOT_TOKEN}'
+    tool_overrides:
+      get_messages:
+        tier: read
+      send_message:
+        tier: write
+      purge_messages:
+        tier: destructive
+      delete_channel:
+        tier: destructive
+        blocked: true
+
+discord_ops:
+  guild_id: '1234567890'
+  channels:
+    alerts: '111'
+    tasks: '222'
+    releases: '333'
+    dev: '444'
+```
+
+## Server fields
+
+| Field            | Type                           | Description                                  |
+| ---------------- | ------------------------------ | -------------------------------------------- |
+| `command`        | `string`                       | Command to start the MCP server              |
+| `args`           | `string[]`                     | Arguments to pass to the command             |
+| `env`            | `Record<string, string>`       | Environment variables for the server process |
+| `tool_overrides` | `Record<string, ToolOverride>` | Per-tool tier and blocked overrides          |
+
+## Tool override fields
+
+| Field     | Type                              | Description                                          |
+| --------- | --------------------------------- | ---------------------------------------------------- |
+| `tier`    | `read`, `write`, or `destructive` | Override the tool's tier classification              |
+| `blocked` | `boolean`                         | Block the tool entirely regardless of autonomy level |
+
+### Override constraints
+
+Overrides **cannot lower** a tool's tier below its static or convention-based classification. If a tool is classified as `destructive` by convention (e.g., `delete_channel`), you cannot override it to `read`. The override is ignored with a warning if attempted.
+
+## Environment variable resolution
+
+Use `${VAR_NAME}` syntax in env values. Reagent resolves them from `process.env` at startup. Missing env vars produce a warning and resolve to empty string.
+
+## Discord configuration
+
+The `discord_ops` top-level block configures Discord notification routing:
+
+| Field               | Type     | Description                    |
+| ------------------- | -------- | ------------------------------ |
+| `guild_id`          | `string` | Discord server (guild) ID      |
+| `channels.alerts`   | `string` | Channel ID for security alerts |
+| `channels.tasks`    | `string` | Channel ID for task events     |
+| `channels.releases` | `string` | Channel ID for release events  |
+| `channels.dev`      | `string` | Channel ID for dev activity    |

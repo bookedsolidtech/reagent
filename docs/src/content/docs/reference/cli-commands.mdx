@@ -1,0 +1,79 @@
+---
+title: CLI Commands
+description: Complete reference for all Reagent CLI commands.
+sidebar:
+  order: 1
+---
+
+## Commands
+
+| Command                         | Description                                       |
+| ------------------------------- | ------------------------------------------------- |
+| `reagent serve`                 | Start the MCP gateway server (stdio transport)    |
+| `reagent init`                  | Install reagent config into the current directory |
+| `reagent catalyze`              | Analyze project stack and generate gap report     |
+| `reagent check`                 | Verify what reagent components are installed      |
+| `reagent freeze --reason "..."` | Create `.reagent/HALT` — suspends all tool calls  |
+| `reagent unfreeze`              | Remove `.reagent/HALT` — resumes tool calls       |
+| `reagent cache check <sha>`     | Check review cache for a file SHA                 |
+| `reagent cache set <sha> <res>` | Store a review result (pass/fail/advisory)        |
+| `reagent cache clear`           | Clear all cached review results                   |
+| `reagent help`                  | Show usage help                                   |
+
+## `reagent init`
+
+See [Config Scaffolder](/guides/config-scaffolder/) for full details.
+
+| Flag                      | Description                                    | Default             |
+| ------------------------- | ---------------------------------------------- | ------------------- |
+| `--profile <name>`        | Profile to install                             | `client-engagement` |
+| `--dry-run`               | Preview what would be installed without writes | —                   |
+| `--github`                | Scaffold GitHub labels, milestones, and topics | —                   |
+| `--discord`               | Configure Discord notifications in gateway     | —                   |
+| `--guild-id <id>`         | Discord server ID (used with `--discord`)      | —                   |
+| `--alerts-channel <id>`   | Discord channel for security alerts            | —                   |
+| `--tasks-channel <id>`    | Discord channel for task events                | —                   |
+| `--releases-channel <id>` | Discord channel for release events             | —                   |
+| `--dev-channel <id>`      | Discord channel for dev activity               | —                   |
+
+## `reagent catalyze`
+
+See [Stack Analyzer](/guides/stack-analyzer/) for full details.
+
+| Flag          | Description                                         | Default           |
+| ------------- | --------------------------------------------------- | ----------------- |
+| `--plan`      | Analyze stack and generate gap report (default)     | Yes               |
+| `--audit`     | Compare current state against last plan, show drift | —                 |
+| `--dry-run`   | Print analysis without writing files                | —                 |
+| `[targetDir]` | Directory to analyze                                | Current directory |
+
+## `reagent freeze`
+
+| Flag              | Description                        | Default         |
+| ----------------- | ---------------------------------- | --------------- |
+| `--reason <text>` | Reason for freeze (stored in HALT) | `Manual freeze` |
+
+## `reagent cache`
+
+The review cache stores code review results to avoid redundant agent reviews on unchanged code.
+
+```bash
+# Check if a file has a cached review
+reagent cache check abc123 --branch main --base def456
+
+# Store a review result
+reagent cache set abc123 pass --branch main --reviewer code-reviewer --findings 0 --ttl 86400
+
+# Clear all cache entries
+reagent cache clear
+```
+
+| Flag                | Description               | Default   |
+| ------------------- | ------------------------- | --------- |
+| `--branch <name>`   | Branch name for cache key | `""`      |
+| `--base <commit>`   | Base commit for cache key | `""`      |
+| `--reviewer <name>` | Reviewer agent name       | `unknown` |
+| `--findings <n>`    | Number of findings        | `0`       |
+| `--ttl <seconds>`   | Cache entry TTL           | `86400`   |
+
+Cache file: `.reagent/review-cache.json`, keyed on `${branch}:${baseCommit}:${fileSHA256}`.

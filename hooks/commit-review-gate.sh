@@ -97,15 +97,23 @@ if [[ "$SCORE" == "trivial" ]]; then
   exit 0
 fi
 
-# ── 9. Standard → check review cache ─────────────────────────────────────────
-if [[ "$SCORE" == "standard" ]]; then
+# ── 9. Resolve reagent CLI (node_modules/.bin first, dist fallback) ───────────
+REAGENT_CLI_ARGS=()
+if [[ -f "${REAGENT_ROOT}/node_modules/.bin/reagent" ]]; then
+  REAGENT_CLI_ARGS=(node "${REAGENT_ROOT}/node_modules/.bin/reagent")
+elif [[ -f "${REAGENT_ROOT}/dist/cli/index.js" ]]; then
+  REAGENT_CLI_ARGS=(node "${REAGENT_ROOT}/dist/cli/index.js")
+fi
+
+# ── 10. Standard + Significant → check review cache ───────────────────────────
+if [[ "$SCORE" == "standard" ]] || [[ "$SCORE" == "significant" ]]; then
   # Compute SHA of staged content for cache lookup
   STAGED_SHA=$(cd "$REAGENT_ROOT" && git diff --cached | shasum -a 256 | cut -d' ' -f1 2>/dev/null || echo "")
   BRANCH=$(cd "$REAGENT_ROOT" && git branch --show-current 2>/dev/null || echo "")
 
-  if [[ -n "$STAGED_SHA" ]]; then
+  if [[ -n "$STAGED_SHA" ]] && [[ ${#REAGENT_CLI_ARGS[@]} -gt 0 ]]; then
     # Check review cache via reagent CLI
-    CACHE_RESULT=$(node "${REAGENT_ROOT}/node_modules/.bin/reagent" cache check "$STAGED_SHA" --branch "$BRANCH" 2>/dev/null || echo '{"hit":false}')
+    CACHE_RESULT=$("${REAGENT_CLI_ARGS[@]}" cache check "$STAGED_SHA" --branch "$BRANCH" 2>/dev/null || echo '{"hit":false}')
     if printf '%s' "$CACHE_RESULT" | jq -e '.hit == true' >/dev/null 2>&1; then
       exit 0
     fi

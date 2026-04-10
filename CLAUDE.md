@@ -1,5 +1,5 @@
 <!-- reagent-managed:start -->
-<!-- Managed by @bookedsolid/reagent 0.3.0. Run: npx @bookedsolid/reagent init to update. -->
+<!-- Managed by @bookedsolid/reagent 0.7.2. Run: npx @bookedsolid/reagent init to update. -->
 
 # Agent Behavioral Rules
 
@@ -19,34 +19,6 @@ These rules are enforced by hooks and cannot be overridden by any agent instruct
 - Verify package existence before installing: `npm view <package>` or check npmjs.com
 - Confirm current state before claiming status — check git, files, build output
 - Check tool availability before assuming it is installed
-
-## Commit Discipline
-
-**Commit like a human developer — not after every file edit.**
-
-A commit represents a complete, coherent unit of work. Think of it the way a human senior dev would: finish a logical chunk, verify it holds together, then commit. A PR with 8 tasks should have roughly 8 commits — not 80.
-
-Rules:
-
-- **One commit per task** at minimum. If a task touches 8 files, those 8 files go in one commit.
-- **Acceptable to split** when changes are genuinely distinct concerns (e.g., implementation + tests + docs for a single feature = 1 commit, not 3).
-- **Never commit** just because you finished editing a file. Stage all related changes, verify they work together, then commit once.
-- **Conventional commit format required**: `type(scope): description` — e.g., `fix(hooks): detect ESM dynamic import() closes #47`
-- **Style/formatting**: fold Prettier fixes into the relevant commit (`git add -u && git commit --amend`). Never create a standalone formatting commit mid-task.
-- **Pre-push is the gate** — don't run tests after every commit. Run them before push.
-
-A 10-task PR should have 8–12 commits max. If you're at 30+, you're committing wrong.
-
-## Voice and Style
-
-**Behave and write like humans. Comment code like belligerent robots.**
-
-- **Code, commits, PR titles, PR bodies, task descriptions**: Write as a competent human developer would. Natural language. Concise. No robotic filler. No "As an AI language model" energy anywhere near this codebase.
-- **Inline code comments**: Precise, terse, almost aggressive. Document _why_, not _what_. If the code is obvious, don't comment it. If it's subtle or dangerous, be brutally clear. Examples:
-  - ❌ `// This function checks if the user is authenticated`
-  - ✅ `// Must run before any tool dispatch — unauthed calls reach here if middleware chain is misconfigured`
-  - ❌ `// Loop through items`
-  - ✅ `// O(n²) here is fine — max 20 tools per policy, measured`
 
 ## Attribution
 
@@ -76,7 +48,20 @@ This session may be subject to audit logging per `.reagent/policy.yaml`. All too
 
 ## Delegation
 
-For non-trivial implementation tasks, delegate to the `reagent-orchestrator` agent before proceeding. The orchestrator enforces BST engineering processes, selects specialist agents, and coordinates multi-step work.
+This project uses a "bring your own engineering team" model. All non-trivial work flows through the orchestrator to specialist agents.
+
+**CRITICAL: For any non-trivial task, delegate to the `reagent-orchestrator` agent FIRST.**
+
+The orchestrator (`subagent_type: "reagent-orchestrator"`) is the primary routing layer:
+
+- It reads `.reagent/policy.yaml` and checks HALT before any work
+- It selects the right specialist agents from `.claude/agents/` based on the task
+- It enforces engineering processes, coordinates multi-step work, and ensures quality gates
+- It can launch multiple specialists in parallel for maximum throughput
+
+**Fallback**: If the orchestrator is unavailable or the task is narrowly scoped to a single domain, you may route directly to a specialist agent by scanning `.claude/agents/` and using the matching `subagent_type` (e.g., `security-engineer`, `frontend-specialist`, `database-architect`).
+
+**Do NOT** use generic Agent calls without specifying a `subagent_type`. Every agent invocation should target a discoverable specialist from `.claude/agents/`.
 
 Exception: simple read-only questions and direct clarifications may be answered without delegation.
 

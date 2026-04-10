@@ -30,26 +30,39 @@ jobs:
         run: npm ci
 
       - name: Check for changeset
-        if: "!startsWith(github.head_ref, 'changeset-release/')"
+        # Skip for Changesets' own release branch and PRs labelled skip-changeset
+        if: |
+          !startsWith(github.head_ref, 'changeset-release/') &&
+          !contains(github.event.pull_request.labels.*.name, 'skip-changeset')
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
           CHANGED=$(git diff --name-only "origin/${BASE_REF}...HEAD")
-          SRC_CHANGED=$(echo "$CHANGED" | grep -vE '^(\.changeset/|CHANGELOG\.md|package\.json)' | head -1 || true)
+
+          # Files that never need a changeset entry:
+          #   - Changeset files / CHANGELOG / package.json (managed by Changesets itself)
+          #   - CI/CD workflows and GitHub config (.github/)
+          #   - Developer tooling config (gitignore, prettier, eslint, tsconfig, etc.)
+          #   - Documentation site (docs/)
+          #   - Lock files
+          INFRA_PATTERN='^(\.changeset/|CHANGELOG\.md|package\.json|\.github/|\.gitignore|\.npmignore|\.prettierignore|\.eslintignore|\.gitleaks\.toml|tsconfig|\.husky/|docs/|.*\.lock$)'
+
+          SRC_CHANGED=$(echo "$CHANGED" | grep -vE "$INFRA_PATTERN" | head -1 || true)
 
           if [ -n "$SRC_CHANGED" ]; then
             CHANGESETS=$(ls .changeset/*.md 2>/dev/null | grep -v README.md | wc -l | tr -d ' ')
             if [ "$CHANGESETS" -eq 0 ]; then
               echo ""
               echo "ERROR: Source files changed but no changeset found."
+              echo "  First changed source file: $SRC_CHANGED"
               echo ""
               echo "Add a changeset before merging:"
               echo "  npx changeset"
               echo ""
-              echo "Then commit the generated .changeset/*.md file."
+              echo "Or label this PR 'skip-changeset' if it truly needs no changelog entry."
               exit 1
             fi
             echo "Changeset found ($CHANGESETS file(s)). OK."
           else
-            echo "No source changes — changeset not required."
+            echo "No source changes requiring a changeset (infra/config/docs only). Skipping."
           fi

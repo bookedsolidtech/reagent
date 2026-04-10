@@ -30,10 +30,10 @@ Alternatively, email **security@bookedsolid.tech** with the details below.
 
 ### Response timeline
 
-| Step | Target |
-| ---- | ------ |
-| Acknowledgement | Within 48 hours |
-| Initial assessment | Within 5 business days |
+| Step                           | Target                   |
+| ------------------------------ | ------------------------ |
+| Acknowledgement                | Within 48 hours          |
+| Initial assessment             | Within 5 business days   |
 | Patch + coordinated disclosure | Within 90 days of report |
 
 ## Scope
@@ -70,12 +70,14 @@ We ask reporters to wait for our patch before publishing their own writeup. We c
 Reagent's security model is defense-in-depth across two independent layers:
 
 **Gateway layer** (runtime, `reagent serve`):
+
 - Zero-trust middleware chain — every tool call is audited, classified, and policy-checked
 - Secret redaction on arguments (pre-execution) and results (post-execution)
 - HALT kill switch — a single `.reagent/HALT` file immediately blocks all tool calls
 - Blocked path enforcement — `.reagent/` and operator-defined paths are always protected
 
 **Hook layer** (development-time, Claude Code hooks):
+
 - 20 Claude Code hooks enforce security at the point of tool invocation
 - `security-disclosure-gate` blocks public issue creation for security topics
 - `settings-protection` prevents agents from modifying their own safety rails

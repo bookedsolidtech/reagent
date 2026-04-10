@@ -23,9 +23,14 @@ describe('E2E smoke — real CLI process', () => {
   let mockServerScript: string;
 
   beforeAll(async () => {
-    // Ensure the project is built
-    const { execSync } = await import('node:child_process');
-    execSync('npm run build', { cwd: projectRoot, stdio: 'pipe' });
+    // Build only if dist/ is absent. CI always builds before running tests; rebuilding
+    // concurrently with other test files causes a race condition where a partially-written
+    // dist file can be read by a concurrent subprocess (e.g. init.test.ts).
+    const distCli = path.join(projectRoot, 'dist', 'cli', 'index.js');
+    if (!fs.existsSync(distCli)) {
+      const { execSync } = await import('node:child_process');
+      execSync('npm run build', { cwd: projectRoot, stdio: 'pipe' });
+    }
 
     // Write a mock downstream MCP server script.
     // Placed in the source tree so it can resolve node_modules; cleaned up in afterAll.

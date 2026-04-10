@@ -3,18 +3,18 @@ import { runDaemonStart } from './start.js';
 
 /**
  * Graceful restart: stop the running daemon (SIGTERM + poll for exit),
- * then start a fresh instance.
+ * then start a fresh instance once the process has actually exited.
+ *
+ * runDaemonStop accepts an onDone callback that fires only after the daemon
+ * process is confirmed dead, preventing the new instance from racing the old
+ * one for the port binding.
  */
 export function runDaemonRestart(args: string[]): void {
   console.log('\nRestarting reagent daemon...');
-  // runDaemonStop polls synchronously via setTimeout — it will not return until
-  // the daemon exits or the 10-second timeout expires. This works because Node
-  // keeps the event loop alive while setTimeout callbacks are pending.
-  runDaemonStop([]);
-
-  // Give a brief moment after stop returns before re-launching so the OS can
-  // release the port binding from the previous process.
-  setTimeout(() => {
-    runDaemonStart(args);
-  }, 500);
+  runDaemonStop([], () => {
+    // Brief pause so the OS can release the port binding before re-launch.
+    setTimeout(() => {
+      runDaemonStart(args);
+    }, 200);
+  });
 }

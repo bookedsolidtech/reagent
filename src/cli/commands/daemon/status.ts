@@ -68,10 +68,15 @@ export async function runDaemonStatus(_args: string[]): Promise<void> {
       const sessionsResp = await fetchJson<DaemonSessionsResponse>(`${baseUrl}/sessions`);
       console.log(`\n  Active sessions:`);
       for (const session of sessionsResp.sessions) {
+        const elapsed = session.last_activity_elapsed_secs;
+        const elapsedStr =
+          elapsed < 60
+            ? `${elapsed}s ago`
+            : elapsed < 3600
+              ? `${Math.floor(elapsed / 60)}m ago`
+              : `${Math.floor(elapsed / 3600)}h ago`;
         console.log(`    [${session.session_id.slice(0, 8)}] ${session.project_root}`);
-        console.log(
-          `      Last activity: ${session.last_activity}  TTL remaining: ${session.ttl_remaining_seconds}s`
-        );
+        console.log(`      Last activity: ${elapsedStr}`);
       }
     } catch {
       // Non-fatal — health already printed session count

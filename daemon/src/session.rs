@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
@@ -15,7 +15,7 @@ pub type SessionId = String;
 ///
 /// INVARIANT: Never hold a write guard across an `.await` point.
 pub struct SessionRegistry {
-    pub sessions: HashMap<SessionId, ProjectContext>,
+    sessions: HashMap<SessionId, ProjectContext>,
 }
 
 impl SessionRegistry {
@@ -34,6 +34,28 @@ impl SessionRegistry {
     /// `cleanup_session` for that.
     pub fn remove(&mut self, id: &SessionId) -> Option<ProjectContext> {
         self.sessions.remove(id)
+    }
+
+    /// Number of active sessions.
+    pub fn len(&self) -> usize {
+        self.sessions.len()
+    }
+
+    /// Mutable reference to a session by ID, or None if not found.
+    pub fn get_mut(&mut self, id: &SessionId) -> Option<&mut ProjectContext> {
+        self.sessions.get_mut(id)
+    }
+
+    /// Iterator over mutable references to all session contexts.
+    /// Used during graceful shutdown to broadcast close events and kill children.
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut ProjectContext> {
+        self.sessions.values_mut()
+    }
+
+    /// Remove all sessions. Used at the end of graceful shutdown after children
+    /// have already been killed.
+    pub fn clear(&mut self) {
+        self.sessions.clear();
     }
 
     /// Return session IDs whose last_activity exceeds `ttl`.

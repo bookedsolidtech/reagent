@@ -7,7 +7,7 @@ function getPidFilePath(): string {
   return path.join(os.homedir(), '.reagent', 'daemon.pid');
 }
 
-export function runDaemonStop(_args: string[]): void {
+export function runDaemonStop(_args: string[], onDone?: () => void): void {
   const pidPath = getPidFilePath();
 
   if (!fs.existsSync(pidPath)) {
@@ -35,6 +35,7 @@ export function runDaemonStop(_args: string[]): void {
   if (!alive) {
     console.log(`\nreagent daemon (PID ${pid}) is not running — removing stale PID file.`);
     fs.unlinkSync(pidPath);
+    onDone?.();
     return;
   }
 
@@ -68,6 +69,7 @@ export function runDaemonStop(_args: string[]): void {
         fs.unlinkSync(pidPath);
       }
       console.log(`  Daemon stopped.\n`);
+      onDone?.();
       return;
     }
 

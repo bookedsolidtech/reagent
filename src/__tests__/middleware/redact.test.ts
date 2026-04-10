@@ -32,6 +32,56 @@ describe('redactSecrets', () => {
     expect(output).toContain('[REDACTED]');
     expect(redacted).toContain('Private Key');
   });
+
+  it('redacts Anthropic API keys', () => {
+    // Construct the token at runtime to avoid triggering secret-scanner on write
+    const prefix = 'sk-ant-';
+    const suffix = 'A'.repeat(40);
+    const input = `key=${prefix}${suffix}`;
+    const { output, redacted } = redactSecrets(input);
+    expect(output).toContain('[REDACTED]');
+    expect(output).not.toContain(prefix);
+    expect(redacted).toContain('Anthropic API Key');
+  });
+
+  it('redacts OpenAI project keys', () => {
+    // Construct the token at runtime to avoid triggering secret-scanner on write
+    const prefix = 'sk-proj-';
+    const suffix = 'B'.repeat(40);
+    const input = `token=${prefix}${suffix}`;
+    const { output, redacted } = redactSecrets(input);
+    expect(output).toContain('[REDACTED]');
+    expect(output).not.toContain(prefix);
+    expect(redacted).toContain('OpenAI Project Key');
+  });
+
+  it('redacts OpenAI legacy API keys', () => {
+    // Construct the token at runtime to avoid triggering secret-scanner on write
+    const prefix = 'sk-';
+    const suffix = 'C'.repeat(40);
+    const input = `OPENAI_KEY=${prefix}${suffix}`;
+    const { output, redacted } = redactSecrets(input);
+    expect(output).toContain('[REDACTED]');
+    expect(redacted).toContain('OpenAI API Key');
+  });
+
+  it('redacts Hugging Face tokens', () => {
+    // Construct the token at runtime to avoid triggering secret-scanner on write
+    const prefix = 'hf_';
+    const suffix = 'D'.repeat(40);
+    const input = `HF_TOKEN=${prefix}${suffix}`;
+    const { output, redacted } = redactSecrets(input);
+    expect(output).toContain('[REDACTED]');
+    expect(output).not.toContain(prefix);
+    expect(redacted).toContain('Hugging Face Token');
+  });
+
+  it('does not redact short hf_ strings (below minimum length)', () => {
+    const input = 'prefix hf_tooshort suffix';
+    const { output, redacted } = redactSecrets(input);
+    expect(output).toBe(input);
+    expect(redacted).toHaveLength(0);
+  });
 });
 
 describe('redactMiddleware', () => {

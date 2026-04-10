@@ -83,6 +83,20 @@ if printf '%s' "$CONTENT" | grep -qE "require\([^'\"][^)]*\)"; then
   WARNINGS+=("Dynamic require(variable) — loading modules by variable name can be exploited for path traversal. Prefer static imports.")
 fi
 
+# ESM dynamic import() of dangerous modules: await import('child_process'), import('vm').then(...)
+if printf '%s' "$CONTENT" | grep -qE "import\(['\"]child_process['\"]"; then
+  WARNINGS+=("import('child_process') — ESM dynamic import grants shell execution capability. Use safer alternatives or document the necessity.")
+fi
+
+if printf '%s' "$CONTENT" | grep -qE "import\(['\"]vm['\"]"; then
+  WARNINGS+=("import('vm') — ESM dynamic import of Node.js VM module allows dynamic code execution. Ensure input is fully trusted and sandboxed.")
+fi
+
+# Dynamic import() with a variable or template literal: import(variable), import(\`...\`)
+if printf '%s' "$CONTENT" | grep -qE "import\([^'\"(][^)]*\)"; then
+  WARNINGS+=("Dynamic import(variable) — loading modules by variable name or template literal can be exploited for path traversal. Prefer static imports.")
+fi
+
 if [[ ${#WARNINGS[@]} -eq 0 ]]; then
   exit 0
 fi

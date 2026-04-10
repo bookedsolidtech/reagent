@@ -14,6 +14,7 @@ import { createInjectionMiddleware } from './middleware/injection.js';
 import { createAuditMiddleware } from './middleware/audit.js';
 import { createBlockedPathsMiddleware } from './middleware/blocked-paths.js';
 import { registerNativeTools } from './native-tools.js';
+import { detectToolCollisions } from './collision-detector.js';
 import type { Middleware } from './middleware/chain.js';
 
 export interface ServeOptions {
@@ -72,6 +73,14 @@ export async function startGateway(options: ServeOptions): Promise<void> {
   // Connect to downstream servers
   const clientManager = new ClientManager();
   await clientManager.connectAll(gatewayConfig);
+
+  // Detect tool name collisions before accepting connections (GHSA-4j9r)
+  const { collisions } = await detectToolCollisions(clientManager);
+  if (collisions.length > 0) {
+    console.error(
+      `[reagent] ${collisions.length} tool name collision(s) detected — shadowed tools will be registered with server-prefixed names`
+    );
+  }
 
   // Register native (first-party) tools
   const nativeCount = registerNativeTools(gateway, baseDir, middlewares);

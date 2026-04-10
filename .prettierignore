@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Agent worktrees live here — exclude to prevent linters crawling sibling workspaces
+.claude/worktrees/
 CHANGELOG.md
 *.sh
 pnpm-lock.yaml

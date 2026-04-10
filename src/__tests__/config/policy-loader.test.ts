@@ -116,13 +116,12 @@ describe('loadPolicyAsync', () => {
     const first = await loadPolicyAsync(tmpDir);
     expect(first.autonomy_level).toBe('L1');
 
-    // Write a new file with different content — this changes mtime
+    // Write new content, then explicitly set mtime forward — utimesSync is the
+    // only reliable way to guarantee a different mtime on HFS+ (1s resolution).
+    // A sleep before writeFileSync is not sufficient and is an anti-pattern.
     const updatedYaml = VALID_POLICY_YAML.replace('autonomy_level: L1', 'autonomy_level: L0');
-    // Small sleep to ensure mtime differs on filesystems with 1s resolution
-    await new Promise((resolve) => setTimeout(resolve, 10));
     fs.writeFileSync(policyPath, updatedYaml);
 
-    // Force mtime to differ by using utimes
     const futureTime = new Date(Date.now() + 2000);
     fs.utimesSync(policyPath, futureTime, futureTime);
 

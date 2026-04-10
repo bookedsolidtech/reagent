@@ -43,6 +43,12 @@ interface PolicyCacheEntry {
  */
 const policyCache = new Map<string, PolicyCacheEntry>();
 
+// Coalesce concurrent cache misses — two callers racing to populate the same
+// key should share one disk read, not stomp each other. On a gateway under load
+// this is the difference between an occasional wasted syscall and a data race
+// on a security boundary.
+const inflightReads = new Map<string, Promise<Policy>>();
+
 function applyMaxCeiling(policy: Policy): Policy {
   // SECURITY: Enforce max_autonomy_level ceiling — clamp if autonomy_level exceeds it.
   if (LEVEL_ORDER[policy.autonomy_level] > LEVEL_ORDER[policy.max_autonomy_level]) {
@@ -77,6 +83,23 @@ function parseRawPolicy(raw: string, policyPath: string): Policy {
 }
 
 /**
+ * Reads and parses the policy file from disk, then populates the cache.
+ * Kept separate so the inflight map can hold a single promise per baseDir
+ * and multiple concurrent callers can join it rather than each issuing their
+ * own stat+read pair.
+ */
+async function readPolicyFromDisk(
+  baseDir: string,
+  policyPath: string,
+  currentMtime: number
+): Promise<Policy> {
+  const raw = await fsPromises.readFile(policyPath, 'utf8');
+  const policy = parseRawPolicy(raw, policyPath);
+  policyCache.set(baseDir, { policy, cachedAt: Date.now(), mtimeMs: currentMtime });
+  return policy;
+}
+
+/**
  * Async policy loader with TTL cache and mtime-based invalidation.
  *
  * Cache behavior:
@@ -89,6 +112,7 @@ function parseRawPolicy(raw: string, policyPath: string): Policy {
  *
  * PERFORMANCE: fs.promises.readFile avoids blocking the event loop on every tool invocation.
  * SECURITY: mtime invalidation ensures a tightened policy takes effect on the next call.
+ * CONCURRENCY: inflightReads map guarantees at most one disk read per baseDir at a time.
  */
 export async function loadPolicyAsync(baseDir: string): Promise<Policy> {
   const policyPath = path.join(baseDir, '.reagent', 'policy.yaml');
@@ -109,12 +133,16 @@ export async function loadPolicyAsync(baseDir: string): Promise<Policy> {
     return cached.policy;
   }
 
-  // Cache miss or invalidation — read from disk.
-  const raw = await fsPromises.readFile(policyPath, 'utf8');
-  const policy = parseRawPolicy(raw, policyPath);
+  // If another caller already kicked off a read for this baseDir, join it rather
+  // than issuing a second syscall and racing on the cache write.
+  const inflight = inflightReads.get(baseDir);
+  if (inflight) return inflight;
 
-  policyCache.set(baseDir, { policy, cachedAt: now, mtimeMs: currentMtime });
-  return policy;
+  const read = readPolicyFromDisk(baseDir, policyPath, currentMtime).finally(() => {
+    inflightReads.delete(baseDir);
+  });
+  inflightReads.set(baseDir, read);
+  return read;
 }
 
 /**

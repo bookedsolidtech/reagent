@@ -5,9 +5,14 @@ export default defineConfig({
     globals: true,
     root: 'src',
     include: ['**/*.test.ts'],
+    // In CI: emit JUnit XML for test result upload + annotations
+    // Locally: verbose only (no file output)
+    reporters: process.env.CI
+      ? ['verbose', ['junit', { outputFile: 'test-results.xml' }]]
+      : ['verbose'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json-summary'],
+      reporter: ['text', 'json-summary', 'lcov'],
       // Exclude test files, generated types, and thin entry points
       exclude: [
         '**/*.test.ts',

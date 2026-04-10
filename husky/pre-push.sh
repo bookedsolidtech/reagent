@@ -64,6 +64,36 @@ run_gate "type-check"   "TypeScript type check"
 run_gate "test"         "Test suite"
 run_gate "build"        "Build"
 
+# Pack dry-run — validates the publish payload matches what CI would produce
+if script_exists "build"; then
+  echo "pre-push: running Pack dry-run..."
+  if ! $PKG_MANAGER pack --dry-run > "$OUT" 2>&1; then
+    echo ""
+    echo "GATE FAILED: Pack dry-run"
+    cat "$OUT"
+    echo ""
+    FAILED="${FAILED} pack"
+  fi
+fi
+
+# Shellcheck — lint all hook and husky shell scripts if shellcheck is installed
+if command -v shellcheck > /dev/null 2>&1; then
+  echo "pre-push: running Shellcheck on hook scripts..."
+  SHELL_SCRIPTS=$(find hooks/ husky/ -name "*.sh" 2>/dev/null | tr '\n' ' ')
+  if [ -n "$SHELL_SCRIPTS" ]; then
+    # shellcheck disable=SC2086
+    if ! shellcheck --shell=bash --severity=warning --exclude=SC1091,SC2034 $SHELL_SCRIPTS > "$OUT" 2>&1; then
+      echo ""
+      echo "GATE FAILED: Shellcheck"
+      cat "$OUT"
+      echo ""
+      FAILED="${FAILED} shellcheck"
+    fi
+  fi
+else
+  echo "pre-push: shellcheck not installed — hook lint skipped (install: brew install shellcheck)"
+fi
+
 # ── Optional: coverage threshold gate ─────────────────────────────────────────
 # Enabled via .reagent/policy.yaml:
 #   coverage:

@@ -14,15 +14,17 @@ env:
   HUSKY: '0'
 
 jobs:
+  # ── Quality gates (format, lint, type, build, test) ─────────────────────────
   quality:
-    name: Quality gates (Node ${{ matrix.node }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    name: Quality gates (Node ${{ matrix.node }} / ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     permissions:
       contents: read
     strategy:
       matrix:
         node: ['22', '24']
+        os: [ubuntu-latest, macos-latest]
       fail-fast: false
 
     steps:
@@ -54,6 +56,75 @@ jobs:
       - name: Pack dry-run (validate publish payload)
         run: npm pack --dry-run
 
+  # ── Coverage gate ────────────────────────────────────────────────────────────
+  coverage:
+    name: Coverage (Node 22)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+        env:
+          COVERAGE_THRESHOLD: '60'
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: src/coverage/
+          retention-days: 14
+
+      - name: Coverage summary (stdout)
+        if: always()
+        run: |
+          if [ -f src/coverage/coverage-summary.json ]; then
+            echo "### Coverage Summary" >> $GITHUB_STEP_SUMMARY
+            node -e "
+              const s = require('./src/coverage/coverage-summary.json').total;
+              const fmt = (k) => \`\${k}: \${s[k].pct}% (\${s[k].covered}/\${s[k].total})\`;
+              console.log(['lines','functions','branches','statements'].map(fmt).join('\n'));
+            " >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ── Shell script linting ─────────────────────────────────────────────────────
+  shellcheck:
+    name: Shellcheck (hook scripts)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Lint hook scripts
+        run: |
+          find hooks/ husky/ -name "*.sh" | xargs shellcheck \
+            --shell=bash \
+            --severity=warning \
+            --exclude=SC1091,SC2034
+        # SC1091: don't follow sourced files (common in hook libs)
+        # SC2034: unused variable warnings (common in hook patterns)
+
+  # ── Secret scan ──────────────────────────────────────────────────────────────
   secret-scan:
     name: Secret scan
     runs-on: ubuntu-latest
@@ -79,6 +150,7 @@ jobs:
       - name: Scan repository for secrets
         run: gitleaks detect --config .gitleaks.toml --no-banner --verbose --redact
 
+  # ── Dependency audit ─────────────────────────────────────────────────────────
   npm-audit:
     name: Security audit
     runs-on: ubuntu-latest
@@ -99,27 +171,51 @@ jobs:
       - name: Audit dependencies
         run: npm audit --audit-level=high
 
-  # ── Roll-up status check for branch protection ──────────────────────────────
-  # Configure branch protection to require this single check instead of
-  # tracking each matrix/job individually. If any upstream job fails, this fails.
+  # ── Dependency review (PRs only) ─────────────────────────────────────────────
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
+
+  # ── Roll-up status check for branch protection ───────────────────────────────
+  # Branch protection requires this single check. Fails if any upstream job fails.
   ci-passed:
     name: CI passed
     runs-on: ubuntu-latest
     if: always()
-    needs: [quality, secret-scan, npm-audit]
+    needs: [quality, coverage, shellcheck, secret-scan, npm-audit]
     steps:
       - name: Check all jobs passed
         run: |
-          if [[ "${{ needs.quality.result }}" != "success" ]]; then
-            echo "Quality gates failed"
-            exit 1
-          fi
-          if [[ "${{ needs.secret-scan.result }}" != "success" ]]; then
-            echo "Secret scan failed"
-            exit 1
-          fi
-          if [[ "${{ needs.npm-audit.result }}" != "success" ]]; then
-            echo "npm audit failed"
+          declare -A results=(
+            [quality]="${{ needs.quality.result }}"
+            [coverage]="${{ needs.coverage.result }}"
+            [shellcheck]="${{ needs.shellcheck.result }}"
+            [secret-scan]="${{ needs.secret-scan.result }}"
+            [npm-audit]="${{ needs.npm-audit.result }}"
+          )
+          failed=""
+          for job in "${!results[@]}"; do
+            if [[ "${results[$job]}" != "success" ]]; then
+              echo "FAILED: $job — ${results[$job]}"
+              failed="$failed $job"
+            fi
+          done
+          if [[ -n "$failed" ]]; then
+            echo "CI failed jobs:$failed"
             exit 1
           fi
           echo "All CI checks passed"

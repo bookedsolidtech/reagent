@@ -15,11 +15,18 @@ const DownstreamServerSchema = z.object({
   args: z.array(z.string()).default([]),
   env: z.record(z.string()).optional(),
   tool_overrides: z.record(ToolOverrideSchema).optional(),
+  max_concurrent_calls: z.number().int().min(0).optional(),
+  calls_per_minute: z.number().int().min(0).optional(),
+});
+
+const GatewayOptionsSchema = z.object({
+  max_result_size_kb: z.number().int().min(1).optional(),
 });
 
 const GatewayConfigSchema = z.object({
   version: z.string(),
   servers: z.record(DownstreamServerSchema),
+  gateway: GatewayOptionsSchema.optional(),
 });
 
 /**

@@ -79,7 +79,7 @@ export class ToolProxy {
               tool_name: tool.name,
               server_name: serverName,
               arguments: args,
-              session_id: '',
+              session_id: crypto.randomUUID(),
               status: InvocationStatus.Allowed,
               start_time: Date.now(),
               metadata: {},

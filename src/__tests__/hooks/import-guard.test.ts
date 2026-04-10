@@ -64,6 +64,53 @@ describe('import-guard', () => {
       expect(result.exitCode).toBe(0);
       expect(result.stderr).toContain('IMPORT-GUARD');
     });
+
+    it('warns on ESM dynamic import of child_process (await import)', () => {
+      const result = runHook(
+        hook,
+        writePayload('/repo/src/exec.ts', "const cp = await import('child_process');")
+      );
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toContain('IMPORT-GUARD');
+      expect(result.stderr).toContain('child_process');
+    });
+
+    it('warns on ESM dynamic import of child_process (double quotes)', () => {
+      const result = runHook(
+        hook,
+        writePayload('/repo/src/exec.js', 'import("child_process").then(cp => cp.exec(cmd));')
+      );
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toContain('IMPORT-GUARD');
+    });
+
+    it('warns on ESM dynamic import of vm', () => {
+      const result = runHook(
+        hook,
+        writePayload('/repo/src/sandbox.ts', "const vm = await import('vm');")
+      );
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toContain('IMPORT-GUARD');
+      expect(result.stderr).toContain('vm');
+    });
+
+    it('warns on ESM dynamic import with variable argument', () => {
+      const result = runHook(
+        hook,
+        writePayload('/repo/src/loader.ts', 'const mod = await import(moduleName);')
+      );
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toContain('IMPORT-GUARD');
+    });
+
+    it('warns on ESM dynamic import with template literal', () => {
+      const result = runHook(
+        hook,
+        writePayload('/repo/src/loader.ts', 'const m = await import(`${moduleName}`);')
+      );
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toContain('IMPORT-GUARD');
+    });
   });
 
   // ── Should ALLOW silently (exit 0 no stderr) ──────────────────────

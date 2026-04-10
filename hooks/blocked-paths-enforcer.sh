@@ -138,7 +138,6 @@ for blocked in "${BLOCKED_PATHS[@]}"; do
   # Glob pattern match (contains *)
   if [[ "$blocked" == *'*'* ]]; then
     # Convert glob to regex: . → \., * → .*
-    local regex
     regex=$(printf '%s' "$LOWER_BLOCKED" | sed 's/\./\\./g; s/\*/.*/g')
     if printf '%s' "$LOWER_NORM" | grep -qE "^${regex}$"; then
       {

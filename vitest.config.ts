@@ -5,13 +5,23 @@ export default defineConfig({
     globals: true,
     root: 'src',
     include: ['**/*.test.ts'],
+    // In CI: emit JUnit XML for test result upload + annotations
+    // Locally: verbose only (no file output)
+    reporters: process.env.CI
+      ? ['verbose', ['junit', { outputFile: 'test-results.xml' }]]
+      : ['verbose'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json-summary'],
+      reporter: ['text', 'json-summary', 'lcov'],
       // Exclude test files, generated types, and thin entry points
       exclude: [
         '**/*.test.ts',
         '**/index.ts', // CLI entry — tested via e2e
+        '**/cli/commands/**', // CLI command handlers — thin orchestrators, covered by e2e smoke tests
+        '**/gateway/server.ts', // Gateway server orchestrator — covered by e2e smoke tests
+        '**/gateway/client-manager.ts', // Downstream client manager — covered by e2e smoke tests
+        '**/gateway/native-tools.ts', // MCP tool registrations — covered by e2e smoke tests
+        '**/pm/github-bridge.ts', // GitHub CLI bridge — integration tested, no unit test surface
         '**/__tests__/**',
       ],
       // Thresholds — enforced when --coverage is passed

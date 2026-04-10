@@ -172,7 +172,11 @@ describe('createRateLimitMiddleware', () => {
     await mw(ctx, async () => {});
 
     expect(ctx.metadata.rate_limit_exceeded).toBeDefined();
-    const meta = ctx.metadata.rate_limit_exceeded as { type: string; current: number; limit: number };
+    const meta = ctx.metadata.rate_limit_exceeded as {
+      type: string;
+      current: number;
+      limit: number;
+    };
     expect(meta.type).toBe('concurrency');
     expect(meta.current).toBe(1);
     expect(meta.limit).toBe(1);

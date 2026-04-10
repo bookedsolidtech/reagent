@@ -18,6 +18,15 @@ export interface ClaudeMdConfig {
   attributionRule?: string;
 }
 
+export interface SecurityConfig {
+  /** Controls how security findings are disclosed. Default: 'advisory'.
+   *  advisory — public OSS repos: redirect to GitHub Security Advisories
+   *  issues   — private repos: redirect to labeled internal issue queue
+   *  disabled — no gate (not recommended)
+   */
+  disclosureMode?: 'advisory' | 'issues' | 'disabled';
+}
+
 export interface ProfileConfig {
   blockAiAttribution?: boolean;
   blockedPaths?: string[];
@@ -28,5 +37,6 @@ export interface ProfileConfig {
   huskyPrePush?: boolean;
   claudeHooks?: HooksConfig;
   claudeMd?: ClaudeMdConfig;
+  security?: SecurityConfig;
   [key: string]: unknown;
 }

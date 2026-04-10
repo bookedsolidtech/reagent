@@ -21,6 +21,7 @@ export function installPolicy(
     fs.mkdirSync(reagentDir, { recursive: true });
     const now = new Date().toISOString();
     const blockAttribution = profile.blockAiAttribution === true;
+    const disclosureMode = profile.security?.disclosureMode ?? 'advisory';
     const blockedPaths = profile.blockedPaths ?? [
       '.reagent/',
       '.github/workflows/',
@@ -62,6 +63,14 @@ blocked_paths:${blockedPathsYaml}
 
 # Optional: Discord webhook for halt/promote notifications
 notification_channel: ""
+
+# Security disclosure configuration
+# Controls how the security-disclosure-gate hook routes security findings:
+#   advisory — public OSS repos: redirect to GitHub Security Advisories (default)
+#   issues   — private client repos: redirect to labeled internal issue queue
+#   disabled — no gate (not recommended)
+security:
+  disclosure_mode: "${disclosureMode}"
 `;
     fs.writeFileSync(policyPath, content, 'utf8');
   }

@@ -10,6 +10,7 @@ import { createKillSwitchMiddleware } from './middleware/kill-switch.js';
 import { createTierMiddleware } from './middleware/tier.js';
 import { createPolicyMiddleware } from './middleware/policy.js';
 import { redactMiddleware } from './middleware/redact.js';
+import { createInjectionMiddleware } from './middleware/injection.js';
 import { createAuditMiddleware } from './middleware/audit.js';
 import { createBlockedPathsMiddleware } from './middleware/blocked-paths.js';
 import { registerNativeTools } from './native-tools.js';
@@ -44,7 +45,12 @@ export async function startGateway(options: ServeOptions): Promise<void> {
   // Build middleware chain
   // SECURITY: Audit is outermost so it records ALL invocations, including kill-switch denials.
   // SECURITY: blocked-paths runs before tool execution to prevent writes to protected paths.
-  // Order (onion): audit → session → kill-switch → tier → policy → blocked-paths → redact → [execute]
+  // SECURITY: injection runs PostToolUse (after redact) to scan downstream results for prompt injection.
+  // Order (onion): audit → session → kill-switch → tier → policy → blocked-paths → redact → injection → [execute]
+  const injectionAction = (policy as unknown as Record<string, unknown>).injection_detection === 'warn'
+    ? 'warn' as const
+    : 'block' as const;
+
   const middlewares: Middleware[] = [
     createAuditMiddleware(baseDir, policy),
     createSessionMiddleware(),
@@ -53,6 +59,7 @@ export async function startGateway(options: ServeOptions): Promise<void> {
     createPolicyMiddleware(policy, gatewayConfig, baseDir),
     createBlockedPathsMiddleware(policy, baseDir),
     redactMiddleware,
+    createInjectionMiddleware(injectionAction),
   ];
 
   // Create gateway MCP server

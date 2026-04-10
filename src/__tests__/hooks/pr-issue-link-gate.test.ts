@@ -8,7 +8,10 @@ describe('pr-issue-link-gate', () => {
 
   describe('emits advisory when closes/fixes/resolves missing', () => {
     it('warns on gh pr create with no issue reference', () => {
-      const result = runHook(hook, bashPayload('gh pr create --title "fix: update thing" --body "Some description"'));
+      const result = runHook(
+        hook,
+        bashPayload('gh pr create --title "fix: update thing" --body "Some description"')
+      );
       expect(result.exitCode).toBe(0); // advisory — does not block
       expect(result.stderr).toContain('PR ISSUE LINK ADVISORY');
     });
@@ -29,7 +32,9 @@ describe('pr-issue-link-gate', () => {
     it('passes with "closes #N"', () => {
       const result = runHook(
         hook,
-        bashPayload('gh pr create --title "fix: policy loader" --body "Switches to async I/O\\n\\ncloses #34"')
+        bashPayload(
+          'gh pr create --title "fix: policy loader" --body "Switches to async I/O\\n\\ncloses #34"'
+        )
       );
       expect(result.exitCode).toBe(0);
       expect(result.stderr).toBe('');

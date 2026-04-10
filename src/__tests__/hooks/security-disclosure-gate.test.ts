@@ -20,7 +20,10 @@ describe('security-disclosure-gate', () => {
     });
 
     it('blocks on "injection" keyword', () => {
-      const result = runHook(hook, bashPayload('gh issue create --title "prompt injection detection gap"'));
+      const result = runHook(
+        hook,
+        bashPayload('gh issue create --title "prompt injection detection gap"')
+      );
       expect(result.exitCode).toBe(2);
     });
 
@@ -38,7 +41,10 @@ describe('security-disclosure-gate', () => {
     });
 
     it('blocks on "jailbreak" keyword', () => {
-      const result = runHook(hook, bashPayload('gh issue create --body "jailbreak technique found"'));
+      const result = runHook(
+        hook,
+        bashPayload('gh issue create --body "jailbreak technique found"')
+      );
       expect(result.exitCode).toBe(2);
     });
 
@@ -86,11 +92,9 @@ describe('security-disclosure-gate', () => {
 
   describe('disabled mode (REAGENT_DISCLOSURE_MODE=disabled)', () => {
     it('passes through without blocking', () => {
-      const result = runHook(
-        hook,
-        bashPayload('gh issue create --title "bypass the auth hook"'),
-        { REAGENT_DISCLOSURE_MODE: 'disabled' }
-      );
+      const result = runHook(hook, bashPayload('gh issue create --title "bypass the auth hook"'), {
+        REAGENT_DISCLOSURE_MODE: 'disabled',
+      });
       expect(result.exitCode).toBe(0);
       expect(result.stderr).toBe('');
     });

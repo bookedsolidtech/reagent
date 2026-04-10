@@ -14,6 +14,8 @@ import { createInjectionMiddleware } from './middleware/injection.js';
 import { createAuditMiddleware } from './middleware/audit.js';
 import { createBlockedPathsMiddleware } from './middleware/blocked-paths.js';
 import { createResultSizeCapMiddleware } from './middleware/result-size-cap.js';
+import { createRateLimitMiddleware } from './middleware/rate-limit.js';
+import { RateLimiter } from './rate-limiter.js';
 import { registerNativeTools } from './native-tools.js';
 import { detectToolCollisions } from './collision-detector.js';
 import type { Middleware } from './middleware/chain.js';
@@ -49,11 +51,14 @@ export async function startGateway(options: ServeOptions): Promise<void> {
   // SECURITY: blocked-paths runs before tool execution to prevent writes to protected paths.
   // SECURITY: injection runs PostToolUse (after redact) to scan downstream results for prompt injection.
   // SECURITY: result-size-cap runs PostToolUse after injection so it caps already-scanned output.
-  // Order (onion): audit → session → kill-switch → tier → policy → blocked-paths → redact → injection → result-size-cap → [execute]
+  // SECURITY: rate-limit runs after policy (so denied calls don't burn rate budget) but before execution.
+  // Order (onion): audit → session → kill-switch → tier → policy → blocked-paths → rate-limit → redact → injection → result-size-cap → [execute]
   const injectionAction =
     (policy as unknown as Record<string, unknown>).injection_detection === 'warn'
       ? ('warn' as const)
       : ('block' as const);
+
+  const rateLimiter = new RateLimiter(gatewayConfig);
 
   const middlewares: Middleware[] = [
     createAuditMiddleware(baseDir, policy),
@@ -62,6 +67,7 @@ export async function startGateway(options: ServeOptions): Promise<void> {
     createTierMiddleware(gatewayConfig),
     createPolicyMiddleware(policy, gatewayConfig, baseDir),
     createBlockedPathsMiddleware(policy, baseDir),
+    createRateLimitMiddleware(rateLimiter),
     redactMiddleware,
     createInjectionMiddleware(injectionAction),
     createResultSizeCapMiddleware(gatewayConfig),

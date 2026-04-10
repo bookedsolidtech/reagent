@@ -117,7 +117,7 @@ jobs:
 
       - name: Lint hook scripts
         run: |
-          find hooks/ husky/ -name "*.sh" | xargs shellcheck \
+          find hooks/ husky/ -name "*.sh" | xargs -r shellcheck \
             --shell=bash \
             --severity=warning \
             --exclude=SC1091,SC2034
@@ -196,7 +196,7 @@ jobs:
     name: CI passed
     runs-on: ubuntu-latest
     if: always()
-    needs: [quality, coverage, shellcheck, secret-scan, npm-audit]
+    needs: [quality, coverage, shellcheck, secret-scan, npm-audit, dependency-review]
     steps:
       - name: Check all jobs passed
         run: |
@@ -206,11 +206,18 @@ jobs:
             [shellcheck]="${{ needs.shellcheck.result }}"
             [secret-scan]="${{ needs.secret-scan.result }}"
             [npm-audit]="${{ needs.npm-audit.result }}"
+            [dependency-review]="${{ needs.dependency-review.result }}"
           )
+          # dependency-review is PR-only — skipped on push is acceptable
+          declare -A skip_ok=([dependency-review]=1)
           failed=""
           for job in "${!results[@]}"; do
-            if [[ "${results[$job]}" != "success" ]]; then
-              echo "FAILED: $job — ${results[$job]}"
+            result="${results[$job]}"
+            if [[ "$result" != "success" ]]; then
+              if [[ -n "${skip_ok[$job]:-}" && "$result" == "skipped" ]]; then
+                continue
+              fi
+              echo "FAILED: $job — $result"
               failed="$failed $job"
             fi
           done

@@ -15,7 +15,9 @@ import { createAuditMiddleware } from './middleware/audit.js';
 import { createBlockedPathsMiddleware } from './middleware/blocked-paths.js';
 import { createResultSizeCapMiddleware } from './middleware/result-size-cap.js';
 import { createRateLimitMiddleware } from './middleware/rate-limit.js';
+import { createCircuitBreakerMiddleware } from './middleware/circuit-breaker.js';
 import { RateLimiter } from './rate-limiter.js';
+import { CircuitBreaker } from './circuit-breaker.js';
 import { registerNativeTools } from './native-tools.js';
 import { detectToolCollisions } from './collision-detector.js';
 import type { Middleware } from './middleware/chain.js';
@@ -52,13 +54,16 @@ export async function startGateway(options: ServeOptions): Promise<void> {
   // SECURITY: injection runs PostToolUse (after redact) to scan downstream results for prompt injection.
   // SECURITY: result-size-cap runs PostToolUse after injection so it caps already-scanned output.
   // SECURITY: rate-limit runs after policy (so denied calls don't burn rate budget) but before execution.
-  // Order (onion): audit → session → kill-switch → tier → policy → blocked-paths → rate-limit → redact → injection → result-size-cap → [execute]
+  // SECURITY: circuit-breaker wraps the execute step so it can observe Error status and track failures.
+  //   Placed after rate-limit so a rate-limited call doesn't count as a downstream failure.
+  // Order (onion): audit → session → kill-switch → tier → policy → blocked-paths → rate-limit → circuit-breaker → redact → injection → result-size-cap → [execute]
   const injectionAction =
     (policy as unknown as Record<string, unknown>).injection_detection === 'warn'
       ? ('warn' as const)
       : ('block' as const);
 
   const rateLimiter = new RateLimiter(gatewayConfig);
+  const circuitBreaker = new CircuitBreaker();
 
   const middlewares: Middleware[] = [
     createAuditMiddleware(baseDir, policy),
@@ -68,6 +73,7 @@ export async function startGateway(options: ServeOptions): Promise<void> {
     createPolicyMiddleware(policy, gatewayConfig, baseDir),
     createBlockedPathsMiddleware(policy, baseDir),
     createRateLimitMiddleware(rateLimiter),
+    createCircuitBreakerMiddleware(circuitBreaker),
     redactMiddleware,
     createInjectionMiddleware(injectionAction),
     createResultSizeCapMiddleware(gatewayConfig),

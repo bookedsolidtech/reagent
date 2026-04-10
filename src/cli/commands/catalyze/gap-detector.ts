@@ -79,8 +79,6 @@ function detectAstroGaps(analysis: StackAnalysis): Gap[] {
   }
 
   // Gate: astro check
-  const scripts = analysis.targetDir ? {} : {};
-  void scripts; // Placeholder — real scripts are read during stack analysis
   gaps.push({
     id: nextId(),
     severity: 'critical',
@@ -409,6 +407,6 @@ export function detectGaps(analysis: StackAnalysis): GapAnalysis {
     gaps,
     totalRecommendedHooks: BASE_HOOKS.length,
     installedHookCount: analysis.installedHooks.length,
-    totalRecommendedGates: 5, // Base estimate — varies by project type
+    totalRecommendedGates: gaps.filter((g) => g.category === 'gate').length,
   };
 }

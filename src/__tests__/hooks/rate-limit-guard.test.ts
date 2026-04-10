@@ -21,11 +21,7 @@ describe('rate-limit-guard', () => {
     fs.mkdirSync(RATE_LIMIT_DIR, { recursive: true });
 
     // Clear rate limit log files before each test
-    const logFiles = [
-      logFilePath('bash'),
-      logFilePath('write'),
-      logFilePath('edit'),
-    ];
+    const logFiles = [logFilePath('bash'), logFilePath('write'), logFilePath('edit')];
     for (const f of logFiles) {
       try {
         fs.unlinkSync(f);

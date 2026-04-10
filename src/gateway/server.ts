@@ -47,9 +47,10 @@ export async function startGateway(options: ServeOptions): Promise<void> {
   // SECURITY: blocked-paths runs before tool execution to prevent writes to protected paths.
   // SECURITY: injection runs PostToolUse (after redact) to scan downstream results for prompt injection.
   // Order (onion): audit → session → kill-switch → tier → policy → blocked-paths → redact → injection → [execute]
-  const injectionAction = (policy as unknown as Record<string, unknown>).injection_detection === 'warn'
-    ? 'warn' as const
-    : 'block' as const;
+  const injectionAction =
+    (policy as unknown as Record<string, unknown>).injection_detection === 'warn'
+      ? ('warn' as const)
+      : ('block' as const);
 
   const middlewares: Middleware[] = [
     createAuditMiddleware(baseDir, policy),

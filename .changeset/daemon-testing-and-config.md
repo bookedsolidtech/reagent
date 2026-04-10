@@ -20,6 +20,7 @@ with pkill. Nuclear option when graceful stop is stuck.
 `daemon:eject`, `daemon:build`.
 
 **Config improvements** (`~/.reagent/daemon.yaml`):
+
 - Default port changed from 7777 to 3737
 - `reagent_bin` — path to reagent CLI; supports `"node /path/to/dist/cli/index.js"` for
   local dev without a global install

@@ -118,7 +118,11 @@ export function runInit(args: string[]): void {
 
   // Step 6: Claude hooks
   if (profile.claudeHooks) {
-    results.push(...installClaudeHooks(targetDir, profile.claudeHooks, dryRun));
+    // Build env vars to inject into .claude/settings.json for hook configuration
+    const hookEnv: Record<string, string> = {};
+    const disclosureMode = profile.security?.disclosureMode ?? 'advisory';
+    hookEnv['REAGENT_DISCLOSURE_MODE'] = disclosureMode;
+    results.push(...installClaudeHooks(targetDir, profile.claudeHooks, dryRun, hookEnv));
   }
 
   // Step 7: CLAUDE.md

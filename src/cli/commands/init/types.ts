@@ -18,6 +18,22 @@ export interface ClaudeMdConfig {
   attributionRule?: string;
 }
 
+export interface CoverageConfig {
+  /** Enable the coverage threshold gate in the pre-push husky hook. Default: false. */
+  enabled?: boolean;
+  /** Minimum coverage percentage for lines, functions, statements. Default: 80. */
+  threshold?: number;
+}
+
+export interface SecurityConfig {
+  /** Controls how security findings are disclosed. Default: 'advisory'.
+   *  advisory — public OSS repos: redirect to GitHub Security Advisories
+   *  issues   — private repos: redirect to labeled internal issue queue
+   *  disabled — no gate (not recommended)
+   */
+  disclosureMode?: 'advisory' | 'issues' | 'disabled';
+}
+
 export interface ProfileConfig {
   blockAiAttribution?: boolean;
   blockedPaths?: string[];
@@ -28,5 +44,7 @@ export interface ProfileConfig {
   huskyPrePush?: boolean;
   claudeHooks?: HooksConfig;
   claudeMd?: ClaudeMdConfig;
+  security?: SecurityConfig;
+  coverage?: CoverageConfig;
   [key: string]: unknown;
 }

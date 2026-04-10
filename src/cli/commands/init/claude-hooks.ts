@@ -6,7 +6,8 @@ import type { InstallResult, HooksConfig, HookEntry } from './types.js';
 export function installClaudeHooks(
   targetDir: string,
   hooksConfig: HooksConfig,
-  dryRun: boolean
+  dryRun: boolean,
+  envOverrides?: Record<string, string>
 ): InstallResult[] {
   const claudeHooksDir = path.join(targetDir, '.claude', 'hooks');
   if (!dryRun) {
@@ -62,7 +63,7 @@ export function installClaudeHooks(
 
   // Write settings.json
   const settingsPath = path.join(targetDir, '.claude', 'settings.json');
-  const settings = buildSettingsJson(hooksConfig, installedHookNames);
+  const settings = buildSettingsJson(hooksConfig, installedHookNames, envOverrides);
   const settingsContent = JSON.stringify(settings, null, 2) + '\n';
 
   const settingsExists = fs.existsSync(settingsPath);
@@ -82,10 +83,11 @@ export function installClaudeHooks(
 
 function buildSettingsJson(
   hooksConfig: HooksConfig,
-  installedHookNames: Set<string>
+  installedHookNames: Set<string>,
+  envOverrides?: Record<string, string>
 ): Record<string, unknown> {
   const settings: Record<string, unknown> = {
-    env: { ENABLE_TOOL_SEARCH: 'auto:5' },
+    env: { ENABLE_TOOL_SEARCH: 'auto:5', ...envOverrides },
     hooks: {} as Record<string, unknown>,
   };
 
@@ -158,6 +160,9 @@ function getHookTimeout(hookName: string): number {
     'import-guard': 5000,
     'network-exfil-guard': 10000,
     'rate-limit-guard': 5000,
+    'security-disclosure-gate': 5000,
+    'changeset-security-gate': 5000,
+    'pr-issue-link-gate': 5000,
   };
   return timeouts[hookName] || 10000;
 }
@@ -183,6 +188,9 @@ function getHookStatusMessage(hookName: string): string {
     'import-guard': 'Checking for dangerous imports...',
     'network-exfil-guard': 'Checking network destinations...',
     'rate-limit-guard': 'Checking rate limits...',
+    'security-disclosure-gate': 'Checking disclosure policy...',
+    'changeset-security-gate': 'Checking changeset for security leaks...',
+    'pr-issue-link-gate': 'Checking PR for issue reference...',
   };
   return messages[hookName] || `Running ${hookName}...`;
 }

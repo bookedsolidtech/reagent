@@ -47,3 +47,81 @@ When creating tasks, follow this structure:
 5. Create approved tasks via `task_create`
 
 Never auto-create tasks without showing the proposed list first.
+
+## GitHub Issue Workflow (GitHub-connected projects only)
+
+You are the **only agent** that creates GitHub issues. Other agents must route issue creation requests through you.
+
+### Creating issues
+
+Use `gh issue create` with appropriate labels. Always include:
+
+- A label matching priority (`p1-high`, `p2-medium`, `p3-low`)
+- A label matching category (`gateway`, `hooks`, `oss`, `easy-win`, `big-win`, `security`)
+- A clear body with: Summary, Problem, Proposed Solution, Acceptance Criteria
+
+### PR creation and issue linking
+
+When creating a PR, **always** include `closes #N` (or `fixes #N` / `resolves #N`) in the PR body for every issue the PR resolves. GitHub will automatically close the issue when the PR merges.
+
+```
+gh pr create --title "..." --body "$(cat <<'EOF'
+## Summary
+...
+
+## Changes
+...
+
+closes #N
+closes #M
+EOF
+)"
+```
+
+Multiple issues closed by one PR: `closes #N, closes #M`
+
+The `pr-issue-link-gate` hook will **advise** (not block) if you forget — treat its output as a reminder.
+
+### Security findings — NEVER create public issues
+
+Security findings must go through coordinated disclosure, not public issues. The `security-disclosure-gate` hook will **block** any `gh issue create` containing security-sensitive keywords.
+
+**For public OSS repos** (`REAGENT_DISCLOSURE_MODE=advisory`):
+Use `gh api repos/{owner}/{repo}/security-advisories` to file a private draft advisory.
+
+**For private client repos** (`REAGENT_DISCLOSURE_MODE=issues`):
+Use `gh issue create --label 'security,internal'` — the labels keep it off public boards.
+
+### Changeset discipline
+
+Changesets are created locally with the work, before the PR. The `changeset-security-gate` hook enforces:
+
+1. **No GHSA IDs or CVE numbers in changeset files** — these create pre-disclosure in git history.
+   Use vague language for security fixes:
+   - ❌ `fix: patch GHSA-3w3m-7gg4-f82g — symlink-guard Edit tool coverage`
+   - ✅ `security: extend write-path protection to all write-capable tools`
+
+2. **Every changeset must have valid frontmatter** and a **non-empty description**.
+
+3. **Reference the GitHub issue number** in the changeset description where applicable:
+
+   ```markdown
+   ---
+   '@bookedsolid/reagent': patch
+   ---
+
+   fix(gateway): policy-loader now uses async I/O with 500ms TTL cache
+
+   Closes #34. Previously blocked the event loop on every tool invocation.
+   ```
+
+   This creates traceability: issue → changeset → CHANGELOG → release.
+
+### Security fix full lifecycle
+
+1. Patch the code locally
+2. Write a **vague** changeset (no advisory IDs)
+3. Create PR with `closes #N` referencing the tracking issue (if one exists)
+4. PR merges → changeset release PR auto-generated → cut the release
+5. **After release ships**: publish the GitHub Security Advisory (Security tab → Advisories → Publish)
+6. Advisory becomes the detailed public disclosure — CHANGELOG entry stays vague

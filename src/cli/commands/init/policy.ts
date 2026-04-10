@@ -21,6 +21,9 @@ export function installPolicy(
     fs.mkdirSync(reagentDir, { recursive: true });
     const now = new Date().toISOString();
     const blockAttribution = profile.blockAiAttribution === true;
+    const disclosureMode = profile.security?.disclosureMode ?? 'advisory';
+    const coverageEnabled = profile.coverage?.enabled === true;
+    const coverageThreshold = profile.coverage?.threshold ?? 80;
     const blockedPaths = profile.blockedPaths ?? [
       '.reagent/',
       '.github/workflows/',
@@ -62,6 +65,24 @@ blocked_paths:${blockedPathsYaml}
 
 # Optional: Discord webhook for halt/promote notifications
 notification_channel: ""
+
+# Coverage quality gate (opt-in)
+# When enabled, the pre-push hook enforces minimum test coverage before push.
+# Requires @vitest/coverage-v8 (or equivalent) installed in the project.
+#   enabled   — set to true to activate the gate
+#   threshold — minimum percentage for lines, functions, and statements
+#               branches threshold is automatically set to threshold - 10
+coverage:
+  enabled: ${coverageEnabled}
+  threshold: ${coverageThreshold}
+
+# Security disclosure configuration
+# Controls how the security-disclosure-gate hook routes security findings:
+#   advisory — public OSS repos: redirect to GitHub Security Advisories (default)
+#   issues   — private client repos: redirect to labeled internal issue queue
+#   disabled — no gate (not recommended)
+security:
+  disclosure_mode: "${disclosureMode}"
 `;
     fs.writeFileSync(policyPath, content, 'utf8');
   }

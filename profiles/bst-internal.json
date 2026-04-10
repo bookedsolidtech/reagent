@@ -18,6 +18,9 @@
     "preflightCmd": "pnpm preflight",
     "attributionRule": "Do NOT include AI attribution in commits, PR bodies, code comments, or any content. When block_ai_attribution is enabled in .reagent/policy.yaml, the commit-msg hook REJECTS commits containing structural AI attribution (Co-Authored-By with AI names, 'Generated with [Tool]' footers, etc.). The attribution-advisory hook also blocks gh pr create/edit and git commit commands with attribution. You must remove all attribution markers before committing — the hooks will NOT silently fix them."
   },
+  "security": {
+    "disclosureMode": "advisory"
+  },
   "claudeHooks": {
     "PreToolUse": [
       {
@@ -27,12 +30,19 @@
           "env-file-protection",
           "dependency-audit-gate",
           "commit-review-gate",
-          "push-review-gate"
+          "push-review-gate",
+          "security-disclosure-gate",
+          "pr-issue-link-gate"
         ]
       },
       {
         "matcher": "Write|Edit",
-        "hooks": ["secret-scanner", "settings-protection", "blocked-paths-enforcer"]
+        "hooks": [
+          "secret-scanner",
+          "settings-protection",
+          "blocked-paths-enforcer",
+          "changeset-security-gate"
+        ]
       },
       {
         "matcher": "Bash",

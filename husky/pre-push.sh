@@ -137,11 +137,23 @@ if [ "$COVERAGE_ENABLED" = "true" ] && script_exists "test"; then
 fi
 
 # ── Report ────────────────────────────────────────────────────────────────────
+HOOKS_LIB="$(git rev-parse --show-toplevel 2>/dev/null)/hooks/_lib/discord.sh"
+
 if [ -n "$FAILED" ]; then
   echo "pre-push: FAILED gates:${FAILED}"
   echo "All quality gates must pass before push. Fix failures and retry."
+  if [ -f "$HOOKS_LIB" ]; then
+    # shellcheck source=/dev/null
+    source "$HOOKS_LIB"
+    discord_notify "alert" "Push BLOCKED -- gate failures: \`${FAILED}\` on \`$(git rev-parse --abbrev-ref HEAD 2>/dev/null)\`" "red"
+  fi
   exit 1
 fi
 
 echo "pre-push: all quality gates passed"
+if [ -f "$HOOKS_LIB" ]; then
+  # shellcheck source=/dev/null
+  source "$HOOKS_LIB"
+  discord_notify "dev" "Pre-push gates passed on \`$(git rev-parse --abbrev-ref HEAD 2>/dev/null)\`" "green"
+fi
 exit 0

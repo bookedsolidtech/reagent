@@ -12,5 +12,6 @@ src/__tests__/gateway/_mock-downstream.mjs
 src/coverage/
 
 # Docs site (managed separately — built by Astro/Starlight)
+docs/
 docs/.astro/
 /.scratch/

@@ -79,8 +79,16 @@ LINE_COUNT=$(printf '%s' "$DIFF_FULL" | grep -cE '^\+[^+]|^-[^-]' 2>/dev/null ||
 # ── 8. Check review cache ────────────────────────────────────────────────────
 PUSH_SHA=$(printf '%s' "$DIFF_FULL" | shasum -a 256 | cut -d' ' -f1 2>/dev/null || echo "")
 
-if [[ -n "$PUSH_SHA" ]]; then
-  CACHE_RESULT=$(node "${REAGENT_ROOT}/node_modules/.bin/reagent" cache check "$PUSH_SHA" --branch "$CURRENT_BRANCH" --base "$TARGET_BRANCH" 2>/dev/null || echo '{"hit":false}')
+# Resolve reagent CLI (node_modules/.bin first, dist fallback)
+REAGENT_CLI_ARGS=()
+if [[ -f "${REAGENT_ROOT}/node_modules/.bin/reagent" ]]; then
+  REAGENT_CLI_ARGS=(node "${REAGENT_ROOT}/node_modules/.bin/reagent")
+elif [[ -f "${REAGENT_ROOT}/dist/cli/index.js" ]]; then
+  REAGENT_CLI_ARGS=(node "${REAGENT_ROOT}/dist/cli/index.js")
+fi
+
+if [[ -n "$PUSH_SHA" ]] && [[ ${#REAGENT_CLI_ARGS[@]} -gt 0 ]]; then
+  CACHE_RESULT=$("${REAGENT_CLI_ARGS[@]}" cache check "$PUSH_SHA" --branch "$CURRENT_BRANCH" --base "$TARGET_BRANCH" 2>/dev/null || echo '{"hit":false}')
   if printf '%s' "$CACHE_RESULT" | jq -e '.hit == true' >/dev/null 2>&1; then
     # Review was already approved — notify and allow the push through
     DISCORD_LIB="${REAGENT_ROOT}/hooks/_lib/discord.sh"

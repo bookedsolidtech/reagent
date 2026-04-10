@@ -8,6 +8,7 @@ import { runUnfreeze } from './commands/unfreeze.js';
 import { runServe } from './commands/serve.js';
 import { runCache } from './commands/cache.js';
 import { runCatalyze } from './commands/catalyze/index.js';
+import { runDaemon } from './commands/daemon/index.js';
 
 const [, , cmd, ...rest] = process.argv;
 
@@ -38,6 +39,9 @@ switch (cmd) {
   case 'catalyze':
     runCatalyze(rest);
     break;
+  case 'daemon':
+    runDaemon(rest);
+    break;
   default:
     console.error(`\nUnknown command: ${cmd}`);
     printHelp();
@@ -59,6 +63,7 @@ Commands:
   freeze     Create .reagent/HALT to suspend all agent operations
   unfreeze   Remove .reagent/HALT to resume agent operations
   serve      Start the MCP gateway server (stdio transport)
+  daemon     Manage the persistent HTTP/SSE multi-project daemon
   cache      Manage review cache (check, set, clear)
   help       Show this help
 
@@ -102,5 +107,9 @@ Examples:
   npx @bookedsolid/reagent freeze --reason "security incident"
   npx @bookedsolid/reagent unfreeze
   npx @bookedsolid/reagent serve
+  npx @bookedsolid/reagent daemon start
+  npx @bookedsolid/reagent daemon status
+  npx @bookedsolid/reagent daemon stop
+  npx @bookedsolid/reagent daemon restart
 `);
 }

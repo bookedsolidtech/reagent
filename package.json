@@ -52,12 +52,19 @@
     "changeset": "changeset",
     "changeset:version": "changeset version",
     "changeset:publish": "changeset publish",
+    "daemon:start": "reagent daemon start",
+    "daemon:stop": "reagent daemon stop",
+    "daemon:status": "reagent daemon status",
+    "daemon:restart": "reagent daemon restart",
+    "daemon:build": "cargo build --release --manifest-path daemon/Cargo.toml",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "docs:dev": "cd docs && npm run dev",
+    "docs:build": "cd docs && npm run build"
   },
   "keywords": [
     "claude",

@@ -41,6 +41,6 @@ export default [
     },
   },
   {
-    ignores: ['node_modules/**', 'dist/**', 'CHANGELOG.md'],
+    ignores: ['node_modules/**', 'dist/**', 'CHANGELOG.md', '.claude/worktrees/**'],
   },
 ];

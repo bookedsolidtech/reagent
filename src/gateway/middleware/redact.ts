@@ -23,6 +23,13 @@ const SECRET_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
   { name: 'Discord Token', pattern: /[MN][A-Za-z\d]{23,}\.[\w-]{6}\.[\w-]{27,}/g },
   // Base64-encoded AWS access key (AKIA... in base64 starts with QUTJQ)
   { name: 'Base64 AWS Key', pattern: /QUtJQ[A-Za-z0-9+/]{17,}={0,2}/g },
+  // Anthropic API keys (sk-ant-api03-... and similar)
+  { name: 'Anthropic API Key', pattern: /sk-ant-[a-zA-Z0-9\-_]{32,}/g },
+  // OpenAI API keys — project keys (sk-proj-...) and legacy (sk-...)
+  { name: 'OpenAI Project Key', pattern: /sk-proj-[a-zA-Z0-9\-_]{32,}/g },
+  { name: 'OpenAI API Key', pattern: /sk-[a-zA-Z0-9]{32,}/g },
+  // Hugging Face access tokens
+  { name: 'Hugging Face Token', pattern: /hf_[a-zA-Z0-9]{32,}/g },
 ];
 
 /**

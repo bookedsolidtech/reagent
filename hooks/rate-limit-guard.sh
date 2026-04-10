@@ -2,7 +2,7 @@
 # PreToolUse hook: rate-limit-guard.sh
 # Fires BEFORE every Bash and Write tool call.
 # Blocks if more than 20 calls to the same tool occur within 60 seconds.
-# Uses a log file per tool in /tmp/reagent-rate-limit-{tool}.log.
+# Uses a log file per tool in $HOME/.reagent/rate-limits/{tool}.log.
 #
 # Exit codes:
 #   0 = within rate limit — allow
@@ -36,7 +36,31 @@ fi
 
 # Sanitize tool name for use in filename
 SAFE_TOOL=$(printf '%s' "$TOOL_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
-LOG_FILE="/tmp/reagent-rate-limit-${SAFE_TOOL}.log"
+
+# ── Counter directory: prefer user-owned $HOME/.reagent/rate-limits/ ──────────
+# Storing counters in /tmp is world-writable and allows symlink attacks.
+# Use a user-owned directory with mode 700 instead.
+RATE_LIMIT_DIR="${HOME}/.reagent/rate-limits"
+
+if [[ -n "${HOME:-}" ]] && mkdir -p "$RATE_LIMIT_DIR" 2>/dev/null && chmod 700 "$RATE_LIMIT_DIR" 2>/dev/null; then
+  LOG_FILE="${RATE_LIMIT_DIR}/${SAFE_TOOL}.log"
+else
+  # $HOME not writable — fall back to a session-scoped tmpdir (not /tmp root)
+  if [[ -z "${REAGENT_RATE_LIMIT_TMPDIR:-}" ]]; then
+    REAGENT_RATE_LIMIT_TMPDIR=$(mktemp -d 2>/dev/null || true)
+    export REAGENT_RATE_LIMIT_TMPDIR
+    if [[ -n "$REAGENT_RATE_LIMIT_TMPDIR" ]]; then
+      printf 'RATE-LIMIT-GUARD WARN: $HOME not writable — using session tmpdir for rate-limit counters: %s\n' \
+        "$REAGENT_RATE_LIMIT_TMPDIR" >&2
+    fi
+  fi
+  if [[ -n "${REAGENT_RATE_LIMIT_TMPDIR:-}" ]]; then
+    LOG_FILE="${REAGENT_RATE_LIMIT_TMPDIR}/${SAFE_TOOL}.log"
+  else
+    # Last resort: skip rate limiting rather than failing noisily
+    exit 0
+  fi
+fi
 
 LIMIT=20
 WINDOW=60  # seconds

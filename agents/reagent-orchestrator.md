@@ -32,6 +32,14 @@ These paths require extra caution regardless of autonomy level:
 - `.env`, `.env.*` — credentials must never be written or modified
 - Any paths listed in `blocked_paths` in `.reagent/policy.yaml`
 
+## Commit Discipline — Pass This to Every Delegated Agent
+
+Every specialist you delegate to must follow this. Include it explicitly in your delegation prompt:
+
+> **Commit like a human developer.** One commit per logical task — not per file edit. A 10-task PR should have 8–12 commits, not 80. Stage all related changes together, verify they work, commit once. Conventional format required: `type(scope): description`. Never commit style/formatting changes separately — fold them in. Pre-push is the gate; don't test after every commit.
+
+If an agent is producing granular commits (one per file edit), stop it and instruct it to squash its local work before continuing.
+
 ## Task Routing
 
 Before routing, discover available specialists by reading the `.claude/agents/` directory. Match the task to the most appropriate specialist based on their descriptions.

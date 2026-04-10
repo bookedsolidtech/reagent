@@ -65,7 +65,25 @@ if printf '%s' "$CMD" | grep -qiE '(curl|wget).*-d[[:space:]]+@'; then
   exit 2
 fi
 
-# ── Check 3: Host allowlist ───────────────────────────────────────────────────
+# ── Check 3: Shell variable URL interpolation ─────────────────────────────────
+# Detect curl/wget with variable-interpolated URLs that cannot be inspected at hook time.
+# Patterns: curl $VAR, curl ${VAR}, curl "$VAR/path", curl "${VAR}/api", wget $VAR, etc.
+# Uses two sub-patterns:
+#   1. Bare variable argument (space before $VAR, ends with space or EOL)
+#   2. Quoted variable as URL start (space before "$VAR...")
+if printf '%s' "$CMD" | grep -qiE '(curl|wget)[^|]*[[:space:]][$][{]?[A-Za-z_][A-Za-z0-9_]*[}]?([[:space:]]|$)' || \
+   printf '%s' "$CMD" | grep -qiE '(curl|wget)[^|]*[[:space:]]"[$][{]?[A-Za-z_][A-Za-z0-9_]*[}]?[^"]*"'; then
+  printf 'NETWORK-EXFIL-GUARD: Shell variable URL interpolation detected\n' >&2
+  printf '  Pattern: curl/wget with a shell variable as the URL argument\n' >&2
+  printf '  Command: %s\n' "$(printf '%s' "$CMD" | head -c 200)" >&2
+  printf 'Warning: The destination URL cannot be inspected at hook time because it is stored in a variable.\n' >&2
+  printf 'Please confirm the variable resolves to an allowlisted host before proceeding.\n' >&2
+  printf 'Allowlisted hosts: registry.npmjs.org, github.com, api.github.com, raw.githubusercontent.com\n' >&2
+  printf 'If you are certain the destination is safe, replace the variable with a literal URL.\n' >&2
+  exit 2
+fi
+
+# ── Check 4: Host allowlist ───────────────────────────────────────────────────
 ALLOWLIST=(
   "registry.npmjs.org"
   "github.com"
@@ -80,7 +98,7 @@ ALLOWLIST=(
 URLS=$(printf '%s' "$CMD" | grep -oE 'https?://[^[:space:]"'"'"']+' | head -20)
 
 if [[ -z "$URLS" ]]; then
-  # No parseable URLs — allow (could be a variable-based URL we can't inspect)
+  # No parseable literal URLs found (variable-based URLs already caught above)
   exit 0
 fi
 

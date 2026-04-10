@@ -42,7 +42,7 @@ A 10-task PR should have 8–12 commits max. If you're at 30+, you're committing
 **Behave and write like humans. Comment code like belligerent robots.**
 
 - **Code, commits, PR titles, PR bodies, task descriptions**: Write as a competent human developer would. Natural language. Concise. No robotic filler. No "As an AI language model" energy anywhere near this codebase.
-- **Inline code comments**: Precise, terse, almost aggressive. Document *why*, not *what*. If the code is obvious, don't comment it. If it's subtle or dangerous, be brutally clear. Examples:
+- **Inline code comments**: Precise, terse, almost aggressive. Document _why_, not _what_. If the code is obvious, don't comment it. If it's subtle or dangerous, be brutally clear. Examples:
   - ❌ `// This function checks if the user is authenticated`
   - ✅ `// Must run before any tool dispatch — unauthed calls reach here if middleware chain is misconfigured`
   - ❌ `// Loop through items`

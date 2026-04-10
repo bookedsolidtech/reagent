@@ -65,9 +65,11 @@ run_gate "test"         "Test suite"
 run_gate "build"        "Build"
 
 # Pack dry-run — validates the publish payload matches what CI would produce
+# Always uses npm pack --dry-run regardless of $PKG_MANAGER: pnpm uses a
+# different flag syntax and this gate mirrors the npm pack --dry-run step in CI.
 if script_exists "build"; then
   echo "pre-push: running Pack dry-run..."
-  if ! $PKG_MANAGER pack --dry-run > "$OUT" 2>&1; then
+  if ! npm pack --dry-run > "$OUT" 2>&1; then
     echo ""
     echo "GATE FAILED: Pack dry-run"
     cat "$OUT"

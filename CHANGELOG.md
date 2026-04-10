@@ -1,5 +1,51 @@
 # @bookedsolid/reagent
 
+## 0.8.0
+
+### Minor Changes
+
+- cb543d6: feat(hooks): GitHub workflow gates — changeset security, PR issue linking, configurable disclosure mode
+
+  Adds three new capabilities for GitHub-connected projects:
+
+  **changeset-security-gate** (PreToolUse Write|Edit on `.changeset/*.md`):
+  - Blocks GHSA IDs and CVE numbers from being written to changeset files before
+    advisory publication — prevents pre-disclosure via git history and CHANGELOG
+  - Validates changeset frontmatter format and requires a non-empty description
+  - Enforces the vague-changeset pattern for security fixes
+
+  **pr-issue-link-gate** (PreToolUse Bash on `gh pr create`):
+  - Advisory (non-blocking) when a PR is created without `closes #N` / `fixes #N`
+  - Ensures issues auto-close on merge and creates traceability through the
+    issue → PR → changeset → CHANGELOG → release chain
+
+  **Configurable disclosure mode** (`REAGENT_DISCLOSURE_MODE`):
+  - `advisory` (default) — public OSS repos: blocks public issue creation for
+    security findings and redirects to GitHub Security Advisories
+  - `issues` — private client repos: redirects to labeled internal issue queue
+    (`--label security,internal`) instead of Security Advisories
+  - `disabled` — no gate
+  - Set via `security.disclosureMode` in the profile JSON; written to
+    `.reagent/policy.yaml` and injected into `.claude/settings.json` env
+
+  Both new hooks wired into `bst-internal` and `client-engagement` profiles.
+  Product-owner agent updated with full GitHub workflow: issue creation standards,
+  PR/issue linking discipline, changeset lifecycle, and security fix disclosure flow.
+
+### Patch Changes
+
+- 63aa341: feat(security): add security-disclosure-gate hook and SECURITY.md policy
+
+  Adds a new `security-disclosure-gate` Claude Code hook that intercepts
+  `gh issue create` commands containing ~30 security-sensitive keywords
+  (bypass, exploit, CVE-, prompt inject, jailbreak, etc.) and blocks them
+  with instructions to use GitHub Security Advisories for private disclosure.
+
+  Also adds SECURITY.md with coordinated disclosure policy, response timeline,
+  scope definition, and two-layer security architecture documentation.
+
+  Hook is wired into `bst-internal` and `client-engagement` profiles.
+
 ## 0.7.2
 
 ### Patch Changes

@@ -115,7 +115,8 @@ if [ -f "$POLICY_FILE" ]; then
   fi
 
   # Extract coverage.threshold (default 80)
-  THRESHOLD_LINE=$(grep -A5 "^coverage:" "$POLICY_FILE" 2>/dev/null | grep "threshold:" | head -1)
+  # The || true prevents set -euo pipefail from exiting when coverage: block is absent
+  THRESHOLD_LINE=$(grep -A5 "^coverage:" "$POLICY_FILE" 2>/dev/null | grep "threshold:" | head -1) || true
   if [ -n "$THRESHOLD_LINE" ]; then
     EXTRACTED=$(echo "$THRESHOLD_LINE" | awk '{print $2}' | tr -d '"' | tr -d "'")
     if [ -n "$EXTRACTED" ] && [ "$EXTRACTED" -eq "$EXTRACTED" ] 2>/dev/null; then

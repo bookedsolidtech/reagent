@@ -37,14 +37,14 @@ gh pr list \
 
 Parse the JSON array and categorize each PR into exactly one bucket:
 
-| Bucket | Criteria |
-|---|---|
-| **release-pending** | `baseRefName == "main"` AND (`headRefName == "changeset-release/main"` OR title contains "version packages") |
-| **staging-promotion** | `baseRefName == "staging"` AND `headRefName == "dev"` |
-| **ready** | `baseRefName == "dev"` AND `isDraft == false` AND all entries in `statusCheckRollup` have `state == "SUCCESS"` AND `statusCheckRollup` is non-empty |
-| **blocked** | `baseRefName == "dev"` AND `isDraft == false` AND any entry in `statusCheckRollup` has `state == "FAILURE"` or `state == "ERROR"` |
-| **ci-pending** | `baseRefName == "dev"` AND `isDraft == false` AND any entry in `statusCheckRollup` has `state == "PENDING"` or `state == "IN_PROGRESS"` AND no entries are FAILURE/ERROR |
-| **other** | anything that does not match the above |
+| Bucket                | Criteria                                                                                                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **release-pending**   | `baseRefName == "main"` AND (`headRefName == "changeset-release/main"` OR title contains "version packages")                                                             |
+| **staging-promotion** | `baseRefName == "staging"` AND `headRefName == "dev"`                                                                                                                    |
+| **ready**             | `baseRefName == "dev"` AND `isDraft == false` AND all entries in `statusCheckRollup` have `state == "SUCCESS"` AND `statusCheckRollup` is non-empty                      |
+| **blocked**           | `baseRefName == "dev"` AND `isDraft == false` AND any entry in `statusCheckRollup` has `state == "FAILURE"` or `state == "ERROR"`                                        |
+| **ci-pending**        | `baseRefName == "dev"` AND `isDraft == false` AND any entry in `statusCheckRollup` has `state == "PENDING"` or `state == "IN_PROGRESS"` AND no entries are FAILURE/ERROR |
+| **other**             | anything that does not match the above                                                                                                                                   |
 
 A PR with an empty `statusCheckRollup` and `baseRefName == "dev"` falls into **ci-pending** — treat missing CI data as "not yet confirmed green".
 
@@ -209,16 +209,16 @@ Release PR:         green and ready | waiting on CI | none
 
 ## Error handling
 
-| Situation | Action |
-|---|---|
-| HALT file present | Stop immediately — "Agent operations frozen. Check .reagent/HALT." |
-| Autonomy level L0 | Stop — "L0 policy: all writes require explicit approval. Report only — no merges or PR creation." |
-| `gh` not installed | Stop — "gh CLI not found. Install it and run gh auth login." |
-| `gh repo view` fails | Stop — "Cannot resolve repo. Confirm this directory has a GitHub remote." |
-| PR list returns empty | Report "No open PRs found." and exit cleanly |
-| Merge fails on one PR | Log the error, continue with remaining ready PRs, report failures in summary |
-| Staging PR body parse fails | Skip append, post a comment with the raw list instead, warn the user |
-| Release PR auto-merge attempted | Block — this command never auto-merges release PRs regardless of instruction |
+| Situation                       | Action                                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------- |
+| HALT file present               | Stop immediately — "Agent operations frozen. Check .reagent/HALT."                                |
+| Autonomy level L0               | Stop — "L0 policy: all writes require explicit approval. Report only — no merges or PR creation." |
+| `gh` not installed              | Stop — "gh CLI not found. Install it and run gh auth login."                                      |
+| `gh repo view` fails            | Stop — "Cannot resolve repo. Confirm this directory has a GitHub remote."                         |
+| PR list returns empty           | Report "No open PRs found." and exit cleanly                                                      |
+| Merge fails on one PR           | Log the error, continue with remaining ready PRs, report failures in summary                      |
+| Staging PR body parse fails     | Skip append, post a comment with the raw list instead, warn the user                              |
+| Release PR auto-merge attempted | Block — this command never auto-merges release PRs regardless of instruction                      |
 
 ---
 

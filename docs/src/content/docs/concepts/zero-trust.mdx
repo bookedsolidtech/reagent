@@ -1,0 +1,56 @@
+---
+title: Why Zero-Trust?
+description: The security model behind Reagent and why it matters for AI-assisted development.
+sidebar:
+  order: 1
+---
+
+AI coding assistants are powerful but unconstrained. They can read any file, execute any command, and modify any code — all without oversight. Reagent adds the missing governance layer.
+
+## The problem
+
+When you connect an AI assistant to your codebase via MCP, every tool call is a potential security event:
+
+- A `write_file` call could overwrite your `.env` with credentials exposed
+- A `bash` call could `git push --force` to production
+- A `read_file` call could extract secrets and send them to an external service
+- A downstream MCP tool could be invoked with arguments containing sensitive paths
+
+Without a governance layer, you're trusting the AI to never make a mistake.
+
+## Reagent's approach
+
+Reagent operates on a zero-trust principle: **every tool call is untrusted until proven compliant**.
+
+### Policy enforcement
+
+Every tool call is classified into a tier (`read`, `write`, `destructive`) and checked against the project's autonomy level. A project at L1 (standard) cannot invoke destructive tools, regardless of what the AI requests.
+
+### Blocked path enforcement
+
+Tool arguments are scanned for references to protected paths. The `.reagent/` directory is always protected — an agent cannot modify its own safety rails.
+
+### Secret redaction
+
+Both tool arguments (before execution) and tool outputs (before they reach the AI) are scanned for secrets. AWS keys, GitHub tokens, PEM private keys, and more are replaced with `[REDACTED]`.
+
+### Audit trail
+
+Every invocation — including denials — is logged as hash-chained JSONL. Tamper with one record and every subsequent hash becomes invalid.
+
+### Kill switch
+
+`reagent freeze` immediately blocks all tool calls across every connected MCP server. No exceptions, no overrides.
+
+## Defense in depth
+
+Reagent provides multiple overlapping layers:
+
+| Layer              | Mechanism                                | Scope                        |
+| ------------------ | ---------------------------------------- | ---------------------------- |
+| Gateway middleware | Policy, paths, redaction, audit          | All MCP tool calls           |
+| Claude Code hooks  | 20 shell scripts                         | Claude Code tool invocations |
+| Git hooks          | Commit-msg, pre-commit, pre-push         | Git operations               |
+| Quality gates      | Triage-based review, code-reviewer agent | Commits and pushes           |
+
+Each layer operates independently. Disabling one does not compromise the others.

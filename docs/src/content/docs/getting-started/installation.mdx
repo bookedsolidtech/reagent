@@ -1,0 +1,49 @@
+---
+title: Installation
+description: Install Reagent and set up your first project.
+sidebar:
+  order: 1
+---
+
+## Requirements
+
+- **Node.js** >= 22
+- **Git** repository (for hooks and init)
+- **jq** (for hook scripts that parse JSON)
+- **gh** CLI (optional, for GitHub issue sync and repo scaffolding)
+
+## Install globally
+
+```bash
+npm install -g @bookedsolid/reagent
+```
+
+## Or use directly with npx
+
+```bash
+npx @bookedsolid/reagent init
+```
+
+## Dependencies
+
+Reagent has only 3 runtime dependencies:
+
+| Package                     | Purpose                                       |
+| --------------------------- | --------------------------------------------- |
+| `@modelcontextprotocol/sdk` | MCP client/server protocol                    |
+| `yaml`                      | YAML parsing for policy and gateway config    |
+| `zod`                       | Schema validation for all configuration files |
+
+## Verify installation
+
+After installing, verify the CLI is available:
+
+```bash
+reagent help
+```
+
+Then check what's installed in your project:
+
+```bash
+reagent check
+```

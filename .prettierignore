@@ -10,3 +10,8 @@ package-lock.json
 src/__tests__/gateway/_mock-downstream.mjs
 # Generated coverage reports — never check these with Prettier
 src/coverage/
+
+# Docs site (managed separately — built by Astro/Starlight)
+docs/
+docs/.astro/
+/.scratch/

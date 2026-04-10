@@ -141,10 +141,10 @@ jobs:
         if: steps.changesets.outputs.published == 'true'
         continue-on-error: true
         run: |
-          VERSION=$(node -p "require('./package.json').version" | tr -cd '0-9a-zA-Z._-')
           npm install --no-save discord-ops@0.21.1
           node --input-type=module -e "
             import { loadConfig, DiscordClient, allTools } from 'discord-ops';
+            const v = process.env.VERSION;
             const config = await loadConfig();
             const discord = new DiscordClient();
             const ctx = { discord, config };
@@ -152,7 +152,7 @@ jobs:
             await tool.handle({
               project: 'reagent',
               channel: 'dev',
-              content: '📦 **@bookedsolid/reagent v$VERSION** published to npm'
+              content: '\u{1f4e6} **@bookedsolid/reagent v' + v + '** published to npm'
             }, ctx);
             await discord.destroy();
           "
@@ -166,10 +166,10 @@ jobs:
         if: steps.changesets.outputs.published == 'true'
         continue-on-error: true
         run: |
-          VERSION=$(node -p "require('./package.json').version" | tr -cd '0-9a-zA-Z._-')
           npm install --no-save discord-ops@0.21.1
           node --input-type=module -e "
             import { loadConfig, DiscordClient, allTools } from 'discord-ops';
+            const v = process.env.VERSION;
             const config = await loadConfig();
             const discord = new DiscordClient();
             const ctx = { discord, config };
@@ -177,13 +177,13 @@ jobs:
             await tool.handle({
               project: 'reagent',
               channel: 'releases',
-              title: '📦 @bookedsolid/reagent v$VERSION',
+              title: '\u{1f4e6} @bookedsolid/reagent v' + v,
               description: 'Zero-trust agentic framework update',
               fields: [
                 { name: 'npm', value: '@bookedsolid/reagent@latest' },
-                { name: 'Install', value: 'npm i @bookedsolid/reagent@$VERSION' }
+                { name: 'Install', value: 'npm i @bookedsolid/reagent@' + v }
               ],
-              url: 'https://github.com/bookedsolidtech/reagent/releases/tag/@bookedsolid/reagent@$VERSION',
+              url: 'https://github.com/bookedsolidtech/reagent/releases/tag/@bookedsolid/reagent@' + v,
               footer: 'Published via CI'
             }, ctx);
             await discord.destroy();

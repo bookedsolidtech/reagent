@@ -1,0 +1,45 @@
+---
+title: Agent Teams
+description: 89 AI agent definitions covering engineering, AI platforms, and project management.
+sidebar:
+  order: 6
+---
+
+Reagent installs 89 AI agent definitions into `.claude/agents/` covering engineering, AI platforms, and project management roles. Each agent has:
+
+- A domain-specific system prompt and tool access list
+- Zero-trust protocol (read before writing, verify before claiming, HALT compliance)
+- Persona metadata (name, inspiration) grounded in real domain pioneers
+
+## Key agents
+
+| Agent                  | Role                                                                    |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `reagent-orchestrator` | Team orchestrator — routes tasks to specialists, governs AI operations  |
+| `product-owner`        | Task backlog management with built-in guardrails                        |
+| `code-reviewer`        | Code review with TypeScript, accessibility, performance, security focus |
+| `security-engineer`    | Application security, OWASP, penetration testing                        |
+| `principal-engineer`   | Architecture decisions and cross-cutting concerns                       |
+
+## Agent categories
+
+### Engineering specialists (64 agents)
+
+Full-stack engineering coverage including frontend, backend, infrastructure, DevOps, database, testing, accessibility, performance, security, and more.
+
+### AI platform specialists (25 agents)
+
+Specialized agents for Anthropic Claude, OpenAI, Google Gemini, open-source models, RAG architecture, fine-tuning, prompt engineering, multi-modal AI, and AI governance.
+
+## How agents work
+
+Agents are Markdown files with frontmatter metadata. When invoked via `subagent_type` in Claude Code, the agent's system prompt is loaded and the specialist operates within its defined scope.
+
+All agents follow the zero-trust protocol:
+
+- Read files before editing
+- Verify state before claiming status
+- Check HALT before taking action
+- Respect blocked paths and autonomy levels
+
+For the full roster with descriptions, see [AGENTS.md](https://github.com/bookedsolidtech/reagent/blob/staging/AGENTS.md) in the repository.

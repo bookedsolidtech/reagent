@@ -1,0 +1,112 @@
+---
+title: Architecture Overview
+description: Reagent's source code structure and architectural design.
+sidebar:
+  order: 1
+---
+
+## Source tree
+
+```
+@bookedsolid/reagent
+├── src/
+│   ├── cli/                           # CLI entry point and commands
+│   │   ├── index.ts                   # ESM entry point, routes to commands
+│   │   ├── commands/
+│   │   │   ├── init/                  # Modular init step-runner (14 steps)
+│   │   │   │   ├── index.ts           # Step sequencer
+│   │   │   │   ├── types.ts           # InstallResult, ProfileConfig
+│   │   │   │   ├── gitignore.ts       # .gitignore entries
+│   │   │   │   ├── cursor-rules.ts    # Cursor IDE rules
+│   │   │   │   ├── husky-hooks.ts     # Git hooks (Husky)
+│   │   │   │   ├── claude-hooks.ts    # Claude Code hooks + settings.json
+│   │   │   │   ├── claude-md.ts       # CLAUDE.md template
+│   │   │   │   ├── policy.ts          # policy.yaml generation
+│   │   │   │   ├── gateway-config.ts  # gateway.yaml generation
+│   │   │   │   ├── agents.ts          # Agent file installation
+│   │   │   │   ├── commands.ts        # Slash command installation
+│   │   │   │   ├── pm.ts              # Task store scaffolding
+│   │   │   │   ├── profiles.ts        # Tech stack profile installer
+│   │   │   │   ├── github.ts          # GitHub repo scaffolding (--github)
+│   │   │   │   └── discord.ts         # Discord config (--discord)
+│   │   │   ├── catalyze/              # Stack analyzer and gap detector
+│   │   │   │   ├── index.ts           # --plan / --audit / --dry-run modes
+│   │   │   │   ├── stack-analyzer.ts  # Detects project type from package.json
+│   │   │   │   ├── gap-detector.ts    # Per-stack hook/gate/agent catalog
+│   │   │   │   ├── report-generator.ts # Markdown + HTML report output
+│   │   │   │   └── types.ts           # ProjectType, Gap, GapAnalysis
+│   │   │   ├── cache.ts               # Review cache CLI (check/set/clear)
+│   │   │   ├── check.ts               # Installation verification
+│   │   │   ├── freeze.ts              # Kill switch (freeze/unfreeze)
+│   │   │   └── serve.ts               # Gateway server launcher
+│   │   └── utils.ts                   # Shared CLI utilities
+│   ├── config/                        # Configuration loaders
+│   │   ├── policy-loader.ts           # Zod-validated policy.yaml parser
+│   │   ├── gateway-config.ts          # Zod-validated gateway.yaml parser
+│   │   └── tier-map.ts                # Tool tier classification
+│   ├── gateway/                       # MCP gateway core
+│   │   ├── server.ts                  # Gateway orchestrator (startup, shutdown)
+│   │   ├── client-manager.ts          # Downstream MCP server connections
+│   │   ├── tool-proxy.ts              # Tool discovery, namespacing, registration
+│   │   ├── native-tools.ts            # 9 first-party MCP tools
+│   │   └── middleware/                # Middleware chain
+│   │       ├── chain.ts               # Onion-style middleware executor
+│   │       ├── session.ts             # Session ID attachment
+│   │       ├── kill-switch.ts         # HALT file check
+│   │       ├── tier.ts                # Tier classification
+│   │       ├── policy.ts              # Autonomy level enforcement
+│   │       ├── blocked-paths.ts       # Blocked path enforcement
+│   │       ├── redact.ts              # Secret pattern redaction
+│   │       └── audit.ts               # Hash-chained JSONL logging
+│   ├── pm/                            # Project management layer
+│   │   ├── types.ts                   # Zod task schema (single source of truth)
+│   │   ├── task-store.ts              # JSONL event store with advisory locking
+│   │   ├── github-bridge.ts           # GitHub CLI integration
+│   │   └── discord-notifier.ts        # Discord notification dispatch
+│   └── types/                         # TypeScript type definitions
+├── hooks/                             # Claude Code hook scripts (20 total)
+│   ├── _lib/common.sh                 # Shared hook library
+│   └── *.sh                           # Individual hook scripts
+├── profiles/                          # Init profiles
+│   ├── client-engagement.json         # Base profile
+│   ├── bst-internal.json              # Base profile
+│   ├── nextjs/                        # Tech stack profiles
+│   ├── lit-wc/
+│   ├── drupal/
+│   └── astro/
+├── agents/                            # 89 agent definitions
+│   ├── product-owner.md
+│   ├── reagent-orchestrator.md
+│   ├── engineering/                   # 64 engineering specialist agents
+│   └── ai-platforms/                  # 25 AI platform specialist agents
+├── templates/                         # Template files for scaffolding
+├── husky/                             # Husky git hook scripts
+├── cursor/                            # Cursor IDE rules
+└── commands/                          # Claude slash commands
+```
+
+## Key design decisions
+
+### Onion middleware
+
+The gateway uses Koa-style onion middleware where each layer wraps the next. This means audit (outermost) captures everything, including denials from inner layers.
+
+### Append-only event store
+
+The task management layer uses an append-only JSONL event log rather than mutable records. Current state is materialized by replaying events. This ensures no data loss and safe concurrent writes.
+
+### Convention-based classification
+
+Unknown tools are classified by prefix pattern rather than requiring explicit configuration. This lets the gateway handle new downstream servers sensibly without configuration changes.
+
+### Hash-chained audit
+
+Audit records form a hash chain where each record includes the hash of the previous record. This provides tamper evidence — modifying any record invalidates the chain from that point forward.
+
+## Testing
+
+462 tests across 41 test files covering CLI commands, middleware chain, tier classification, policy enforcement, secret redaction, hook scripts, project management, and end-to-end gateway smoke tests.
+
+```bash
+pnpm test
+```

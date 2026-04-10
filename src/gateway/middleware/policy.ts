@@ -1,6 +1,6 @@
 import { AutonomyLevel, InvocationStatus, Tier } from '../../types/index.js';
 import { classifyTool, isToolBlocked } from '../../config/tier-map.js';
-import { loadPolicy } from '../../config/policy-loader.js';
+import { loadPolicyAsync } from '../../config/policy-loader.js';
 import type { Policy, GatewayConfig } from '../../types/index.js';
 import type { Middleware } from './chain.js';
 
@@ -42,7 +42,7 @@ export function createPolicyMiddleware(
     let policy = lastGoodPolicy;
     if (baseDir) {
       try {
-        policy = loadPolicy(baseDir);
+        policy = await loadPolicyAsync(baseDir);
         lastGoodPolicy = policy; // Cache successful parse
       } catch {
         // Fail-safe: use last successfully parsed policy if re-read fails

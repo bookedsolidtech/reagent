@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { InvocationStatus } from '../../types/index.js';
-import { loadPolicy } from '../../config/policy-loader.js';
+import { loadPolicyAsync } from '../../config/policy-loader.js';
 import type { Policy } from '../../types/index.js';
 import type { Middleware } from './chain.js';
 
@@ -19,7 +19,7 @@ export function createBlockedPathsMiddleware(initialPolicy: Policy, baseDir?: st
     let blockedPaths = initialPolicy.blocked_paths;
     if (baseDir) {
       try {
-        const policy = loadPolicy(baseDir);
+        const policy = await loadPolicyAsync(baseDir);
         blockedPaths = policy.blocked_paths;
       } catch {
         // Fall back to initial policy's blocked_paths on read failure

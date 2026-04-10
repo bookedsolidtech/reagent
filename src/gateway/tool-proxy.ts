@@ -14,7 +14,7 @@ interface DiscoveredTool {
 }
 
 /**
- * Convert a JSON Schema properties object to a Zod record of `z.any().optional()`.
+ * Convert a JSON Schema properties object to a Zod record of `z.unknown().optional()`.
  * This preserves the downstream tool's top-level parameter names so the MCP caller
  * sends them directly (not wrapped in `{ args: ... }`).
  */
@@ -25,13 +25,13 @@ function jsonSchemaToZodParams(inputSchema: Record<string, unknown>): Record<str
 
   if (properties) {
     for (const key of Object.keys(properties)) {
-      zodParams[key] = required.includes(key) ? z.any() : z.any().optional();
+      zodParams[key] = required.includes(key) ? z.unknown() : z.unknown().optional();
     }
   }
 
   // If no properties defined, accept arbitrary keys
   if (Object.keys(zodParams).length === 0) {
-    return { _passthrough: z.any().optional() };
+    return { _passthrough: z.unknown().optional() };
   }
 
   return zodParams;
@@ -79,7 +79,7 @@ export class ToolProxy {
               tool_name: tool.name,
               server_name: serverName,
               arguments: args,
-              session_id: '',
+              session_id: crypto.randomUUID(),
               status: InvocationStatus.Allowed,
               start_time: Date.now(),
               metadata: {},
@@ -95,12 +95,28 @@ export class ToolProxy {
                 }
 
                 try {
-                  const callResult = await managed.client.callTool({
+                  const callPromise = managed.client.callTool({
                     name: tool.name,
                     arguments: innerCtx.arguments,
                   });
-                  innerCtx.result = callResult;
-                  innerCtx.status = InvocationStatus.Allowed;
+
+                  // Per-tool timeout — prevents hung downstream from blocking the gateway.
+                  const timeoutMs = 30_000;
+                  let timer: ReturnType<typeof setTimeout>;
+                  const timeoutPromise = new Promise<never>((_, reject) => {
+                    timer = setTimeout(
+                      () => reject(new Error(`Tool "${tool.name}" timed out after ${timeoutMs}ms`)),
+                      timeoutMs
+                    );
+                  });
+
+                  try {
+                    const callResult = await Promise.race([callPromise, timeoutPromise]);
+                    innerCtx.result = callResult;
+                    innerCtx.status = InvocationStatus.Allowed;
+                  } finally {
+                    clearTimeout(timer!);
+                  }
                 } catch (err) {
                   innerCtx.status = InvocationStatus.Error;
                   innerCtx.error = err instanceof Error ? err.message : String(err);

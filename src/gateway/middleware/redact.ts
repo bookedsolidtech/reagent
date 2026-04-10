@@ -60,6 +60,15 @@ export function redactSecrets(input: string): { output: string; redacted: string
  * could corrupt the result if a replacement changes JSON structure.
  */
 export const redactMiddleware: Middleware = async (ctx, next) => {
+  // SECURITY: Pre-execution — scan arguments for secrets before they reach the downstream tool.
+  if (ctx.arguments) {
+    const argRedacted: string[] = [];
+    redactDeep(ctx.arguments, argRedacted);
+    if (argRedacted.length > 0) {
+      ctx.redacted_fields = [...new Set(argRedacted)];
+    }
+  }
+
   await next();
 
   if (ctx.result == null) return;
@@ -68,7 +77,7 @@ export const redactMiddleware: Middleware = async (ctx, next) => {
     const { output, redacted } = redactSecrets(ctx.result);
     if (redacted.length > 0) {
       ctx.result = output;
-      ctx.redacted_fields = redacted;
+      ctx.redacted_fields = [...new Set([...(ctx.redacted_fields ?? []), ...redacted])];
     }
     return;
   }
@@ -77,15 +86,20 @@ export const redactMiddleware: Middleware = async (ctx, next) => {
   const allRedacted: string[] = [];
   redactDeep(ctx.result, allRedacted);
   if (allRedacted.length > 0) {
-    ctx.redacted_fields = [...new Set(allRedacted)];
+    ctx.redacted_fields = [...new Set([...(ctx.redacted_fields ?? []), ...allRedacted])];
   }
 };
 
 /**
  * Recursively walk an object/array and redact string values in-place.
+ * Uses a WeakSet to guard against circular references.
  */
-function redactDeep(obj: unknown, redacted: string[]): void {
+function redactDeep(obj: unknown, redacted: string[], seen = new WeakSet()): void {
   if (obj == null || typeof obj !== 'object') return;
+
+  // Guard against circular references
+  if (seen.has(obj as object)) return;
+  seen.add(obj as object);
 
   if (Array.isArray(obj)) {
     for (let i = 0; i < obj.length; i++) {
@@ -96,7 +110,7 @@ function redactDeep(obj: unknown, redacted: string[]): void {
           redacted.push(...r);
         }
       } else {
-        redactDeep(obj[i], redacted);
+        redactDeep(obj[i], redacted, seen);
       }
     }
     return;
@@ -111,7 +125,7 @@ function redactDeep(obj: unknown, redacted: string[]): void {
         redacted.push(...r);
       }
     } else {
-      redactDeep(record[key], redacted);
+      redactDeep(record[key], redacted, seen);
     }
   }
 }

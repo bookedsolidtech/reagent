@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -28,7 +28,7 @@ describe('E2E smoke — real CLI process', () => {
     execSync('npm run build', { cwd: projectRoot, stdio: 'pipe' });
 
     // Write a mock downstream MCP server script.
-    // This is a standalone Node script that registers tools and listens on stdio.
+    // Placed in the source tree so it can resolve node_modules; cleaned up in afterAll.
     mockServerScript = path.join(projectRoot, 'src/__tests__/gateway/_mock-downstream.mjs');
     fs.writeFileSync(
       mockServerScript,
@@ -63,6 +63,15 @@ console.error('[mock-downstream] Ready on stdio');
 `
     );
   }, 60_000);
+
+  afterAll(() => {
+    // Clean up the mock server script from temp
+    try {
+      fs.unlinkSync(mockServerScript);
+    } catch {
+      // Ignore — may already be cleaned up
+    }
+  });
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reagent-e2e-'));
@@ -108,10 +117,6 @@ servers:
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  afterEach(() => {
-    // Clean up mock server script is left for the session
-  });
-
   it('spawns gateway, lists tools, calls a tool, and gets a result', async () => {
     const cliPath = path.join(projectRoot, 'dist/cli/index.js');
 
@@ -138,7 +143,8 @@ servers:
       expect(toolNames).toContain('mock__health_check');
       expect(toolNames).toContain('mock__send_message');
       expect(toolNames).toContain('mock__delete_channel');
-      expect(toolNames.length).toBe(3);
+      // 9 native tools (task_* + repo_scaffold + project_sync + discord_notify) + 3 proxied tools from mock server
+      expect(toolNames.length).toBe(12);
 
       // Call health_check (read-tier)
       const healthResult = await client.callTool({
@@ -208,7 +214,8 @@ servers:
     try {
       // Tool listing should still work (middleware only applies to callTool)
       const toolsList = await client.listTools();
-      expect(toolsList.tools.length).toBe(3);
+      // 9 native tools (task_* + repo_scaffold + project_sync + discord_notify) + 3 proxied tools
+      expect(toolsList.tools.length).toBe(12);
 
       // But calling a tool should be denied
       const result = await client.callTool({

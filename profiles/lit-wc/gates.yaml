@@ -1,0 +1,15 @@
+gates:
+  - name: cem-analyze
+    command: npx cem analyze
+    description: Custom Elements Manifest must be valid and up-to-date
+    on_failure: block
+
+  - name: web-test-runner
+    command: npx wtr --coverage
+    description: Web Test Runner component tests must pass
+    on_failure: warn
+
+  - name: lit-ts-check
+    command: npx tsc --noEmit
+    description: TypeScript must compile without errors
+    on_failure: block

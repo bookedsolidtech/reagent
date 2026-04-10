@@ -1,0 +1,15 @@
+gates:
+  - name: next-build
+    command: npx next build
+    description: Next.js production build must succeed
+    on_failure: block
+
+  - name: next-lint
+    command: npx next lint
+    description: Next.js ESLint checks must pass
+    on_failure: block
+
+  - name: nextjs-type-check
+    command: npx tsc --noEmit
+    description: TypeScript must compile without errors
+    on_failure: block

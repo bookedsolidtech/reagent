@@ -64,6 +64,45 @@ run_gate "type-check"   "TypeScript type check"
 run_gate "test"         "Test suite"
 run_gate "build"        "Build"
 
+# ── Optional: coverage threshold gate ─────────────────────────────────────────
+# Enabled via .reagent/policy.yaml:
+#   coverage:
+#     enabled: true
+#     threshold: 80   # line/function/statement coverage percentage (branches: threshold - 10)
+#
+# Only runs if coverage.enabled is true AND the project has a test script.
+POLICY_FILE=".reagent/policy.yaml"
+COVERAGE_ENABLED="false"
+COVERAGE_THRESHOLD=80
+
+if [ -f "$POLICY_FILE" ]; then
+  # Extract coverage.enabled — look for "enabled: true" within the coverage block
+  if awk '/^coverage:/{in_block=1} in_block && /enabled: true/{found=1; exit} in_block && /^[^ ]/{in_block=0}' "$POLICY_FILE" | grep -q "enabled: true" 2>/dev/null || \
+     grep -A5 "^coverage:" "$POLICY_FILE" 2>/dev/null | grep -q "enabled: true"; then
+    COVERAGE_ENABLED="true"
+  fi
+
+  # Extract coverage.threshold (default 80)
+  THRESHOLD_LINE=$(grep -A5 "^coverage:" "$POLICY_FILE" 2>/dev/null | grep "threshold:" | head -1)
+  if [ -n "$THRESHOLD_LINE" ]; then
+    EXTRACTED=$(echo "$THRESHOLD_LINE" | awk '{print $2}' | tr -d '"' | tr -d "'")
+    if [ -n "$EXTRACTED" ] && [ "$EXTRACTED" -eq "$EXTRACTED" ] 2>/dev/null; then
+      COVERAGE_THRESHOLD="$EXTRACTED"
+    fi
+  fi
+fi
+
+if [ "$COVERAGE_ENABLED" = "true" ] && script_exists "test"; then
+  echo "pre-push: running Coverage threshold (≥${COVERAGE_THRESHOLD}%)..."
+  if ! COVERAGE_THRESHOLD="$COVERAGE_THRESHOLD" $PKG_MANAGER run test -- --coverage > "$OUT" 2>&1; then
+    echo ""
+    echo "GATE FAILED: Coverage threshold (${COVERAGE_THRESHOLD}%)"
+    cat "$OUT"
+    echo ""
+    FAILED="${FAILED} coverage"
+  fi
+fi
+
 # ── Report ────────────────────────────────────────────────────────────────────
 if [ -n "$FAILED" ]; then
   echo "pre-push: FAILED gates:${FAILED}"

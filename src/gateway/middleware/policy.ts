@@ -1,5 +1,6 @@
 import { AutonomyLevel, InvocationStatus, Tier } from '../../types/index.js';
 import { classifyTool, isToolBlocked } from '../../config/tier-map.js';
+import { loadPolicyAsync } from '../../config/policy-loader.js';
 import type { Policy, GatewayConfig } from '../../types/index.js';
 import type { Middleware } from './chain.js';
 
@@ -20,11 +21,34 @@ const TIER_ALLOWED: Record<AutonomyLevel, Set<Tier>> = {
 /**
  * Checks autonomy level against tool tier, and checks blocked tools.
  *
+ * SECURITY: Re-reads policy.yaml on every invocation so autonomy level changes
+ * take effect immediately without gateway restart.
  * SECURITY: Re-derives tier from tool_name independently — never trusts ctx.tier.
  * SECURITY: Undefined/unknown tier defaults to DENY (fail-closed).
  */
-export function createPolicyMiddleware(policy: Policy, gatewayConfig?: GatewayConfig): Middleware {
+export function createPolicyMiddleware(
+  initialPolicy: Policy,
+  gatewayConfig?: GatewayConfig,
+  baseDir?: string
+): Middleware {
+  // SECURITY: Cache last successfully parsed policy for fallback.
+  // This prevents falling back to a potentially more permissive initial policy
+  // if the file is corrupted after a stricter policy was loaded.
+  let lastGoodPolicy = initialPolicy;
+
   return async (ctx, next) => {
+    // SECURITY: Re-read policy on each invocation for live autonomy changes.
+    // Falls back to last successfully parsed policy on read failure.
+    let policy = lastGoodPolicy;
+    if (baseDir) {
+      try {
+        policy = await loadPolicyAsync(baseDir);
+        lastGoodPolicy = policy; // Cache successful parse
+      } catch {
+        // Fail-safe: use last successfully parsed policy if re-read fails
+      }
+    }
+
     // Check if tool is explicitly blocked
     if (isToolBlocked(ctx.tool_name, ctx.server_name, gatewayConfig)) {
       ctx.status = InvocationStatus.Denied;
@@ -52,9 +76,9 @@ export function createPolicyMiddleware(policy: Policy, gatewayConfig?: GatewayCo
       return;
     }
 
-    await next();
+    // Store current autonomy level in metadata for audit middleware
+    ctx.metadata.autonomy_level = policy.autonomy_level;
 
-    // SECURITY: Re-assert denial status cannot be undone by downstream middleware.
-    // Once denied, status is locked.
+    await next();
   };
 }

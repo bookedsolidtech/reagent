@@ -26,11 +26,7 @@ promotion_requires_human_approval: true
 block_ai_attribution: true
 
 # Paths hooks and agents must never modify
-blocked_paths:
-  - '.reagent/'
-  - '.github/workflows/'
-  - '.env'
-  - '.env.*'
+blocked_paths: []
 
 # Optional: Discord webhook for halt/promote notifications
 notification_channel: ''

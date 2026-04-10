@@ -11,6 +11,8 @@ import { createTierMiddleware } from './middleware/tier.js';
 import { createPolicyMiddleware } from './middleware/policy.js';
 import { redactMiddleware } from './middleware/redact.js';
 import { createAuditMiddleware } from './middleware/audit.js';
+import { createBlockedPathsMiddleware } from './middleware/blocked-paths.js';
+import { registerNativeTools } from './native-tools.js';
 import type { Middleware } from './middleware/chain.js';
 
 export interface ServeOptions {
@@ -41,13 +43,15 @@ export async function startGateway(options: ServeOptions): Promise<void> {
 
   // Build middleware chain
   // SECURITY: Audit is outermost so it records ALL invocations, including kill-switch denials.
-  // Order (onion): audit → session → kill-switch → tier → policy → redact → [execute]
+  // SECURITY: blocked-paths runs before tool execution to prevent writes to protected paths.
+  // Order (onion): audit → session → kill-switch → tier → policy → blocked-paths → redact → [execute]
   const middlewares: Middleware[] = [
-    createAuditMiddleware(baseDir),
+    createAuditMiddleware(baseDir, policy),
     createSessionMiddleware(),
     createKillSwitchMiddleware(baseDir),
     createTierMiddleware(gatewayConfig),
-    createPolicyMiddleware(policy, gatewayConfig),
+    createPolicyMiddleware(policy, gatewayConfig, baseDir),
+    createBlockedPathsMiddleware(policy, baseDir),
     redactMiddleware,
   ];
 
@@ -61,11 +65,17 @@ export async function startGateway(options: ServeOptions): Promise<void> {
   const clientManager = new ClientManager();
   await clientManager.connectAll(gatewayConfig);
 
-  // Discover and register tools
-  const toolProxy = new ToolProxy();
-  const toolCount = await toolProxy.discoverAndRegister(gateway, clientManager, middlewares);
+  // Register native (first-party) tools
+  const nativeCount = registerNativeTools(gateway, baseDir, middlewares);
 
-  console.error(`[reagent] Gateway ready: ${toolCount} tools registered`);
+  // Discover and register proxied tools
+  const toolProxy = new ToolProxy();
+  const proxyCount = await toolProxy.discoverAndRegister(gateway, clientManager, middlewares);
+  const toolCount = nativeCount + proxyCount;
+
+  console.error(
+    `[reagent] Gateway ready: ${toolCount} tools registered (${nativeCount} native, ${proxyCount} proxied)`
+  );
 
   // Listen on stdio
   const transport = new StdioServerTransport();
@@ -95,7 +105,7 @@ export async function startGateway(options: ServeOptions): Promise<void> {
         err instanceof Error ? err.message : err
       );
     }
-    process.exit(0);
+    process.exitCode = 0;
   };
 
   process.on('SIGINT', shutdown);

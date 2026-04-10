@@ -13,6 +13,7 @@ import { redactMiddleware } from './middleware/redact.js';
 import { createInjectionMiddleware } from './middleware/injection.js';
 import { createAuditMiddleware } from './middleware/audit.js';
 import { createBlockedPathsMiddleware } from './middleware/blocked-paths.js';
+import { createResultSizeCapMiddleware } from './middleware/result-size-cap.js';
 import { registerNativeTools } from './native-tools.js';
 import { detectToolCollisions } from './collision-detector.js';
 import type { Middleware } from './middleware/chain.js';
@@ -47,7 +48,8 @@ export async function startGateway(options: ServeOptions): Promise<void> {
   // SECURITY: Audit is outermost so it records ALL invocations, including kill-switch denials.
   // SECURITY: blocked-paths runs before tool execution to prevent writes to protected paths.
   // SECURITY: injection runs PostToolUse (after redact) to scan downstream results for prompt injection.
-  // Order (onion): audit → session → kill-switch → tier → policy → blocked-paths → redact → injection → [execute]
+  // SECURITY: result-size-cap runs PostToolUse after injection so it caps already-scanned output.
+  // Order (onion): audit → session → kill-switch → tier → policy → blocked-paths → redact → injection → result-size-cap → [execute]
   const injectionAction =
     (policy as unknown as Record<string, unknown>).injection_detection === 'warn'
       ? ('warn' as const)
@@ -62,6 +64,7 @@ export async function startGateway(options: ServeOptions): Promise<void> {
     createBlockedPathsMiddleware(policy, baseDir),
     redactMiddleware,
     createInjectionMiddleware(injectionAction),
+    createResultSizeCapMiddleware(gatewayConfig),
   ];
 
   // Create gateway MCP server

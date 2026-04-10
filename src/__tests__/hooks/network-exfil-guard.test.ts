@@ -46,6 +46,37 @@ describe('network-exfil-guard', () => {
       const result = runHook(hook, bashPayload('wget https://suspicious-cdn.net/file.tar.gz'));
       expect(result.exitCode).toBe(2);
     });
+
+    it('blocks curl with bare shell variable URL ($VAR)', () => {
+      const result = runHook(hook, bashPayload('curl $URL'));
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain('NETWORK-EXFIL-GUARD');
+      expect(result.stderr).toContain('variable');
+    });
+
+    it('blocks curl with braced shell variable URL (${VAR})', () => {
+      const result = runHook(hook, bashPayload('curl ${ENDPOINT}'));
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain('NETWORK-EXFIL-GUARD');
+    });
+
+    it('blocks curl with quoted variable URL ("$HOST/path")', () => {
+      const result = runHook(hook, bashPayload('curl "$HOST/api/data"'));
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain('NETWORK-EXFIL-GUARD');
+    });
+
+    it('blocks wget with shell variable URL ($VAR)', () => {
+      const result = runHook(hook, bashPayload('wget $DOWNLOAD_URL'));
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain('NETWORK-EXFIL-GUARD');
+    });
+
+    it('blocks wget with braced variable URL (${VAR})', () => {
+      const result = runHook(hook, bashPayload('wget ${TARGET_URL}'));
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain('NETWORK-EXFIL-GUARD');
+    });
   });
 
   // ── Should ALLOW (exit 0) ──────────────────────────────────────────

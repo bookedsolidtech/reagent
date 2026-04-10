@@ -616,6 +616,70 @@ const NAME_MAP = {
     inspiration:
       "Poppendieck brought lean manufacturing's waste elimination into software delivery; Schwaber created Scrum to make product development empirical rather than predictive — the product owner who keeps the backlog honest, the sprint achievable, and the user always visible.",
   },
+  'motion-designer-interactive': {
+    firstName: 'John',
+    middleInitial: 'N',
+    lastName: 'Catmull',
+    fullName: 'John N. Catmull',
+    inspiration:
+      'Whitney choreographed motion with mathematics on analog computers decades before digital; Catmull proved synthetic motion could rival physical reality — the interactive motion designer who builds physics in JavaScript and calls every easing curve a creative decision.',
+  },
+  'qa-engineer-automation': {
+    firstName: 'Kent',
+    middleInitial: 'W',
+    lastName: 'Cunningham',
+    fullName: 'Kent W. Cunningham',
+    inspiration:
+      'Beck proved test-driven development produced better code faster; Cunningham built the wiki and the foundations of Extreme Programming — the automation engineer who writes the test before the code, and the code before the meeting.',
+  },
+  'qa-engineer-manual': {
+    firstName: 'Elisabeth',
+    middleInitial: 'J',
+    lastName: 'Bach',
+    fullName: 'Elisabeth J. Bach',
+    inspiration:
+      "Hendrickson gave exploratory testing its charter; Bach turned intuition and curiosity into a disciplined craft — the manual QA engineer who finds what no automated test ever will because machines can't be surprised.",
+  },
+  'qa-lead': {
+    firstName: 'Barbara',
+    middleInitial: 'T',
+    lastName: 'Hoare',
+    fullName: 'Barbara T. Hoare',
+    inspiration:
+      "Liskov's substitution principle defines correct abstraction; Hoare invented formal program correctness and called null references his billion-dollar mistake — the QA lead who counts the cost of every shortcut before it gets shipped.",
+  },
+  'security-engineer-appsec': {
+    firstName: 'Dan',
+    middleInitial: 'J',
+    lastName: 'Moss',
+    fullName: 'Dan J. Moss',
+    inspiration:
+      "Kaminsky found the flaw in DNS that threatened the internet's address book; Moss built the world's largest hacker conference so such discoveries could be shared freely — the AppSec engineer who finds the flaw before it finds the user.",
+  },
+  'security-engineer-compliance': {
+    firstName: 'Dorothy',
+    middleInitial: 'D',
+    lastName: 'Solove',
+    fullName: 'Dorothy D. Solove',
+    inspiration:
+      'Denning pioneered intrusion detection and information warfare theory; Solove wrote the legal framework for privacy in the digital age — the compliance engineer who sees regulation not as a ceiling to duck under but as a floor to build from.',
+  },
+  'security-qa-engineer': {
+    firstName: 'Charlie',
+    middleInitial: 'B',
+    lastName: 'Schneier',
+    fullName: 'Charlie B. Schneier',
+    inspiration:
+      'Miller exposed that cars could be hacked remotely before anyone believed it; Schneier framed security as a human system problem — the security QA engineer who tests not just the code but the assumptions behind the code.',
+  },
+  'technical-writer': {
+    firstName: 'Donald',
+    middleInitial: 'R',
+    lastName: 'Tufte',
+    fullName: 'Donald R. Tufte',
+    inspiration:
+      "Knuth spent decades perfecting how to explain algorithms with beauty and precision; Tufte proved that information design is inseparable from the information itself — the technical writer who knows documentation is not an afterthought but the product's most durable artifact.",
+  },
 };
 
 /**

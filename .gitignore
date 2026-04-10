@@ -2,6 +2,7 @@ node_modules/
 npm-debug.log*
 .DS_Store
 *.log
+pnpm-lock.yaml
 
 # MCP config (developer-local, not committed)
 .mcp.json

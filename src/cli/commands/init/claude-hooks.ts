@@ -158,6 +158,7 @@ function getHookTimeout(hookName: string): number {
     'import-guard': 5000,
     'network-exfil-guard': 10000,
     'rate-limit-guard': 5000,
+    'security-disclosure-gate': 5000,
   };
   return timeouts[hookName] || 10000;
 }
@@ -183,6 +184,7 @@ function getHookStatusMessage(hookName: string): string {
     'import-guard': 'Checking for dangerous imports...',
     'network-exfil-guard': 'Checking network destinations...',
     'rate-limit-guard': 'Checking rate limits...',
+    'security-disclosure-gate': 'Checking disclosure policy...',
   };
   return messages[hookName] || `Running ${hookName}...`;
 }

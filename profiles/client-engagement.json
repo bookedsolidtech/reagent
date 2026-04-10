@@ -27,7 +27,8 @@
           "env-file-protection",
           "dependency-audit-gate",
           "commit-review-gate",
-          "push-review-gate"
+          "push-review-gate",
+          "security-disclosure-gate"
         ]
       },
       {

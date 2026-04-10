@@ -2,7 +2,7 @@
 # PreToolUse hook: rate-limit-guard.sh
 # Fires BEFORE every Bash and Write tool call.
 # Blocks if more than 20 calls to the same tool occur within 60 seconds.
-# Uses a log file per tool in /tmp/reagent-rate-limit-{tool}.log.
+# Uses a log file per tool in $HOME/.reagent/rate-limits/{tool}.log.
 #
 # Exit codes:
 #   0 = within rate limit — allow

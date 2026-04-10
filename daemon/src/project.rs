@@ -46,9 +46,22 @@ impl ProjectContext {
     ///
     /// `reagent_bin` overrides the binary path; defaults to `"reagent"` (resolved
     /// via PATH). Set `REAGENT_BIN` env var or pass explicitly for tests / dev.
-    pub async fn spawn(project_root: &Path, session_id: &str) -> Result<Self> {
-        let reagent_bin =
-            std::env::var("REAGENT_BIN").unwrap_or_else(|_| "reagent".to_string());
+    pub async fn spawn(project_root: &Path, session_id: &str, reagent_bin_override: Option<&str>) -> Result<Self> {
+        // Resolution order: explicit override (from config) → REAGENT_BIN env → "reagent"
+        let reagent_bin = reagent_bin_override
+            .map(|s| s.to_string())
+            .or_else(|| std::env::var("REAGENT_BIN").ok())
+            .unwrap_or_else(|| "reagent".to_string());
+
+        // Support "node /path/to/script.js" style values by splitting on first space
+        let (cmd, extra_args): (&str, Vec<&str>) = if reagent_bin.contains(' ') {
+            let mut parts = reagent_bin.splitn(2, ' ');
+            let cmd = parts.next().unwrap();
+            let rest = parts.next().unwrap_or("");
+            (cmd, rest.split_whitespace().collect())
+        } else {
+            (&reagent_bin, vec![])
+        };
 
         info!(
             session_id = %session_id,
@@ -57,7 +70,8 @@ impl ProjectContext {
             "Spawning reagent serve child process"
         );
 
-        let mut child = Command::new(&reagent_bin)
+        let mut child = Command::new(cmd)
+            .args(extra_args)
             .args(["serve"])
             .current_dir(project_root)
             .stdin(std::process::Stdio::piped())

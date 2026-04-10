@@ -89,7 +89,16 @@ async fn mcp_post_handler(
     headers: HeaderMap,
     body: String,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let project_root = extract_header(&headers, "x-project-root")?;
+    let project_root = headers
+        .get("x-project-root")
+        .and_then(|v| v.to_str().ok())
+        .filter(|v| !v.is_empty())
+        .map(|v| v.to_string())
+        .or_else(|| state.config.default_project_root.clone())
+        .ok_or_else(|| (
+            StatusCode::BAD_REQUEST,
+            "Missing X-Project-Root header and no default_project_root set in ~/.reagent/daemon.yaml".to_string(),
+        ))?;
     let project_path = std::path::PathBuf::from(&project_root);
 
     if !project_path.is_absolute() {
@@ -117,7 +126,7 @@ async fn mcp_post_handler(
         _ => {
             // Create new session — spawn child and store sse_rx inside the context
             let new_id = Uuid::new_v4().to_string();
-            let ctx = ProjectContext::spawn(&project_path, &new_id)
+            let ctx = ProjectContext::spawn(&project_path, &new_id, state.config.reagent_bin.as_deref())
                 .await
                 .map_err(|e| {
                     error!(session_id = %new_id, "Failed to spawn child: {}", e);

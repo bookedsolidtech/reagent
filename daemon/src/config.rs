@@ -8,9 +8,19 @@ use std::path::PathBuf;
 /// `src/types/daemon.ts` — keep them in sync.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DaemonConfig {
-    /// TCP port the daemon listens on. Default: 7777.
+    /// TCP port the daemon listens on. Default: 3737.
     #[serde(default = "default_port")]
     pub port: u16,
+
+    /// Default project root used when X-Project-Root header is absent.
+    /// Set this in ~/.reagent/daemon.yaml to your primary project directory.
+    #[serde(default)]
+    pub default_project_root: Option<String>,
+
+    /// Path to the reagent CLI binary. Defaults to REAGENT_BIN env var, then "reagent".
+    /// Example: "node /path/to/reagent/dist/cli/index.js"
+    #[serde(default)]
+    pub reagent_bin: Option<String>,
 
     /// Bind address. Default: "127.0.0.1".
     #[serde(default = "default_bind")]
@@ -27,6 +37,16 @@ pub struct DaemonConfig {
     /// Optional API key authentication. If absent, auth is disabled.
     #[serde(default)]
     pub auth: Option<DaemonAuth>,
+
+    /// Hours of continuous uptime before the daemon logs an idle warning
+    /// (only when session count is zero). Default: 24.
+    #[serde(default = "default_idle_warn_hours")]
+    pub idle_warn_hours: u64,
+
+    /// Hours of continuous uptime after which the daemon initiates a graceful
+    /// self-shutdown regardless of session count. Default: 72.
+    #[serde(default = "default_max_uptime_hours")]
+    pub max_uptime_hours: u64,
 }
 
 /// API key authentication config. Sensitive — never logged via Debug.
@@ -78,6 +98,10 @@ impl Default for DaemonConfig {
             session_ttl_minutes: default_session_ttl_minutes(),
             log_level: default_log_level(),
             auth: None,
+            idle_warn_hours: default_idle_warn_hours(),
+            max_uptime_hours: default_max_uptime_hours(),
+            default_project_root: None,
+            reagent_bin: None,
         }
     }
 }
@@ -92,7 +116,7 @@ fn default_port() -> u16 {
     std::env::var("REAGENT_DAEMON_PORT")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(7777)
+        .unwrap_or(3737)
 }
 
 fn default_bind() -> String {
@@ -108,4 +132,12 @@ fn default_session_ttl_minutes() -> u64 {
 
 fn default_log_level() -> String {
     "info".to_string()
+}
+
+fn default_idle_warn_hours() -> u64 {
+    24
+}
+
+fn default_max_uptime_hours() -> u64 {
+    72
 }

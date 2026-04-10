@@ -108,6 +108,42 @@ jobs:
             " >> $GITHUB_STEP_SUMMARY
           fi
 
+  # ── Rust daemon tests ────────────────────────────────────────────────────────
+  rust-tests:
+    name: Rust daemon tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Cache Rust build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            daemon/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('daemon/Cargo.toml', 'daemon/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Clippy (treat warnings as errors)
+        working-directory: daemon
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run daemon tests
+        working-directory: daemon
+        run: cargo test --all
+
   # ── Shell script linting ─────────────────────────────────────────────────────
   shellcheck:
     name: Shellcheck (hook scripts)
@@ -203,7 +239,7 @@ jobs:
     name: CI passed
     runs-on: ubuntu-latest
     if: always()
-    needs: [quality, coverage, shellcheck, secret-scan, npm-audit, dependency-review]
+    needs: [quality, coverage, shellcheck, secret-scan, npm-audit, dependency-review, rust-tests]
     steps:
       - name: Check all jobs passed
         run: |
@@ -214,6 +250,7 @@ jobs:
             [secret-scan]="${{ needs.secret-scan.result }}"
             [npm-audit]="${{ needs.npm-audit.result }}"
             [dependency-review]="${{ needs.dependency-review.result }}"
+            [rust-tests]="${{ needs.rust-tests.result }}"
           )
           # dependency-review is PR-only — skipped on push is acceptable
           declare -A skip_ok=([dependency-review]=1)

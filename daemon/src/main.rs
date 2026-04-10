@@ -2,12 +2,13 @@ mod config;
 mod project;
 mod routes;
 mod session;
+mod watchdog;
 
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::EnvFilter;
 
 use crate::config::DaemonConfig;
 use crate::routes::build_router;
@@ -36,6 +37,7 @@ async fn main() {
         Ok(c) => c,
         Err(e) => {
             error!("Failed to load daemon config: {}", e);
+            remove_pid_file();
             std::process::exit(1);
         }
     };
@@ -44,6 +46,8 @@ async fn main() {
         port = config.port,
         bind = %config.bind,
         session_ttl_minutes = config.session_ttl_minutes,
+        idle_warn_hours = config.idle_warn_hours,
+        max_uptime_hours = config.max_uptime_hours,
         "reagent-daemon starting"
     );
 
@@ -58,7 +62,7 @@ async fn main() {
         .unwrap_or(0);
 
     let state = AppState {
-        registry,
+        registry: Arc::clone(&registry),
         config: config.clone(),
         started_at,
     };
@@ -79,13 +83,26 @@ async fn main() {
     // Write PID file so `reagent daemon stop` can find us.
     write_pid_file();
 
-    // Serve with graceful shutdown on SIGTERM / SIGINT.
-    let shutdown = shutdown_signal(state);
+    // Watchdog shutdown channel — the watchdog fires this when max_uptime is reached.
+    let (watchdog_tx, watchdog_rx) = tokio::sync::oneshot::channel::<()>();
+
+    // Launch the self-protection watchdog task.
+    watchdog::spawn_watchdog(
+        started_at,
+        Arc::clone(&registry),
+        config.idle_warn_hours,
+        config.max_uptime_hours,
+        watchdog_tx,
+    );
+
+    // Serve with graceful shutdown on SIGTERM / SIGINT / watchdog trigger.
+    let shutdown = shutdown_signal(state, watchdog_rx);
     if let Err(e) = axum::serve(listener, app)
         .with_graceful_shutdown(shutdown)
         .await
     {
         error!("Server error: {}", e);
+        remove_pid_file();
         std::process::exit(1);
     }
 
@@ -110,7 +127,10 @@ fn remove_pid_file() {
     }
 }
 
-async fn shutdown_signal(state: AppState) {
+async fn shutdown_signal(
+    state: AppState,
+    watchdog_rx: tokio::sync::oneshot::Receiver<()>,
+) {
     #[cfg(unix)]
     {
         use tokio::signal::unix::{signal, SignalKind};
@@ -123,19 +143,24 @@ async fn shutdown_signal(state: AppState) {
                 tokio::select! {
                     _ = st.recv() => { info!("SIGTERM received"); }
                     _ = si.recv() => { info!("SIGINT received"); }
+                    _ = watchdog_rx => { info!("Watchdog triggered graceful shutdown"); }
                 }
             }
             _ => {
                 warn!("Failed to register Unix signal handlers — falling back to ctrl-c");
-                tokio::signal::ctrl_c().await.ok();
-                info!("Ctrl-C received");
+                tokio::select! {
+                    _ = tokio::signal::ctrl_c() => { info!("Ctrl-C received"); }
+                    _ = watchdog_rx => { info!("Watchdog triggered graceful shutdown"); }
+                }
             }
         }
     }
     #[cfg(not(unix))]
     {
-        tokio::signal::ctrl_c().await.ok();
-        info!("Ctrl-C received");
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => { info!("Ctrl-C received"); }
+            _ = watchdog_rx => { info!("Watchdog triggered graceful shutdown"); }
+        }
     }
 
     info!("Initiating graceful shutdown — notifying active sessions");
@@ -143,10 +168,6 @@ async fn shutdown_signal(state: AppState) {
     // Broadcast close event to all open SSE streams, then kill child processes.
     let mut guard = state.registry.write().await;
     for ctx in guard.values_mut() {
-        // Send close event — receiver (SSE handler) will terminate its stream.
-        // Use try_send (non-blocking) because we hold a write lock and cannot await.
-        // The SSE channel has capacity 64 so this will succeed unless the client
-        // is extremely slow; on failure we proceed with the kill anyway.
         let _ = ctx.sse_tx.try_send(Ok(axum::response::sse::Event::default()
             .event("close")
             .data("restarting")));

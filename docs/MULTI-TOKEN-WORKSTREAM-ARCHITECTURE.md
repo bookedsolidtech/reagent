@@ -79,15 +79,44 @@ Claude Code reads `CLAUDE_CODE_OAUTH_TOKEN` from its process environment. Two pr
 
 ### 3.2 Claude Code Auth Token Precedence
 
-Based on Claude Code CLI behavior:
+**Verified against official Claude Code docs** ([authentication](https://code.claude.com/docs/en/authentication), [env-vars](https://code.claude.com/docs/en/env-vars)). Full auth cascade, first match wins:
 
-| Priority | Env Var                      | Type         | Billing                 |
-| -------- | ---------------------------- | ------------ | ----------------------- |
-| 1        | `ANTHROPIC_API_KEY`          | API key      | Per-token (usage-based) |
-| 2        | `CLAUDE_CODE_OAUTH_TOKEN`    | OAuth token  | Max Plan (flat rate)    |
-| 3        | `~/.claude.json` credentials | Cached OAuth | Max Plan                |
+| Priority | Source                                            | Type           | Billing             |
+| -------- | ------------------------------------------------- | -------------- | ------------------- |
+| 1        | Cloud provider (`USE_BEDROCK` / `USE_VERTEX` etc) | Provider creds | Provider billing    |
+| 2        | `ANTHROPIC_AUTH_TOKEN` env var                    | Bearer token   | Gateway/proxy       |
+| 3        | `ANTHROPIC_API_KEY` env var                       | API key        | Per-token (Console) |
+| 4        | `apiKeyHelper` (external command from settings)   | Varies         | Varies              |
+| 5        | `CLAUDE_CODE_OAUTH_TOKEN` env var                 | OAuth token    | Max Plan (flat)     |
+| 6        | Subscription OAuth from `/login` (keychain)       | Cached OAuth   | Max Plan            |
 
-**Critical:** If `ANTHROPIC_API_KEY` is set, it takes precedence over OAuth. The workstream spawner must **explicitly unset** `ANTHROPIC_API_KEY` when spawning OAuth-token workstreams to prevent accidental per-token billing.
+**Critical:** `ANTHROPIC_API_KEY` (priority 3) is **higher** than `CLAUDE_CODE_OAUTH_TOKEN` (priority 5). In `-p` mode, the API key is always used when present. The spawner must **explicitly delete** both `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from the child env.
+
+Additionally, `CLAUDE_CODE_OAUTH_REFRESH_TOKEN` (paired with `CLAUDE_CODE_OAUTH_SCOPES`) enables auto-refreshing for long-running sessions.
+
+**`--bare` flag warning:** Per [headless docs](https://code.claude.com/docs/en/headless), `--bare` "skips OAuth and keychain reads" and explicitly does not read `CLAUDE_CODE_OAUTH_TOKEN`. If your workstreams use OAuth subscription billing, you **cannot** use `--bare`.
+
+### 3.2.1 Config Directory Isolation
+
+Claude Code uses two distinct directories ([claude-directory docs](https://code.claude.com/docs/en/claude-directory)):
+
+| Directory        | Purpose                                            | Override                     |
+| ---------------- | -------------------------------------------------- | ---------------------------- |
+| `~/.claude/`     | User-level: settings, credentials, session history | `CLAUDE_CONFIG_DIR` env var  |
+| `<cwd>/.claude/` | Project-level: CLAUDE.md, project settings, agents | None, always relative to cwd |
+
+Per the [official docs](https://code.claude.com/docs/en/env-vars), separate config dirs are a supported pattern:
+
+```bash
+alias claude-work='CLAUDE_CONFIG_DIR=~/.claude-work claude'
+```
+
+**Concurrency safety:** Using separate `CLAUDE_CONFIG_DIR` values per workstream also avoids an [OAuth token refresh race condition](https://github.com/anthropics/claude-code/issues/27933) that can occur when multiple processes share `~/.claude/.credentials.json`.
+
+For multi-token workstreams, set **both**:
+
+- `CLAUDE_CONFIG_DIR` per workstream — isolates credentials, history, session state
+- `cwd` (spawn option) pointing to the worktree — isolates project-level config
 
 ### 3.3 Git Worktree Isolation
 
@@ -607,7 +636,255 @@ No new dependencies required. The workstream spawner uses only `node:child_proce
 
 ---
 
-## 10. CLI Surface
+## 10. Worktree Lifecycle Management
+
+Worktree bloat is the primary operational risk. Each worktree is ~2 MB of checked-out files, but with `pnpm install` that grows to ~270 MB. Ten stale worktrees = 2.7 GB of dead weight. This section defines when and how worktrees are created, retained, and destroyed.
+
+### 10.1 Worktree State Machine
+
+Every worktree transitions through these states:
+
+```
+                                    ┌──────────────────────────┐
+                                    │                          │
+  ┌──────────┐    ┌──────────┐    ┌▼─────────┐    ┌──────────┐│   ┌───────────┐
+  │ CREATING │───▶│ RUNNING  │───▶│ PUSHED   │───▶│ MERGED   │└──▶│ DESTROYED │
+  └──────────┘    └────┬─────┘    └────┬─────┘    └──────────┘    └───────────┘
+                       │               │                ▲
+                       │          CI fails /            │
+                       │          review feedback       │
+                       │               │                │
+                       │          ┌────▼─────┐          │
+                       │          │ FIX-UP   │──────────┘
+                       │          └────┬─────┘
+                       │               │ max retries
+                       ▼               ▼
+                  ┌──────────┐    ┌──────────┐
+                  │ FAILED   │    │ STALE    │
+                  └────┬─────┘    └────┬─────┘
+                       │               │
+                       └───────┬───────┘
+                               ▼
+                         ┌───────────┐
+                         │ DESTROYED │
+                         └───────────┘
+```
+
+| State     | Worktree exists? | node_modules? | When to clean up                       |
+| --------- | :--------------: | :-----------: | -------------------------------------- |
+| CREATING  |       Yes        |  Installing   | Never (in progress)                    |
+| RUNNING   |       Yes        |      Yes      | Never (agent active)                   |
+| PUSHED    |       Yes        |      Yes      | **After merge** or after TTL           |
+| FIX-UP    |       Yes        |      Yes      | Never (agent re-entered)               |
+| MERGED    |       Yes        |      Yes      | **Immediately** — safe to destroy      |
+| FAILED    |       Yes        |      Yes      | After human review or after TTL        |
+| STALE     |       Yes        |     Maybe     | **Immediately** — max retries exceeded |
+| DESTROYED |        No        |      No       | Already gone                           |
+
+### 10.2 The Key Decision: When Can We Delete?
+
+**After push?** No. The PR may need fixes:
+
+- CI fails → agent needs the worktree to fix
+- Reviewer requests changes → agent re-enters to address
+- Merge conflicts with base branch → agent rebases
+
+**After merge?** Yes. Once the PR is merged, the worktree has no further purpose. The branch is also safe to delete.
+
+**After push + TTL?** Yes, as a fallback. If a PR sits idle for N hours with no activity, the worktree can be cleaned up. If the agent needs to re-enter later, it recreates the worktree from the remote branch (cheap — just `git worktree add` + `pnpm install`).
+
+### 10.3 Cleanup Triggers
+
+Three cleanup mechanisms, layered for defense in depth:
+
+**Trigger 1: Post-merge hook (immediate, automatic)**
+
+When a PR is merged, the worktree and branch are cleaned up immediately. This is the primary cleanup path.
+
+```typescript
+// Pseudocode for the merge watcher
+async function onPrMerged(prNumber: number, branchName: string) {
+  const worktree = findWorktreeByBranch(branchName);
+  if (!worktree) return; // already cleaned up
+
+  await exec('git', ['worktree', 'remove', worktree.path, '--force']);
+  await exec('git', ['branch', '-D', branchName]);
+
+  // Clean up state file
+  await fs.rm(stateFilePath(worktree.name));
+  log(`Worktree ${worktree.name} destroyed (PR #${prNumber} merged)`);
+}
+```
+
+**How to detect merge:** Two options depending on where reagent runs:
+
+| Method                                       | Latency      | Requires                          |
+| -------------------------------------------- | ------------ | --------------------------------- |
+| GitHub webhook (via MCP server)              | Seconds      | Discord-ops or a webhook listener |
+| `gh pr view` polling                         | Minutes      | GitHub CLI, periodic check        |
+| Post-push hook + `gh pr list --state merged` | On next push | Husky hook                        |
+
+The simplest for v1: **a post-push husky hook** that checks for merged branches and cleans up their worktrees. This piggybacks on existing git operations — no polling, no webhooks.
+
+```bash
+#!/bin/bash
+# hooks/post-push-worktree-cleanup.sh
+# Runs after every `git push` — checks for worktrees whose PRs are merged
+
+WORKTREE_DIR=".reagent/worktrees"
+[ -d "$WORKTREE_DIR" ] || exit 0
+
+for state_file in .reagent/state/ws-*.json; do
+  [ -f "$state_file" ] || continue
+  branch=$(jq -r '.branch' "$state_file")
+  worktree_path=$(jq -r '.worktree_path' "$state_file")
+
+  # Check if branch still exists on remote
+  if ! git ls-remote --heads origin "$branch" | grep -q "$branch"; then
+    # Branch is gone (merged or deleted) — clean up
+    echo "[reagent] Cleaning up worktree for deleted branch: $branch"
+    git worktree remove "$worktree_path" --force 2>/dev/null
+    git branch -D "$branch" 2>/dev/null
+    rm "$state_file"
+  fi
+done
+
+# Final sweep for any orphaned metadata
+git worktree prune
+```
+
+**Trigger 2: TTL-based expiry (deferred, automatic)**
+
+Worktrees that have been idle (no agent process, no git activity) for longer than a configurable TTL are eligible for cleanup. Default: 72 hours.
+
+```yaml
+# In workstream config or accounts.yaml
+worktree:
+  ttl_hours: 72 # delete idle worktrees after 72h
+  ttl_after_push: 48 # delete pushed-but-unmerged worktrees after 48h
+  max_concurrent: 5 # refuse to create if 5+ worktrees exist
+```
+
+The TTL check runs as part of `reagent workstream prune` or as a pre-create check before spawning a new workstream.
+
+```typescript
+async function enforceWorktreeLimits() {
+  const worktrees = await listReagentWorktrees();
+
+  for (const wt of worktrees) {
+    const state = await readState(wt.name);
+    const idleHours = (Date.now() - state.last_activity_at) / 3600000;
+
+    if (state.status === 'merged') {
+      // Always clean up merged worktrees immediately
+      await destroyWorktree(wt);
+    } else if (state.status === 'pushed' && idleHours > config.ttl_after_push) {
+      // PR is open but idle — safe to clean, can recreate from remote
+      await destroyWorktree(wt);
+    } else if (idleHours > config.ttl_hours) {
+      // Any worktree idle beyond TTL
+      await destroyWorktree(wt);
+    }
+  }
+
+  // Enforce max concurrent
+  const active = worktrees.filter((wt) => wt.status === 'running' || wt.status === 'pushed');
+  if (active.length >= config.max_concurrent) {
+    throw new Error(
+      `Max concurrent worktrees (${config.max_concurrent}) reached. ` +
+        `Run 'reagent workstream prune' or wait for merges.`
+    );
+  }
+}
+```
+
+**Trigger 3: Manual prune (on-demand)**
+
+```bash
+reagent workstream prune              # clean up all eligible worktrees
+reagent workstream prune --force      # clean up ALL worktrees (including running)
+reagent workstream prune --dry-run    # show what would be cleaned
+```
+
+### 10.4 Recreating a Worktree from Remote
+
+When an agent needs to re-enter a worktree that was cleaned up (e.g., to fix CI), it recreates from the remote branch:
+
+```typescript
+async function recreateWorktree(branchName: string): Promise<string> {
+  // Fetch latest
+  await exec('git', ['fetch', 'origin', branchName]);
+
+  // Create worktree from the remote branch
+  const worktreePath = `.reagent/worktrees/${branchName.replace('/', '-')}`;
+  await exec('git', ['worktree', 'add', '-B', branchName, worktreePath, `origin/${branchName}`]);
+
+  // Reinstall dependencies (fast with pnpm hardlinks)
+  await exec('pnpm', ['install', '--frozen-lockfile'], { cwd: worktreePath });
+
+  // Place Spotlight exclusion marker
+  await fs.writeFile(path.join(worktreePath, '.metadata_never_index'), '');
+
+  return worktreePath;
+}
+```
+
+Cost of recreation: `git worktree add` is instant. `pnpm install` with a warm store is ~5-10 seconds. Total: under 15 seconds. This is fast enough that aggressive cleanup is fine.
+
+### 10.5 node_modules Strategy
+
+`node_modules` is the biggest contributor to worktree disk usage (~266 MB per worktree for this repo). Options:
+
+| Strategy                          |  Disk per worktree  |      Install time       | Agent can run immediately? |
+| --------------------------------- | :-----------------: | :---------------------: | :------------------------: |
+| Full `pnpm install` per worktree  | ~266 MB (hardlinks) |      5-10s (warm)       |            Yes             |
+| Shared `node_modules` via symlink |        ~0 MB        |           0s            |      Yes, but fragile      |
+| No install, read-only workstreams |        0 MB         |           0s            |   Only for review tasks    |
+| Install on-demand (lazy)          |      0-266 MB       | 5-10s on first tool use |       Delayed start        |
+
+**Recommendation:** Full `pnpm install` per worktree. With pnpm's content-addressable store, the actual disk cost is near-zero (hardlinks to `~/.pnpm-store/`). The ~266 MB reported by `du` is the logical size, not the physical size. Running `du --apparent-size` vs `du` will show the difference.
+
+For **read-only review workstreams** (no writes, no tests), skip the install entirely — Claude Code can read files without `node_modules`.
+
+### 10.6 Worktree State File
+
+Each worktree gets a state file at `.reagent/state/ws-<name>.json`:
+
+```json
+{
+  "name": "acme-review",
+  "branch": "ws/acme-review",
+  "worktree_path": ".reagent/worktrees/acme-review",
+  "account": "client-acme",
+  "status": "pushed",
+  "created_at": "2026-04-09T10:00:00Z",
+  "last_activity_at": "2026-04-09T11:30:00Z",
+  "pushed_at": "2026-04-09T11:25:00Z",
+  "pr_number": 42,
+  "pid": null,
+  "total_turns": 47,
+  "estimated_cost_usd": 2.35
+}
+```
+
+This file is the source of truth for cleanup decisions. It persists across process restarts and is not inside the worktree (so it survives worktree deletion).
+
+### 10.7 Cleanup Summary
+
+| Event                                | Action                                |          Automatic?          |
+| ------------------------------------ | ------------------------------------- | :--------------------------: |
+| PR merged                            | Destroy worktree + branch immediately |     Yes (post-push hook)     |
+| PR closed without merge              | Destroy worktree + branch             |     Yes (post-push hook)     |
+| Branch deleted on remote             | Destroy worktree + branch             |     Yes (post-push hook)     |
+| Worktree idle > `ttl_hours`          | Destroy worktree + branch             |    Yes (pre-create check)    |
+| Pushed PR idle > `ttl_after_push`    | Destroy worktree, keep remote branch  |    Yes (pre-create check)    |
+| Max concurrent worktrees reached     | Refuse to create new, suggest prune   |    Yes (pre-create check)    |
+| Agent process dies                   | Mark as stale, clean on next prune    | Yes (startup reconciliation) |
+| User runs `reagent workstream prune` | Destroy all eligible worktrees        |            Manual            |
+
+---
+
+## 11. CLI Surface
 
 ```
 reagent workstream run <config.yaml>    Run a workstream from config
@@ -615,12 +892,14 @@ reagent workstream list                 List active workstreams and their status
 reagent workstream status <name>        Show detailed status of a workstream
 reagent workstream stop <name>          Stop a running workstream
 reagent workstream prune                Clean up completed worktrees and state
+reagent workstream prune --dry-run      Show what would be cleaned without acting
+reagent workstream prune --force        Clean up ALL worktrees including running
 reagent workstream budget [account]     Show budget usage for an account
 ```
 
 ---
 
-## 11. Timeline and Assignments
+## 12. Timeline and Assignments
 
 | Phase   | Scope                         | Dependencies          | Engineer |
 | ------- | ----------------------------- | --------------------- | -------- |

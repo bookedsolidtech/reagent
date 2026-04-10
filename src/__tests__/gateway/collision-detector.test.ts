@@ -110,7 +110,9 @@ describe('detectToolCollisions', () => {
         {
           name: 'good',
           client: {
-            listTools: async () => ({ tools: [{ name: 'tool_a', description: '', inputSchema: {} }] }),
+            listTools: async () => ({
+              tools: [{ name: 'tool_a', description: '', inputSchema: {} }],
+            }),
           },
           transport: {} as never,
           config: {} as never,

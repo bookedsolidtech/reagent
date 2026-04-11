@@ -1,5 +1,5 @@
 ---
-"@bookedsolid/reagent": minor
+'@bookedsolid/reagent': minor
 ---
 
 Replace Rust daemon with lightweight Node.js process supervisor.

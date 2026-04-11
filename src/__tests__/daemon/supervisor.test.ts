@@ -135,9 +135,7 @@ describe('runDaemonStart — already running guard', () => {
 
     runDaemonStart([]);
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('already running')
-    );
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('already running'));
   });
 });
 
@@ -263,9 +261,7 @@ describe('runDaemonStatus — running', () => {
 
 describe('loadDaemonConfig', () => {
   it('returns defaults when daemon.yaml is absent', async () => {
-    const { loadDaemonConfig } = await import(
-      '../../config/daemon-loader.js?t=' + Date.now()
-    );
+    const { loadDaemonConfig } = await import('../../config/daemon-loader.js?t=' + Date.now());
     const config = loadDaemonConfig();
     expect(config.log_level).toBe('info');
     expect(config.reagent_bin).toBeUndefined();
@@ -280,9 +276,7 @@ describe('loadDaemonConfig', () => {
       'utf8'
     );
 
-    const { loadDaemonConfig } = await import(
-      '../../config/daemon-loader.js?cfg=' + Date.now()
-    );
+    const { loadDaemonConfig } = await import('../../config/daemon-loader.js?cfg=' + Date.now());
     const config = loadDaemonConfig();
     expect(config.reagent_bin).toBe('/usr/local/bin/reagent');
     expect(config.log_level).toBe('debug');
@@ -291,15 +285,9 @@ describe('loadDaemonConfig', () => {
   it('rejects invalid log_level values', async () => {
     const reagentDir = path.join(tmpHome, '.reagent');
     fs.mkdirSync(reagentDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(reagentDir, 'daemon.yaml'),
-      'log_level: verbose\n',
-      'utf8'
-    );
+    fs.writeFileSync(path.join(reagentDir, 'daemon.yaml'), 'log_level: verbose\n', 'utf8');
 
-    const { loadDaemonConfig } = await import(
-      '../../config/daemon-loader.js?bad=' + Date.now()
-    );
+    const { loadDaemonConfig } = await import('../../config/daemon-loader.js?bad=' + Date.now());
     expect(() => loadDaemonConfig()).toThrow();
   });
 });

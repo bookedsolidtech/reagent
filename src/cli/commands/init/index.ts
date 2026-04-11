@@ -119,7 +119,13 @@ export function runInit(args: string[]): void {
 
   // Step 8: Policy
   results.push(
-    ...installPolicy(targetDir, profileName, profile, dryRun, isTechProfile ? profileName : undefined)
+    ...installPolicy(
+      targetDir,
+      profileName,
+      profile,
+      dryRun,
+      isTechProfile ? profileName : undefined
+    )
   );
 
   // Step 9: MCP server config (.mcp.json — tells Claude Code how to connect to reagent serve)

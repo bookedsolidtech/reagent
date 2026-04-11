@@ -1,5 +1,5 @@
 ---
-"@bookedsolid/reagent": minor
+'@bookedsolid/reagent': minor
 ---
 
 Fix `reagent init` to write `.mcp.json`, fix tech profile composability, fix daemon Streamable HTTP, and add profile-specific hook self-skipping.

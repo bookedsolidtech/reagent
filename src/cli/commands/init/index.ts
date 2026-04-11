@@ -6,7 +6,7 @@ import { installGitignoreEntries } from './gitignore.js';
 import { installCursorRules } from './cursor-rules.js';
 import { installHuskyHook } from './husky-hooks.js';
 import { installClaudeHooks } from './claude-hooks.js';
-import { installClaudeMd } from './claude-md.js';
+import { installClaudeMd, detectPreflightCmd } from './claude-md.js';
 import { installPolicy } from './policy.js';
 import { installGatewayConfig, checkMcpDuplicates } from './gateway-config.js';
 import { installMcpJson } from './mcp-config.js';
@@ -24,6 +24,8 @@ export function runInit(args: string[]): void {
   const withGitHub = args.includes('--github');
   const withDiscord = args.includes('--discord');
   const PKG_VERSION = getPkgVersion();
+  // --preflight-cmd overrides lockfile detection; used to inject a custom preflight command
+  const preflightCmdOverride = parseFlag(args, '--preflight-cmd');
 
   // Validate profile name format
   if (!/^[a-z0-9][a-z0-9-]*$/.test(profileName)) {
@@ -114,7 +116,11 @@ export function runInit(args: string[]): void {
 
   // Step 7: CLAUDE.md
   if (profile.claudeMd) {
-    results.push(...installClaudeMd(targetDir, profile.claudeMd, dryRun));
+    // Resolve preflight command: CLI flag > lockfile detection > profile default > safe fallback
+    const resolvedPreflightCmd =
+      preflightCmdOverride || detectPreflightCmd(targetDir);
+    const claudeMdConfig = { ...profile.claudeMd, preflightCmd: resolvedPreflightCmd };
+    results.push(...installClaudeMd(targetDir, claudeMdConfig, dryRun));
   }
 
   // Step 8: Policy
@@ -232,7 +238,7 @@ function printSummary(
     if (showCommitInstructions) {
       console.log('\nCommit these files (safe to commit):');
       console.log(
-        '  git add .mcp.json .cursor/rules/ .husky/ .claude/commands/ CLAUDE.md .reagent/policy.yaml .reagent/gateway.yaml && git commit -m "chore: add reagent zero-trust config"'
+        '  git add .mcp.json .cursor/rules/ .husky/ .claude/commands/ CLAUDE.md .reagent/policy.yaml .reagent/gateway.yaml && git commit -m "chore: add reagent governance config"'
       );
       console.log('');
       console.log('Do NOT commit (gitignored — stays on your machine):');

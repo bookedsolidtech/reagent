@@ -3,6 +3,19 @@ import path from 'node:path';
 import { PKG_ROOT, getPkgVersion } from '../../utils.js';
 import type { InstallResult, ClaudeMdConfig } from './types.js';
 
+/**
+ * Detect the package manager in use by checking for lockfiles in the target directory.
+ * Returns the appropriate preflight command string.
+ */
+export function detectPreflightCmd(targetDir: string): string {
+  if (fs.existsSync(path.join(targetDir, 'pnpm-lock.yaml'))) return 'pnpm preflight';
+  if (fs.existsSync(path.join(targetDir, 'yarn.lock'))) return 'yarn preflight';
+  if (fs.existsSync(path.join(targetDir, 'bun.lockb'))) return 'bun run preflight';
+  if (fs.existsSync(path.join(targetDir, 'package-lock.json'))) return 'npm run preflight';
+  // No lockfile found — safe fallback
+  return 'npm run preflight';
+}
+
 export function installClaudeMd(
   targetDir: string,
   claudeMdConfig: ClaudeMdConfig,
@@ -17,12 +30,17 @@ export function installClaudeMd(
     return [{ file: 'CLAUDE.md', status: 'warn' }];
   }
 
+  // Use the resolved preflight command from the config. The caller (index.ts) is responsible
+  // for running detectPreflightCmd and injecting it; claudeMdConfig.preflightCmd is the
+  // already-resolved value. Fall back to the safe default only if nothing was provided.
+  const preflightCmd = claudeMdConfig.preflightCmd || 'npm run preflight';
+
   let template = fs.readFileSync(templatePath, 'utf8');
   const safe = (val: string) => String(val).replace(/\{\{[^}]*\}\}/g, '');
 
   template = template
     .replace(/\{\{VERSION\}\}/g, PKG_VERSION)
-    .replace(/\{\{PREFLIGHT_CMD\}\}/g, safe(claudeMdConfig.preflightCmd || 'pnpm preflight'))
+    .replace(/\{\{PREFLIGHT_CMD\}\}/g, safe(preflightCmd))
     .replace(
       /\{\{ATTRIBUTION_RULE\}\}/g,
       safe(

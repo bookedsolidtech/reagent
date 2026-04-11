@@ -1,7 +1,7 @@
 {
   "name": "@bookedsolid/reagent",
   "version": "0.13.1",
-  "description": "Zero-trust MCP server — policy enforcement, secret redaction, and audit logging for AI-assisted projects",
+  "description": "Governance layer for Claude Code — policy enforcement, hook-based safety gates, and audit logging for AI-assisted projects",
   "license": "MIT",
   "author": "Booked Solid Technology <oss@bookedsolid.tech> (https://bookedsolid.tech)",
   "homepage": "https://github.com/bookedsolidtech/reagent#readme",

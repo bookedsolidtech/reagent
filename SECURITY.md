@@ -30,11 +30,11 @@ Alternatively, use [GitHub Security Advisories](https://github.com/bookedsolidte
 
 ### Response timeline
 
-| Step                           | Target                                      |
-| ------------------------------ | ------------------------------------------- |
-| Acknowledgement                | Within 24 hours                             |
-| Patch for critical issues      | Within 7 days of confirmed report           |
-| Public disclosure              | After patch is available and released       |
+| Step                      | Target                                |
+| ------------------------- | ------------------------------------- |
+| Acknowledgement           | Within 24 hours                       |
+| Patch for critical issues | Within 7 days of confirmed report     |
+| Public disclosure         | After patch is available and released |
 
 ## Scope
 

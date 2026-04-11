@@ -117,8 +117,7 @@ export function runInit(args: string[]): void {
   // Step 7: CLAUDE.md
   if (profile.claudeMd) {
     // Resolve preflight command: CLI flag > lockfile detection > profile default > safe fallback
-    const resolvedPreflightCmd =
-      preflightCmdOverride || detectPreflightCmd(targetDir);
+    const resolvedPreflightCmd = preflightCmdOverride || detectPreflightCmd(targetDir);
     const claudeMdConfig = { ...profile.claudeMd, preflightCmd: resolvedPreflightCmd };
     results.push(...installClaudeMd(targetDir, claudeMdConfig, dryRun));
   }

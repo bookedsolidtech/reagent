@@ -1,5 +1,5 @@
 ---
-"@bookedsolid/reagent": minor
+'@bookedsolid/reagent': minor
 ---
 
 Auto-detect package manager for preflight command during `reagent init`.

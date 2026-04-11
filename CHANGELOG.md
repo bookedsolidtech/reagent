@@ -1,5 +1,143 @@
 # @bookedsolid/reagent
 
+## 0.12.2
+
+### Patch Changes
+
+- 659547c: fix(hooks): allow agent writes to tasks.jsonl when .reagent/ is in blocked_paths
+
+  The default blocked_paths included `.reagent/` as a directory, which blocked
+  agents from writing to `.reagent/tasks.jsonl`. This broke the PM task store —
+  the entire point of the project management layer.
+
+  Two fixes:
+  1. blocked-paths-enforcer.sh now has a built-in agent-writable allowlist that
+     always permits writes to `tasks.jsonl` and `audit/` regardless of what
+     blocked_paths contains. settings-protection.sh still guards the sensitive
+     files (policy.yaml, HALT, review-cache.json) explicitly.
+  2. The default blocked_paths in new installs now lists specific files instead
+     of the whole `.reagent/` directory, so this footgun doesn't recur.
+
+  Existing installs with `.reagent/` in blocked_paths are fixed by the hook
+  allowlist — no manual policy.yaml edits required.
+
+## 0.12.1
+
+### Patch Changes
+
+- 20c1f2c: docs: add project installation guide to README
+
+  Documents the complete setup flow for installing reagent in another project:
+  stdio transport requirement (HTTP transport requires OAuth 2.1 and is not
+  supported by the daemon), the gateway.yaml proxy pattern for passing tokens
+  to downstream MCP servers, the ${VAR} env expansion gotcha in .mcp.json
+  (Claude Code passes the literal string, not the value — only the gateway
+  resolves ${VAR} at startup), and the upgrade command for re-syncing hooks.
+
+  Also fixes the Quick Start .mcp.json snippet to use `npx` instead of bare
+  `reagent`, which requires a global install.
+
+## 0.12.0
+
+### Minor Changes
+
+- 0e4e8ac: feat(cli): add `reagent upgrade` command
+
+  Adds a new `reagent upgrade` command that re-syncs installed reagent hooks and
+  updates the version stamp in `.reagent/policy.yaml` without running the full
+  `reagent init` flow.
+
+  **What it does:**
+  - Copies / overwrites all reagent-managed hooks (`commit-msg`, `pre-commit`,
+    `pre-push`) from the package's `husky/` directory into the project's `.husky/`
+    directory — but only for hooks the project already has installed (respects the
+    user's original init choices, never adds new hooks silently)
+  - Updates the `installed_by` field in `.reagent/policy.yaml` to reflect the
+    current reagent version; all other user config (autonomy levels, blocked paths,
+    gateway servers, etc.) is preserved
+  - Prints an itemised summary: installed / updated / already up-to-date / warnings
+  - Supports `--dry-run` to preview changes without writing files
+
+  **Usage:**
+
+  ```
+  npx @bookedsolid/reagent upgrade
+  npx @bookedsolid/reagent upgrade --dry-run
+  ```
+
+### Patch Changes
+
+- 3cb164f: Add duplicate MCP server detection to `reagent init`. After writing `gateway.yaml`, the init command now reads `.mcp.json` (if present) and warns when any `mcpServers` entry key matches a server name in `gateway.yaml`. This prevents duplicate tool registration and auth failures caused by `${VAR}` env syntax that Claude Code does not expand in direct `.mcp.json` entries.
+
+## 0.11.1
+
+### Patch Changes
+
+- 36cacec: fix(hooks): commit-review-gate now hands off to the agent as reviewer
+
+  Previously the block message told agents to "spawn a code-reviewer agent"
+  and gave no clear path forward — causing agents to give up and ask the user
+  to run git commit manually instead.
+
+  The gate now makes clear that the agent itself is the reviewer: inspect the
+  diff, make a judgement call, cache the result, and retry. Initial commits,
+  large refactors, and standard feature work are explicitly called out as
+  normal — agents should use judgement, not ceremony. Only escalate to the
+  user if there is a genuine problem in the diff.
+
+  Also fixes `daemon:restart` npm script to use `npx reagent` so it works
+  without a global install.
+
+## 0.11.0
+
+### Minor Changes
+
+- 2b87a0e: feat(daemon): integration tests, watchdog self-shutdown, eject command, port 3737
+
+  **Integration tests** — 19 Rust integration tests covering all HTTP routes, session
+  lifecycle, concurrent sessions, SSE double-connect 409, race conditions, and error paths.
+  Tests spin the real binary on a random port and auto-clean on drop.
+
+  **Watchdog** — background tokio task that logs an idle warning after `idle_warn_hours`
+  (default 24h) and initiates graceful self-shutdown after `max_uptime_hours` (default 72h,
+  0 = disabled). Prevents zombie daemons running indefinitely unnoticed.
+
+  **Eject command** — `reagent daemon eject` sends SIGKILL via PID file then sweeps orphans
+  with pkill. Nuclear option when graceful stop is stuck.
+
+  **npm scripts** — `daemon:start` (nohup, survives terminal close), `daemon:stop`
+  (integer-validated PID, no shell injection), `daemon:status`, `daemon:logs`,
+  `daemon:eject`, `daemon:build`.
+
+  **Config improvements** (`~/.reagent/daemon.yaml`):
+  - Default port changed from 7777 to 3737
+  - `reagent_bin` — path to reagent CLI; supports `"node /path/to/dist/cli/index.js"` for
+    local dev without a global install
+  - `default_project_root` — fallback when `X-Project-Root` header is absent; enables HTTP
+    MCP clients that cannot send per-request headers
+  - `idle_warn_hours` / `max_uptime_hours` — watchdog thresholds
+
+  **CI** — `rust-tests` job added: `cargo clippy --all-targets -D warnings` + `cargo test`;
+  wired into the `ci-passed` rollup gate.
+
+### Patch Changes
+
+- 7c3e1ce: fix(hooks): commit-review-gate cache bypass now works for all install methods
+
+  The cache check in `commit-review-gate.sh` was silently skipped when reagent
+  was installed globally or via npx — `REAGENT_CLI_ARGS` was never populated for
+  those cases, causing the gate to permanently block commits >200 lines even after
+  a successful code review completed and cached its result.
+
+  Fixes:
+  - Add `command -v reagent` PATH lookup as third CLI resolution option (covers
+    global `npm install -g @bookedsolid/reagent` installs)
+  - Add a `jq`-based direct read of `.reagent/review-cache.json` as a fallback
+    when no CLI is found — works in any consumer project regardless of install
+    method, no Node.js process spawn required
+  - Hoist `STAGED_SHA` / `BRANCH` computation out of the score-specific block
+    so both standard and significant tiers share the same variables
+
 ## 0.10.0
 
 ### Minor Changes

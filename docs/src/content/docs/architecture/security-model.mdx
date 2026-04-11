@@ -5,7 +5,7 @@ sidebar:
   order: 2
 ---
 
-Reagent's security model is built on defense in depth — multiple independent layers that each provide protection even if another layer is compromised.
+reagent's security model is built on defense in depth — multiple independent layers that each provide protection even if another layer is compromised.
 
 ## Security invariants
 
@@ -24,8 +24,8 @@ These properties are enforced by the architecture and cannot be overridden by co
 
 | Layer              | Mechanism                                | Scope                        |
 | ------------------ | ---------------------------------------- | ---------------------------- |
-| Gateway middleware | Policy, paths, redaction, audit          | All MCP tool calls           |
-| Claude Code hooks  | 20 shell scripts                         | Claude Code tool invocations |
+| MCP server middleware | Policy, paths, redaction, audit       | All MCP tool calls           |
+| Claude Code hooks     | 23 shell scripts                      | Claude Code tool invocations |
 | Git hooks          | Commit-msg, pre-commit, pre-push         | Git operations               |
 | Quality gates      | Triage-based review, code-reviewer agent | Commits and pushes           |
 

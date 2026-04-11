@@ -5,47 +5,52 @@ sidebar:
   order: 3
 ---
 
-`.reagent/gateway.yaml` defines the downstream MCP servers that the Reagent gateway connects to.
+`.reagent/gateway.yaml` declares the downstream MCP servers that reagent connects to and
+proxies. It is written by `reagent init` and committed to the repository.
 
 ## Example
 
 ```yaml
 version: '1'
+
 servers:
-  discord-ops:
-    command: node
-    args:
-      - /path/to/discord-ops/dist/index.js
+  filesystem:
+    command: npx
+    args: ['@modelcontextprotocol/server-filesystem', '/path/to/project']
+
+  github:
+    command: npx
+    args: ['@modelcontextprotocol/server-github']
     env:
-      DISCORD_BOT_TOKEN: '${DISCORD_BOT_TOKEN}'
+      GITHUB_TOKEN: '${GITHUB_PERSONAL_ACCESS_TOKEN}'
+    calls_per_minute: 120
     tool_overrides:
-      get_messages:
-        tier: read
-      send_message:
-        tier: write
-      purge_messages:
-        tier: destructive
-      delete_channel:
-        tier: destructive
+      delete_repository:
         blocked: true
 
-discord_ops:
-  guild_id: '1234567890'
-  channels:
-    alerts: '111'
-    tasks: '222'
-    releases: '333'
-    dev: '444'
+  postgres:
+    command: npx
+    args: ['@modelcontextprotocol/server-postgres', '${DATABASE_URL}']
+    calls_per_minute: 60
+    max_concurrent_calls: 5
+    tool_overrides:
+      execute_query:
+        tier: destructive
+
+gateway:
+  max_result_size_kb: 512
 ```
 
 ## Server fields
 
-| Field            | Type                           | Description                                  |
-| ---------------- | ------------------------------ | -------------------------------------------- |
-| `command`        | `string`                       | Command to start the MCP server              |
-| `args`           | `string[]`                     | Arguments to pass to the command             |
-| `env`            | `Record<string, string>`       | Environment variables for the server process |
-| `tool_overrides` | `Record<string, ToolOverride>` | Per-tool tier and blocked overrides          |
+| Field                  | Type                           | Description                                  |
+| ---------------------- | ------------------------------ | -------------------------------------------- |
+| `command`              | `string`                       | Command to start the MCP server process      |
+| `args`                 | `string[]`                     | Arguments to pass to the command             |
+| `env`                  | `Record<string, string>`       | Environment variables for the server process |
+| `tool_overrides`       | `Record<string, ToolOverride>` | Per-tool tier and blocked overrides          |
+| `calls_per_minute`     | `number`                       | Rate limit for this server (0 = unlimited)   |
+| `max_concurrent_calls` | `number`                       | Concurrency limit for this server (0 = unlimited) |
 
 ## Tool override fields
 
@@ -56,15 +61,35 @@ discord_ops:
 
 ### Override constraints
 
-Overrides **cannot lower** a tool's tier below its static or convention-based classification. If a tool is classified as `destructive` by convention (e.g., `delete_channel`), you cannot override it to `read`. The override is ignored with a warning if attempted.
+Overrides **cannot lower** a tool's tier below its static or convention-based classification.
+If a tool is classified as `destructive` by convention (e.g., `delete_channel`), you cannot
+override it to `read`. The override is ignored with a warning if attempted.
+
+## Gateway options
+
+| Field                  | Type     | Description                                                              |
+| ---------------------- | -------- | ------------------------------------------------------------------------ |
+| `max_result_size_kb`   | `number` | Truncate tool results larger than this size (default: 1024 KB)           |
 
 ## Environment variable resolution
 
-Use `${VAR_NAME}` syntax in env values. Reagent resolves them from `process.env` at startup. Missing env vars produce a warning and resolve to empty string.
+Use `${VAR_NAME}` syntax in env values. reagent resolves them from `process.env` at startup.
+Missing env vars produce a warning and resolve to empty string.
 
 ## Discord configuration
 
-The `discord_ops` top-level block configures Discord notification routing:
+The `discord_ops` top-level block configures Discord notification routing. It is written
+automatically when you run `reagent init --discord`:
+
+```yaml
+discord_ops:
+  guild_id: '1234567890'
+  channels:
+    alerts: '111'
+    tasks: '222'
+    releases: '333'
+    dev: '444'
+```
 
 | Field               | Type     | Description                    |
 | ------------------- | -------- | ------------------------------ |

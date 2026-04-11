@@ -5,7 +5,7 @@ sidebar:
   order: 2
 ---
 
-Reagent uses four autonomy levels to control which tool tiers an agent can invoke. The level is set in `.reagent/policy.yaml` and enforced by the gateway middleware.
+Reagent uses four autonomy levels to control which tool tiers an agent can invoke. The level is set in `.reagent/policy.yaml` and enforced by the MCP server middleware.
 
 ## Levels
 
@@ -13,7 +13,7 @@ Reagent uses four autonomy levels to control which tool tiers an agent can invok
 | ------ | ----------- | -------------------------------- | ---------------------------------------------- |
 | **L0** | Read-only   | `read`                           | Auditing, investigation, read-only exploration |
 | **L1** | Standard    | `read` + `write`                 | Normal development work                        |
-| **L2** | Elevated    | `read` + `write`                 | Same as L1 with higher trust signals           |
+| **L2** | Elevated    | `read` + `write`                 | Writes and PR creation; destructive tier blocked |
 | **L3** | Full access | `read` + `write` + `destructive` | Admin operations, cleanup tasks                |
 
 ## Tool tiers

@@ -5,60 +5,107 @@ sidebar:
   order: 2
 ---
 
-## As an MCP Gateway
+## Install and initialize
 
 ```bash
-# Initialize a project with policy and gateway config
-reagent init --profile bst-internal
-
-# Configure your downstream MCP servers in .reagent/gateway.yaml
-# Then start the gateway
-reagent serve
+npm install -g @bookedsolid/reagent
+cd your-project
+reagent init
 ```
 
-Point your AI assistant's MCP configuration at the gateway:
+`reagent init` writes `.mcp.json` to your project root:
 
 ```json
 {
   "mcpServers": {
     "reagent": {
-      "command": "reagent",
-      "args": ["serve"]
+      "type": "stdio",
+      "command": "npx",
+      "args": ["reagent", "serve"]
     }
   }
 }
 ```
 
-All downstream tool calls now flow through Reagent's middleware chain.
+It also installs `.reagent/policy.yaml`, `.reagent/gateway.yaml`, Claude Code hooks, quality
+gates, Cursor rules, agent team files, and slash commands.
 
-## As a Config Scaffolder
+**Restart Claude Code.** It picks up `.mcp.json` and spawns `reagent serve` automatically via
+stdio transport. reagent loads your policy and gateway config, connects to any downstream
+servers, and starts listening.
+
+## Verify the installation
 
 ```bash
-npx @bookedsolid/reagent init
-
-# With a base profile
-npx @bookedsolid/reagent init --profile bst-internal
-npx @bookedsolid/reagent init --profile client-engagement
-
-# With a tech stack profile
-npx @bookedsolid/reagent init --profile nextjs
-npx @bookedsolid/reagent init --profile lit-wc
-
-# With optional integrations
-npx @bookedsolid/reagent init --github    # scaffold GitHub labels + milestones
-npx @bookedsolid/reagent init --discord   # configure Discord notifications
-
-# Preview without changes
-npx @bookedsolid/reagent init --dry-run
+reagent check
 ```
 
-## As a Stack Analyzer
+## Choose a profile
 
 ```bash
-# Analyze your project and generate a gap report
+# Default: client-engagement
+reagent init
+
+# BST internal projects
+reagent init --profile bst-internal
+
+# Tech stack overlays (compose on top of a base profile)
+reagent init --profile nextjs
+reagent init --profile lit-wc
+reagent init --profile astro
+reagent init --profile drupal
+
+# Preview without writing files
+reagent init --dry-run
+```
+
+See [Profiles](/reference/profiles/) for details on what each profile installs.
+
+## Add optional integrations
+
+```bash
+# Scaffold GitHub labels, milestones, and topics
+reagent init --github
+
+# Configure Discord notifications
+reagent init --discord \
+  --guild-id 1234567890 \
+  --alerts-channel 111 \
+  --tasks-channel 222 \
+  --releases-channel 333 \
+  --dev-channel 444
+```
+
+## Connect additional MCP servers
+
+Instead of listing downstream servers directly in `.mcp.json` (which would bypass reagent's
+middleware), add them to `.reagent/gateway.yaml`:
+
+```yaml
+version: '1'
+
+servers:
+  filesystem:
+    command: npx
+    args: ['@modelcontextprotocol/server-filesystem', '/path/to/project']
+
+  github:
+    command: npx
+    args: ['@modelcontextprotocol/server-github']
+    env:
+      GITHUB_TOKEN: '${GITHUB_PERSONAL_ACCESS_TOKEN}'
+```
+
+Restart Claude Code after editing `gateway.yaml`. reagent reconnects to all configured servers
+on startup.
+
+## Analyze your stack
+
+```bash
+# Analyze and generate a gap report
 reagent catalyze
 
-# Audit current state against the last plan
+# Audit drift against the last plan
 reagent catalyze --audit
 
 # Preview without writing files
@@ -70,5 +117,5 @@ This generates `catalyze-report.md` and `catalyze-report.html` listing gaps by s
 ## Next steps
 
 - Learn about the [zero-trust security model](/concepts/zero-trust/)
-- Configure the [MCP Gateway](/guides/mcp-gateway/)
+- Configure the [MCP server proxy](/guides/mcp-gateway/)
 - Explore [CLI commands](/reference/cli-commands/)

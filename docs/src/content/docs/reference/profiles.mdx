@@ -5,20 +5,37 @@ sidebar:
   order: 6
 ---
 
-Profiles control what Reagent installs during `reagent init`. There are two types: base profiles and tech stack profiles.
+Profiles control what reagent installs during `reagent init`. There are two types: base
+profiles and tech stack profiles.
 
 ## Base profiles
 
+Base profiles install the full safety infrastructure for a project type. Install one as
+your project's foundation.
+
 | Profile             | Use Case                   | Default Autonomy | Blocked Paths                                       |
 | ------------------- | -------------------------- | ---------------- | --------------------------------------------------- |
-| `client-engagement` | Client consulting projects | L1 / max L2      | `.reagent/`, `.github/workflows/`, `.env`, `.env.*` |
-| `bst-internal`      | BST's own repositories     | L1 / max L2      | `.reagent/`, `.env`                                 |
+| `client-engagement` | Client consulting projects | L2 / max L3      | `.reagent/`, `.github/workflows/`, `.env`, `.env.*` |
+| `bst-internal`      | BST's own repositories     | L2 / max L3      | `.reagent/`, `.env`                                 |
 
-Both profiles install the full hook suite, quality gates, Cursor rules, and Claude commands.
+Both profiles install the full hook suite, quality gates, Cursor rules, and Claude Code
+slash commands.
+
+The `client-engagement` profile (default) installs:
+
+- Claude Code hooks for dangerous bash interception, secret scanning, env file protection,
+  dependency auditing, commit review, push review, security disclosure gates, settings
+  protection, blocked path enforcement, changeset security, and architecture review
+- Cursor rules: no-hallucination, verify-before-act, attribution
+- `block_ai_attribution: true` in `policy.yaml`
+- `blocked_paths: ['.reagent/', '.github/workflows/', '.env', '.env.*']`
+- Quality gates: commit review (trivial threshold: 20 lines, significant: 200 lines),
+  push review, architecture advisory
 
 ## Tech stack profiles
 
-Tech stack profiles extend the base installation with domain-specific hooks and gates:
+Tech stack profiles compose on top of a base profile. They run all 14 base init steps first,
+then overlay tech-stack-specific hooks and gates.
 
 | Profile  | Stack              | Extra Hooks                                           |
 | -------- | ------------------ | ----------------------------------------------------- |
@@ -27,18 +44,32 @@ Tech stack profiles extend the base installation with domain-specific hooks and 
 | `drupal` | Drupal CMS         | `drupal-coding-standards.sh`, `hook-update-guard.sh`  |
 | `astro`  | Astro              | `astro-ssr-guard.sh` — SSR/static boundary violations |
 
-Each tech profile also ships a `gates.yaml` (preflight checks for CI) and a recommended agent list.
+Each tech profile also ships a `gates.yaml` (preflight checks for CI) and a recommended
+agent list.
 
 ## Usage
 
 ```bash
-# With a base profile
-npx @bookedsolid/reagent init --profile bst-internal
-npx @bookedsolid/reagent init --profile client-engagement
+# Base profiles (install one as your foundation)
+reagent init                                    # client-engagement (default)
+reagent init --profile bst-internal            # BST internal projects
 
-# With a tech stack profile
-npx @bookedsolid/reagent init --profile nextjs
-npx @bookedsolid/reagent init --profile lit-wc
-npx @bookedsolid/reagent init --profile drupal
-npx @bookedsolid/reagent init --profile astro
+# Tech stack profiles (compose on top of a base profile)
+reagent init --profile lit-wc                  # Lit/Web Components
+reagent init --profile astro                   # Astro framework
+reagent init --profile nextjs                  # Next.js App Router
+reagent init --profile drupal                  # Drupal CMS
 ```
+
+## Specifying a base profile for tech stack profiles
+
+Tech stack profiles use `client-engagement` as their base by default. To compose a tech
+stack profile on top of `bst-internal` instead:
+
+```bash
+reagent init --profile lit-wc --base-profile bst-internal
+reagent init --profile nextjs --base-profile bst-internal
+```
+
+The `--base-profile` flag tells reagent which base profile to run first before overlaying
+the tech-specific hooks.

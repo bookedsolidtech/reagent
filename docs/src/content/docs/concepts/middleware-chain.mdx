@@ -1,52 +1,64 @@
 ---
 title: Middleware Chain
-description: How Reagent's onion-style middleware chain processes every tool call.
+description: How Reagent's 12-layer onion middleware chain processes every tool call.
 sidebar:
   order: 3
 ---
 
-Every tool call through the Reagent gateway passes through a middleware chain in onion (Koa-style) order. The chain is designed with strict security invariants.
+Every tool call through the Reagent MCP server passes through a 12-layer middleware chain in
+onion (Koa-style) order. The chain applies to both native tools and proxied downstream tools.
+The chain is designed with strict security invariants.
 
 ## Chain order
 
 ```
-AI Assistant (Claude Code, Cursor, etc.)
+Claude Code
     |
     |  stdio (MCP protocol)
     v
-+-----------------------------+
-|       Reagent Gateway       |
-|                             |
-|  +------------------------+ |
-|  |   Middleware Chain      | |
-|  |                        | |
-|  |  1. Audit (outermost)  | |
-|  |  2. Session context    | |
-|  |  3. Kill switch        | |
-|  |  4. Tier classify      | |
-|  |  5. Policy enforce     | |
-|  |  6. Blocked paths      | |
-|  |  7. Secret redaction   | |
-|  |  8. [Execute]          | |
-|  +------------------------+ |
-+-----------------------------+
++--------------------------------------------+
+|           reagent serve (MCP server)        |
+|                                            |
+|  +----------------------------------------+|
+|  |           Middleware Chain              ||
+|  |                                        ||
+|  |  1.  audit          (outermost)        ||
+|  |  2.  session                           ||
+|  |  3.  kill-switch                       ||
+|  |  4.  tier                              ||
+|  |  5.  policy                            ||
+|  |  6.  blocked-paths                     ||
+|  |  7.  rate-limit                        ||
+|  |  8.  circuit-breaker                   ||
+|  |  9.  redact                            ||
+|  |  10. injection                         ||
+|  |  11. result-size-cap                   ||
+|  |  12. execute         (innermost)       ||
+|  +----------------------------------------+|
++--------------------------------------------+
 ```
 
 ## Middleware details
 
 ### 1. Audit (outermost)
 
-Records every invocation — including denials and errors — as a hash-chained JSONL entry. Written to `.reagent/audit/YYYY-MM-DD.jsonl`. Each record contains timestamp, session ID, tool name, server name, tier, status, autonomy level, duration, and a hash chain.
+Records every invocation — including denials and errors — as a hash-chained JSONL entry written
+to `.reagent/audit.jsonl`. Each record contains timestamp, session ID, tool name, server name,
+tier, status, autonomy level, duration, and a hash chain.
 
-The `prev_hash` field chains records together — tamper with one record and every subsequent hash becomes invalid. Audit writes are serialized via a queue to maintain hash chain linearity under concurrent invocations.
+The `prev_hash` field chains records together. Tamper with one record and every subsequent hash
+becomes invalid. Audit writes are serialized via a queue to maintain chain linearity under
+concurrent invocations.
 
-### 2. Session context
+### 2. Session
 
-Attaches a unique session ID (UUID via `crypto.randomUUID()`) to every invocation. Each gateway instance generates one session ID at startup.
+Attaches a unique session ID (UUID via `crypto.randomUUID()`) to every invocation. Each
+`reagent serve` process generates one session ID at startup, scoped to that process lifetime.
 
 ### 3. Kill switch
 
-Checks for `.reagent/HALT` file. If present, the invocation is immediately denied. The HALT file contents become the denial reason.
+Checks for `.reagent/HALT` on every call. If present, the invocation is immediately denied with
+the file contents as the reason. No exceptions.
 
 ```bash
 # Emergency stop — all tool calls blocked immediately
@@ -56,30 +68,63 @@ reagent freeze --reason "security incident"
 reagent unfreeze
 ```
 
-### 4. Tier classification
+### 4. Tier
 
-Classifies the tool into `read`, `write`, or `destructive` using static map, convention-based patterns, or default fallback. See [Autonomy Levels](/concepts/autonomy-levels/) for details.
+Classifies the tool into `read`, `write`, or `destructive` using a static map, convention-based
+prefix patterns, or a default fallback. See [Autonomy Levels](/concepts/autonomy-levels/) for
+the full classification logic.
 
-### 5. Policy enforcement
+### 5. Policy
 
-Checks the tool's tier against the project's autonomy level. The policy middleware **re-derives the tier from the tool name independently** — it never trusts `ctx.tier` from prior middleware.
+Checks the tool's tier against the project's `autonomy_level` from `policy.yaml`. The policy
+middleware **re-derives the tier from the tool name independently** — it never trusts `ctx.tier`
+from prior middleware.
 
-Also checks for explicitly blocked tools.
+Also enforces explicitly blocked tools (`blocked: true` in `tool_overrides`).
 
 ### 6. Blocked paths
 
-Scans all string-valued tool arguments for references to paths listed in the policy's `blocked_paths`. The `.reagent/` directory is always protected regardless of policy configuration.
+Scans all string-valued tool arguments for references to paths listed in `policy.yaml`'s
+`blocked_paths`. The `.reagent/` directory is always protected regardless of configuration.
 
-### 7. Secret redaction
+### 7. Rate limit
 
-Operates both **pre-execution** (scanning tool arguments) and **post-execution** (scanning tool output). Detected secrets are replaced with `[REDACTED]`:
+Enforces per-server `calls_per_minute` limits from `gateway.yaml`. Calls that exceed the limit
+are denied. Calls already denied by earlier middleware do not consume rate budget.
+
+### 8. Circuit breaker
+
+Tracks downstream server failures. After a configurable threshold of consecutive errors, the
+breaker opens and calls to that server are denied until it resets. Prevents cascading failures
+when a downstream MCP server is unhealthy.
+
+### 9. Redact
+
+Operates both **pre-execution** (scanning tool arguments) and **post-execution** (scanning tool
+output). Detected secrets are replaced with `[REDACTED]`:
 
 - AWS Access Keys and Secret Keys
-- GitHub Tokens (`ghp_`, `gho_`, `ghs_`, `ghu_`, `ghr_`)
-- Generic API Keys and Bearer Tokens
-- PEM Private Keys (RSA, EC, DSA)
-- Discord Bot Tokens
-- Base64-encoded AWS Keys
+- GitHub tokens (`ghp_`, `gho_`, `ghs_`, `ghu_`, `ghr_`)
+- Generic API keys and bearer tokens
+- PEM private keys (RSA, EC, DSA)
+- Discord bot tokens
+- Base64-encoded AWS keys
+
+### 10. Injection
+
+Scans tool results from downstream servers for prompt injection patterns. In `block` mode
+(default), detected injection attempts are denied. In `warn` mode, they are flagged in the
+audit log but allowed through.
+
+### 11. Result size cap
+
+Caps tool results at `gateway.options.max_result_size_kb` (default: 1 MB). Oversized responses
+are truncated with a note. Prevents large downstream responses from bloating context.
+
+### 12. Execute (innermost)
+
+The actual tool invocation. For native tools, runs the handler directly. For proxied tools,
+forwards the call to the downstream MCP server via its stdio transport with a 30-second timeout.
 
 ## Security invariants
 
@@ -88,5 +133,5 @@ Operates both **pre-execution** (scanning tool arguments) and **post-execution**
 - **Policy re-derives tier** — never trusts mutable context; always re-classifies from tool name
 - **Fail-closed** — errors in kill-switch or policy checks result in denial, not passthrough
 - **All logging to stderr** — stdout is reserved for the MCP stdio transport
-- **Per-tool timeout** — each downstream tool call has a 30-second timeout
+- **Per-tool timeout** — each downstream tool call has a 30-second timeout with timer cleanup
 - **Graceful shutdown** — `process.exitCode = 0` (not `process.exit(0)`) to allow event loop drain

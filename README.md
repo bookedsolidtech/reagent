@@ -48,8 +48,8 @@ Point your AI assistant's MCP configuration at the gateway:
 {
   "mcpServers": {
     "reagent": {
-      "command": "reagent",
-      "args": ["serve"]
+      "command": "npx",
+      "args": ["-y", "@bookedsolid/reagent", "serve"]
     }
   }
 }
@@ -78,12 +78,124 @@ npx @bookedsolid/reagent init --discord   # configure Discord notifications
 npx @bookedsolid/reagent init --dry-run
 ```
 
+## Installing Reagent in Your Project
+
+This section documents the end-to-end setup for a new project — including the nuances of MCP transport, token passing, and env var expansion that aren't obvious from first principles.
+
+### Step 1 — Run `reagent init`
+
+```bash
+cd /path/to/your-project
+npx @bookedsolid/reagent init --profile bst-internal
+```
+
+This installs hooks, policy, agent team, gateway config template, and Claude settings. It also writes a managed block into `CLAUDE.md` with agent behavioral rules.
+
+To pick up an updated hook suite after a reagent version bump:
+
+```bash
+npx @bookedsolid/reagent upgrade
+```
+
+`upgrade` re-syncs hooks that are already installed and bumps `installed_by` in `policy.yaml`. It never adds new hooks without consent.
+
+### Step 2 — Configure `.mcp.json`
+
+**Use stdio transport — not HTTP.** Claude Code's HTTP MCP transport requires OAuth 2.1, which the reagent server does not implement. The stdio transport is what works:
+
+```json
+{
+  "mcpServers": {
+    "reagent": {
+      "command": "npx",
+      "args": ["-y", "@bookedsolid/reagent", "serve"]
+    }
+  }
+}
+```
+
+> **Why `npx` instead of `reagent`?** Using the bare `reagent` command requires a global install. `npx` works from any project, always uses the registry version, and avoids "command not found" errors on machines where reagent isn't globally installed.
+
+> **Env vars in `.mcp.json`:** Claude Code does **not** expand `${VAR}` syntax in `.mcp.json` env values — the literal string `${MY_TOKEN}` is passed to the process, not the value. If reagent needs tokens to pass to downstream MCP servers (e.g., Discord bots), use the gateway proxy pattern instead (see Step 3). The gateway **does** expand `${VAR}` from the shell environment at startup.
+
+If you need to pass env vars to `reagent serve` itself (e.g., tokens used by native tools like `discord_notify`), set them in your shell environment rather than in `.mcp.json`:
+
+```bash
+# In your shell profile or .env (never committed):
+export BOOKED_DISCORD_BOT_TOKEN="..."
+```
+
+### Step 3 — Configure downstream MCP servers (gateway proxy)
+
+If your project uses other MCP servers that need secrets (API keys, bot tokens, etc.), proxy them through reagent's gateway rather than adding them directly to `.mcp.json`. This is the **only** way to pass env vars reliably from Claude Code.
+
+Edit `.reagent/gateway.yaml`:
+
+```yaml
+version: '1'
+
+servers:
+  discord-ops:
+    command: npx
+    args: ['-y', 'discord-ops@latest']
+    env:
+      BOOKED_DISCORD_BOT_TOKEN: '${BOOKED_DISCORD_BOT_TOKEN}'
+      CLARITY_DISCORD_BOT_TOKEN: '${CLARITY_DISCORD_BOT_TOKEN}'
+```
+
+The `${VAR}` syntax here is resolved by reagent from `process.env` at gateway startup — it works because reagent inherits the shell environment from Claude Code's process. The spawned child MCP server receives the resolved values.
+
+Do **not** add the same server to both `gateway.yaml` and `.mcp.json` directly — `reagent init` warns about this. Direct `.mcp.json` entries with `${VAR}` env values will pass the literal string, not the token.
+
+### Step 4 — Commit the config files
+
+`reagent init` generates files in two categories:
+
+| File                         | Commit?                                             |
+| ---------------------------- | --------------------------------------------------- |
+| `.reagent/policy.yaml`       | Yes — defines autonomy level for the team           |
+| `.reagent/gateway.yaml`      | Yes — documents which MCP servers this project uses |
+| `.claude/settings.json`      | Yes — permission gates for Claude Code              |
+| `.claude/hooks/`             | Yes — safety and quality hooks                      |
+| `.claude/agents/`            | Yes — agent team definitions                        |
+| `CLAUDE.md` (managed block)  | Yes — behavioral rules for AI agents                |
+| `.reagent/tasks.jsonl`       | No — gitignored, local task store                   |
+| `.reagent/audit/`            | No — gitignored, local audit log                    |
+| `.reagent/review-cache.json` | No — gitignored, local review cache                 |
+
+### Upgrading an existing install
+
+When a new version of reagent ships with updated hooks or agents:
+
+```bash
+npx @bookedsolid/reagent upgrade
+```
+
+This re-syncs all hooks in `.claude/hooks/` and `.husky/` that were installed by a previous `reagent init`. It will not add hooks that weren't installed originally.
+
+### How `reagent serve` runs in Claude Code
+
+When Claude Code reads `.mcp.json`, it spawns `npx -y @bookedsolid/reagent serve` as a child process. The MCP protocol runs over stdio between Claude Code and the reagent process. Reagent then spawns its own child processes for each entry in `gateway.yaml`, also over stdio.
+
+The resulting process tree:
+
+```
+Claude Code
+  └── reagent serve (stdio MCP to Claude Code)
+        └── discord-ops (stdio MCP, proxied through reagent)
+        └── other-server (stdio MCP, proxied through reagent)
+```
+
+All tool calls from Claude Code go through reagent's middleware chain before reaching downstream servers.
+
 ## Commands
 
 | Command                         | Description                                       |
 | ------------------------------- | ------------------------------------------------- |
 | `reagent serve`                 | Start the MCP gateway server (stdio transport)    |
+| `reagent serve`                 | Start the MCP gateway server (stdio transport)    |
 | `reagent init`                  | Install reagent config into the current directory |
+| `reagent upgrade`               | Re-sync hooks and bump installed_by in policy     |
 | `reagent catalyze`              | Analyze project stack and generate gap report     |
 | `reagent check`                 | Verify what reagent components are installed      |
 | `reagent freeze --reason "..."` | Create `.reagent/HALT` — suspends all tool calls  |
@@ -106,6 +218,14 @@ npx @bookedsolid/reagent init --dry-run
 | `--tasks-channel <id>`    | Discord channel for task events                | —                   |
 | `--releases-channel <id>` | Discord channel for release events             | —                   |
 | `--dev-channel <id>`      | Discord channel for dev activity               | —                   |
+
+### `reagent upgrade` Options
+
+| Flag        | Description                                  | Default |
+| ----------- | -------------------------------------------- | ------- |
+| `--dry-run` | Preview what would be updated without writes | —       |
+
+Re-syncs hooks in `.claude/hooks/` and `.husky/` that were installed by a previous `reagent init`. Updates `installed_by` in `.reagent/policy.yaml`. Never adds hooks that weren't originally installed.
 
 ### `reagent catalyze` Options
 

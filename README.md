@@ -132,7 +132,7 @@ If your project uses other MCP servers that need secrets (API keys, bot tokens, 
 Edit `.reagent/gateway.yaml`:
 
 ```yaml
-version: "1"
+version: '1'
 
 servers:
   discord-ops:
@@ -151,17 +151,17 @@ Do **not** add the same server to both `gateway.yaml` and `.mcp.json` directly �
 
 `reagent init` generates files in two categories:
 
-| File | Commit? |
-|------|---------|
-| `.reagent/policy.yaml` | Yes — defines autonomy level for the team |
-| `.reagent/gateway.yaml` | Yes — documents which MCP servers this project uses |
-| `.claude/settings.json` | Yes — permission gates for Claude Code |
-| `.claude/hooks/` | Yes — safety and quality hooks |
-| `.claude/agents/` | Yes — agent team definitions |
-| `CLAUDE.md` (managed block) | Yes — behavioral rules for AI agents |
-| `.reagent/tasks.jsonl` | No — gitignored, local task store |
-| `.reagent/audit/` | No — gitignored, local audit log |
-| `.reagent/review-cache.json` | No — gitignored, local review cache |
+| File                         | Commit?                                             |
+| ---------------------------- | --------------------------------------------------- |
+| `.reagent/policy.yaml`       | Yes — defines autonomy level for the team           |
+| `.reagent/gateway.yaml`      | Yes — documents which MCP servers this project uses |
+| `.claude/settings.json`      | Yes — permission gates for Claude Code              |
+| `.claude/hooks/`             | Yes — safety and quality hooks                      |
+| `.claude/agents/`            | Yes — agent team definitions                        |
+| `CLAUDE.md` (managed block)  | Yes — behavioral rules for AI agents                |
+| `.reagent/tasks.jsonl`       | No — gitignored, local task store                   |
+| `.reagent/audit/`            | No — gitignored, local audit log                    |
+| `.reagent/review-cache.json` | No — gitignored, local review cache                 |
 
 ### Upgrading an existing install
 
@@ -221,9 +221,9 @@ All tool calls from Claude Code go through reagent's middleware chain before rea
 
 ### `reagent upgrade` Options
 
-| Flag        | Description                                    | Default |
-| ----------- | ---------------------------------------------- | ------- |
-| `--dry-run` | Preview what would be updated without writes   | —       |
+| Flag        | Description                                  | Default |
+| ----------- | -------------------------------------------- | ------- |
+| `--dry-run` | Preview what would be updated without writes | —       |
 
 Re-syncs hooks in `.claude/hooks/` and `.husky/` that were installed by a previous `reagent init`. Updates `installed_by` in `.reagent/policy.yaml`. Never adds hooks that weren't originally installed.
 

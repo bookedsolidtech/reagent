@@ -59,6 +59,7 @@
     "daemon:eject": "pkill -KILL -f reagent-daemon 2>/dev/null; rm -f ~/.reagent/daemon.pid; echo \"ejected\"",
     "daemon:restart": "npx reagent daemon restart",
     "daemon:build": "cargo build --release --manifest-path daemon/Cargo.toml",
+    "daemon:dev": "pnpm daemon:build && pnpm daemon:stop; pnpm daemon:start",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

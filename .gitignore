@@ -5,7 +5,6 @@ npm-debug.log*
 pnpm-lock.yaml
 
 # MCP config (developer-local, not committed)
-.mcp.json
 
 # reagent — AI tooling (stays on developer machine, not committed)
 .claude/agents/

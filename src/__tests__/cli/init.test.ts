@@ -350,7 +350,8 @@ servers:
       runInit();
       const content = fs.readFileSync(path.join(tmpDir, '.gitignore'), 'utf8');
 
-      expect(content).toContain('.claude/agents/');
+      // .claude/agents/ is intentionally NOT gitignored — agents are project config and should be committed
+      expect(content).not.toContain('.claude/agents/');
       expect(content).toContain('.claude/hooks/');
       expect(content).toContain('.claude/settings.json');
     });
@@ -360,8 +361,8 @@ servers:
       runInit();
       const content = fs.readFileSync(path.join(tmpDir, '.gitignore'), 'utf8');
 
-      // Count occurrences of .claude/agents/
-      const matches = content.match(/\.claude\/agents\//g);
+      // Count occurrences of .claude/hooks/ (agents are no longer gitignored)
+      const matches = content.match(/\.claude\/hooks\//g);
       expect(matches?.length).toBe(1);
     });
 

@@ -141,7 +141,7 @@ jobs:
         if: steps.changesets.outputs.published == 'true'
         continue-on-error: true
         run: |
-          npm install --no-save discord-ops@0.21.1
+          npm install --no-save discord-ops@^0.21.2
           node --input-type=module -e "
             import { loadConfig, DiscordClient, allTools } from 'discord-ops';
             const v = process.env.VERSION;
@@ -166,25 +166,60 @@ jobs:
         if: steps.changesets.outputs.published == 'true'
         continue-on-error: true
         run: |
-          npm install --no-save discord-ops@0.21.1
+          npm install --no-save discord-ops@^0.21.2
           node --input-type=module -e "
+            import { readFileSync } from 'fs';
             import { loadConfig, DiscordClient, allTools } from 'discord-ops';
-            const v = process.env.VERSION;
+
+            const version = process.env.VERSION;
+            const repo = process.env.REPO;
+
+            // Extract changelog highlights
+            let highlights = 'See changelog for full details.';
+            if (version !== 'unknown') {
+              try {
+                const changelog = readFileSync('CHANGELOG.md', 'utf8');
+                const re = new RegExp('## ' + version.replace(/\./g, '\\\\.') + '[\\\\s\\\\S]*?(?=\\\\n## |\$)');
+                const match = changelog.match(re);
+                if (match) {
+                  const formatted = match[0]
+                    .split('\\n')
+                    .slice(1)
+                    .map(l => l
+                      .replace(/^### (.+)\$/, '**\$1**')
+                      .replace(/^(- )[a-f0-9]{7,}: /, '\$1')
+                    )
+                    .filter(l => l.trim())
+                    .slice(0, 12)
+                    .join('\\n')
+                    .slice(0, 1000);
+                  if (formatted) highlights = formatted;
+                }
+              } catch (e) { console.warn('Changelog extraction failed:', e.message); }
+            }
+
+            const date = new Date().toISOString().slice(0, 10);
+            const npmUrl = 'https://www.npmjs.com/package/@bookedsolid/reagent/v/' + version;
+            const releaseUrl = 'https://github.com/' + repo + '/releases/tag/@bookedsolid/reagent@' + version;
+
             const config = await loadConfig();
             const discord = new DiscordClient();
             const ctx = { discord, config };
-            const tool = allTools.find(t => t.name === 'send_embed');
+            const tool = allTools.find(t => t.name === 'send_template');
             await tool.handle({
               project: 'reagent',
               channel: 'releases',
-              title: '\u{1f4e6} @bookedsolid/reagent v' + v,
-              description: 'Zero-trust agentic framework update',
-              fields: [
-                { name: 'npm', value: '@bookedsolid/reagent@latest' },
-                { name: 'Install', value: 'npm i @bookedsolid/reagent@' + v }
-              ],
-              url: 'https://github.com/bookedsolidtech/reagent/releases/tag/@bookedsolid/reagent@' + v,
-              footer: 'Published via CI'
+              template: 'release',
+              vars: {
+                name: '@bookedsolid/reagent',
+                version: 'v' + version,
+                author_name: 'Booked Solid Technology',
+                highlights,
+                npm: '@bookedsolid/reagent@latest',
+                npm_url: npmUrl,
+                link: releaseUrl,
+                footer: 'Published ' + date
+              }
             }, ctx);
             await discord.destroy();
           "
@@ -192,3 +227,4 @@ jobs:
           VERSION: ${{ steps.changesets.outputs.publishedPackages && fromJSON(steps.changesets.outputs.publishedPackages)[0].version || 'unknown' }}
           BOOKED_DISCORD_BOT_TOKEN: ${{ secrets.BOOKED_DISCORD_BOT_TOKEN }}
           DISCORD_OPS_CONFIG: ${{ secrets.DISCORD_OPS_CONFIG }}
+          REPO: ${{ github.repository }}

@@ -61,6 +61,24 @@ json_output() {
   fi
 }
 
+# Exit 0 (skip) if the project's tech_profile does not match the expected type.
+# Usage: check_project_type "lit-wc"
+# Reads tech_profile from .reagent/policy.yaml; if absent or mismatched, exits 0.
+check_project_type() {
+  local expected_type="$1"
+  local root
+  root=$(reagent_root)
+  local policy="${root}/.reagent/policy.yaml"
+  if [[ ! -f "$policy" ]]; then
+    exit 0
+  fi
+  local actual_type
+  actual_type=$(grep -E '^tech_profile:' "$policy" 2>/dev/null | sed 's/^tech_profile:[[:space:]]*//' | tr -d '"' || echo "")
+  if [[ -z "$actual_type" || "$actual_type" != "$expected_type" ]]; then
+    exit 0
+  fi
+}
+
 # Score a diff for triage purposes
 # Reads from stdin (expects unified diff output)
 # Returns: "trivial" (<20 lines), "standard" (20-200), "significant" (>200)

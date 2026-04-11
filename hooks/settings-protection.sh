@@ -4,14 +4,17 @@
 # Blocks modifications to critical configuration files that, if tampered with,
 # would disable the entire hook safety layer.
 #
-# Protected paths:
+# Protected paths (security controls and hook infrastructure ONLY):
 #   .claude/settings.json       — hook configuration
 #   .claude/settings.local.json — local hook overrides
 #   .claude/hooks/*             — hook scripts themselves
 #   .husky/*                    — git hook scripts
 #   .reagent/policy.yaml        — autonomy/blocking policy
 #   .reagent/HALT               — kill switch file
-#   .reagent/review-cache.json  — review cache (integrity-sensitive)
+#
+# NOT protected (operational files agents may legitimately write):
+#   .reagent/review-cache.json  — cache file, writable by CLI and agents
+#   .reagent/tasks.jsonl        — task store, managed by task MCP tools
 #
 # Exit codes:
 #   0 = allow (path not protected)
@@ -79,7 +82,6 @@ PROTECTED_PATTERNS=(
   '.husky/'
   '.reagent/policy.yaml'
   '.reagent/HALT'
-  '.reagent/review-cache.json'
 )
 
 for pattern in "${PROTECTED_PATTERNS[@]}"; do

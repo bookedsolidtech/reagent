@@ -36,11 +36,6 @@ describe('settings-protection', () => {
       expect(result.exitCode).toBe(2);
     });
 
-    it('blocks .reagent/review-cache.json', () => {
-      const result = runHook(hook, writePayload('.reagent/review-cache.json', '{}'));
-      expect(result.exitCode).toBe(2);
-    });
-
     it('blocks Edit tool on protected paths', () => {
       const result = runHook(hook, editPayload('.claude/settings.json', '"old"', '"new"'));
       expect(result.exitCode).toBe(2);
@@ -66,6 +61,16 @@ describe('settings-protection', () => {
 
     it('allows .reagent/gateway.yaml', () => {
       const result = runHook(hook, writePayload('.reagent/gateway.yaml', 'version: 1'));
+      expect(result.exitCode).toBe(0);
+    });
+
+    it('allows .reagent/review-cache.json (operational cache, not a security control)', () => {
+      const result = runHook(hook, writePayload('.reagent/review-cache.json', '{}'));
+      expect(result.exitCode).toBe(0);
+    });
+
+    it('allows .reagent/tasks.jsonl', () => {
+      const result = runHook(hook, writePayload('.reagent/tasks.jsonl', ''));
       expect(result.exitCode).toBe(0);
     });
 

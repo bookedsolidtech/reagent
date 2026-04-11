@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "reagent": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["dist/cli/index.js", "serve"]
+    }
+  }
+}

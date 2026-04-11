@@ -5,7 +5,6 @@ npm-debug.log*
 pnpm-lock.yaml
 
 # MCP config (developer-local, not committed)
-.mcp.json
 
 # reagent — AI tooling (stays on developer machine, not committed)
 .claude/agents/
@@ -30,3 +29,6 @@ src/__tests__/gateway/_mock-downstream.mjs
 .reagent/audit/
 .reagent/tasks.lock
 /.scratch/
+
+# Rust build artifacts (daemon/ crate — kept for historical reference)
+daemon/target/

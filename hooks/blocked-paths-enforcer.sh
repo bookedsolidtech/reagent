@@ -90,28 +90,36 @@ if [[ ${#BLOCKED_PATHS[@]} -eq 0 ]]; then
   exit 0
 fi
 
-# ── 6. Normalize and match ────────────────────────────────────────────────────
+# ── 6. Agent-writable allowlist ───────────────────────────────────────────────
+# These paths under .reagent/ must always be writable by agents regardless of
+# what blocked_paths says. Blocking the whole .reagent/ directory in policy
+# is a common default, but tasks.jsonl is the PM data store — agents must
+# write there. Settings-protection.sh guards the sensitive files explicitly.
+AGENT_WRITABLE=(
+  '.reagent/tasks.jsonl'
+  '.reagent/audit/'
+)
 
-# Convert to relative path from project root
 normalize_path() {
   local p="$1"
   local root="$REAGENT_ROOT"
-
-  # Strip project root prefix if present
   if [[ "$p" == "$root"/* ]]; then
     p="${p#$root/}"
   fi
-
-  # URL decode common sequences
   p=$(printf '%s' "$p" | sed 's/%2[Ff]/\//g; s/%2[Ee]/./g; s/%20/ /g')
-
-  # Remove ./ prefix
   p="${p#./}"
-
   printf '%s' "$p"
 }
 
 NORMALIZED=$(normalize_path "$FILE_PATH")
+
+for writable in "${AGENT_WRITABLE[@]}"; do
+  if [[ "$NORMALIZED" == "$writable" ]] || [[ "$NORMALIZED" == "$writable"* && "$writable" == */ ]]; then
+    exit 0
+  fi
+done
+
+# ── 7. Match against blocked_paths ───────────────────────────────────────────
 LOWER_NORM=$(printf '%s' "$NORMALIZED" | tr '[:upper:]' '[:lower:]')
 
 for blocked in "${BLOCKED_PATHS[@]}"; do

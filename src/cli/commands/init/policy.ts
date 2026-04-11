@@ -25,7 +25,9 @@ export function installPolicy(
     const coverageEnabled = profile.coverage?.enabled === true;
     const coverageThreshold = profile.coverage?.threshold ?? 80;
     const blockedPaths = profile.blockedPaths ?? [
-      '.reagent/',
+      '.reagent/policy.yaml',
+      '.reagent/HALT',
+      '.reagent/review-cache.json',
       '.github/workflows/',
       '.env',
       '.env.*',

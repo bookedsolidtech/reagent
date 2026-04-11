@@ -1,5 +1,5 @@
 ---
-"@bookedsolid/reagent": patch
+'@bookedsolid/reagent': patch
 ---
 
 fix(hooks): remove review-cache.json from settings-protection hard block

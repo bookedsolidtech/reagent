@@ -1,5 +1,37 @@
 # @bookedsolid/reagent
 
+## 0.12.0
+
+### Minor Changes
+
+- 0e4e8ac: feat(cli): add `reagent upgrade` command
+
+  Adds a new `reagent upgrade` command that re-syncs installed reagent hooks and
+  updates the version stamp in `.reagent/policy.yaml` without running the full
+  `reagent init` flow.
+
+  **What it does:**
+  - Copies / overwrites all reagent-managed hooks (`commit-msg`, `pre-commit`,
+    `pre-push`) from the package's `husky/` directory into the project's `.husky/`
+    directory — but only for hooks the project already has installed (respects the
+    user's original init choices, never adds new hooks silently)
+  - Updates the `installed_by` field in `.reagent/policy.yaml` to reflect the
+    current reagent version; all other user config (autonomy levels, blocked paths,
+    gateway servers, etc.) is preserved
+  - Prints an itemised summary: installed / updated / already up-to-date / warnings
+  - Supports `--dry-run` to preview changes without writing files
+
+  **Usage:**
+
+  ```
+  npx @bookedsolid/reagent upgrade
+  npx @bookedsolid/reagent upgrade --dry-run
+  ```
+
+### Patch Changes
+
+- 3cb164f: Add duplicate MCP server detection to `reagent init`. After writing `gateway.yaml`, the init command now reads `.mcp.json` (if present) and warns when any `mcpServers` entry key matches a server name in `gateway.yaml`. This prevents duplicate tool registration and auth failures caused by `${VAR}` env syntax that Claude Code does not expand in direct `.mcp.json` entries.
+
 ## 0.11.1
 
 ### Patch Changes

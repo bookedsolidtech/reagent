@@ -8,7 +8,7 @@ import { installHuskyHook } from './husky-hooks.js';
 import { installClaudeHooks } from './claude-hooks.js';
 import { installClaudeMd } from './claude-md.js';
 import { installPolicy } from './policy.js';
-import { installGatewayConfig } from './gateway-config.js';
+import { installGatewayConfig, checkMcpDuplicates } from './gateway-config.js';
 import { installAgents } from './agents.js';
 import { installClaudeCommands } from './commands.js';
 import { installPm } from './pm.js';
@@ -135,6 +135,11 @@ export function runInit(args: string[]): void {
 
   // Step 9: Gateway config
   results.push(...installGatewayConfig(targetDir, dryRun));
+
+  // Step 9a: Warn about duplicate MCP server entries (skip in dry-run — files may not exist)
+  if (!dryRun) {
+    checkMcpDuplicates(targetDir);
+  }
 
   // Step 10: Agent team
   results.push(...installAgents(targetDir, dryRun));

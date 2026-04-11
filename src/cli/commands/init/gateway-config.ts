@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { parse as parseYaml } from 'yaml';
 import { getPkgVersion } from '../../utils.js';
 import type { InstallResult } from './types.js';
 
@@ -52,4 +53,60 @@ servers: {}
   }
 
   return [{ file: '.reagent/gateway.yaml', status: 'installed' }];
+}
+
+/**
+ * Check for duplicate MCP server entries between .mcp.json and gateway.yaml.
+ *
+ * When reagent proxies servers via gateway.yaml, having the same server also
+ * listed as a direct entry in .mcp.json causes duplicate tool registration,
+ * auth failures (Claude Code does not expand ${VAR} env syntax), and user
+ * confusion. This function prints a warning if any duplicates are found.
+ * It does not modify any files.
+ */
+export function checkMcpDuplicates(targetDir: string): void {
+  const mcpJsonPath = path.join(targetDir, '.mcp.json');
+  const gatewayPath = path.join(targetDir, '.reagent', 'gateway.yaml');
+
+  if (!fs.existsSync(mcpJsonPath) || !fs.existsSync(gatewayPath)) {
+    return;
+  }
+
+  // Parse .mcp.json
+  let mcpServers: Record<string, unknown> = {};
+  try {
+    const raw = fs.readFileSync(mcpJsonPath, 'utf8');
+    const parsed = JSON.parse(raw) as { mcpServers?: Record<string, unknown> };
+    mcpServers = parsed.mcpServers ?? {};
+  } catch {
+    // Unparseable .mcp.json — skip silently
+    return;
+  }
+
+  // Parse gateway.yaml
+  let gatewayServers: Record<string, unknown> = {};
+  try {
+    const raw = fs.readFileSync(gatewayPath, 'utf8');
+    const parsed = parseYaml(raw) as { servers?: Record<string, unknown> };
+    gatewayServers = parsed.servers ?? {};
+  } catch {
+    // Unparseable gateway.yaml — skip silently
+    return;
+  }
+
+  const gatewayKeys = new Set(Object.keys(gatewayServers));
+  const duplicates = Object.keys(mcpServers).filter((key) => gatewayKeys.has(key));
+
+  if (duplicates.length === 0) {
+    return;
+  }
+
+  console.log('');
+  console.log('Warning: .mcp.json has direct entries that are also in gateway.yaml:');
+  for (const name of duplicates) {
+    console.log(`  - ${name} (will be proxied through reagent — remove the direct entry)`);
+  }
+  console.log('');
+  console.log('Direct entries with ${VAR} env syntax will not work in Claude Code.');
+  console.log('Remove duplicates from .mcp.json to avoid tool duplication and auth failures.');
 }

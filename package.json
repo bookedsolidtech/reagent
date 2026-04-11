@@ -1,6 +1,6 @@
 {
   "name": "@bookedsolid/reagent",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "description": "Zero-trust MCP server — policy enforcement, secret redaction, and audit logging for AI-assisted projects",
   "license": "MIT",
   "author": "Booked Solid Technology <oss@bookedsolid.tech> (https://bookedsolid.tech)",

@@ -1,0 +1,185 @@
+---
+title: Connection Lifecycle
+description: How reagent manages connections to downstream MCP servers — startup, crash behavior, graceful shutdown, and the /mcp command.
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Reagent acts as both an MCP server (toward Claude Code) and an MCP client (toward each
+downstream server in `gateway.yaml`). This page describes what happens at each stage of
+that dual role.
+
+## Startup sequence
+
+When Claude Code starts a new session, it reads `.mcp.json` and spawns `reagent serve` as a
+subprocess. The following happens in order:
+
+**1. Configuration load.**
+Reagent reads `.reagent/policy.yaml` and `.reagent/gateway.yaml`. If either file is missing
+or malformed, reagent exits with an error and the session does not start.
+
+**2. Downstream server spawn.**
+For each server declared in `gateway.yaml`, reagent spawns it as a child process connected
+via stdio transport. This happens in parallel across all servers.
+
+**3. Tool discovery.**
+Reagent sends a `tools/list` MCP request to each downstream server and waits for the response.
+The tools returned are the set that gets wrapped and registered.
+
+**4. Middleware registration.**
+Each discovered tool is wrapped in reagent's 12-layer middleware chain and registered on the
+reagent MCP server under the name `servername__toolname`. Native first-party tools are
+registered through the same middleware stack.
+
+**5. Collision handling.**
+If two servers declare a tool with the same name, the shadowed tool receives a server-prefixed
+name (e.g., `helixir__read_file` instead of `read_file`). A warning is written to stderr.
+
+**6. Ready signal.**
+Reagent writes a line to stderr:
+
+```
+[reagent] Gateway ready: N tools registered (X native, Y proxied)
+```
+
+After this point, reagent begins listening on stdio for tool calls from Claude Code.
+
+<Aside type="tip">
+If you do not see the "Gateway ready" line in Claude Code's MCP output, a downstream server
+likely failed to start. Check that the `command` and `args` in `gateway.yaml` are correct and
+that the server package is installed.
+</Aside>
+
+## Tool namespacing
+
+All proxied tools are namespaced as `servername__toolname` to prevent collisions across
+servers:
+
+```
+helixir__read_component
+helixir__write_component
+discord-ops__send_message
+discord-ops__get_messages
+filesystem__read_file
+filesystem__write_file
+```
+
+Native reagent tools are not namespaced — they appear directly as `reagent_read_policy`,
+`reagent_halt`, and so on.
+
+## What happens when a downstream server crashes
+
+If a proxied server process exits unexpectedly during a session:
+
+- The reagent process keeps running
+- Calls to that server's tools return error responses to Claude
+- All other proxied servers and native tools continue working normally
+- The circuit-breaker middleware tracks the failures but cannot reconnect the process
+
+<Aside type="caution">
+There is no automatic reconnect. Once a downstream server process exits, its tools are
+unavailable for the rest of the session. To restore them, restart Claude Code. This terminates
+the current reagent process and starts a fresh one, which re-spawns all downstream servers
+from scratch.
+</Aside>
+
+The circuit-breaker middleware (layer 8) is designed for transient failures — a server that
+returns errors but keeps running. It opens after a configurable threshold of consecutive
+errors, denying further calls to that server until the breaker resets. It does not handle
+process exits, which are detected differently.
+
+## Graceful shutdown
+
+When Claude Code exits, or when you close the terminal running Claude Code, the following
+shutdown sequence runs:
+
+**1. Signal delivery.**
+Claude Code sends SIGTERM (or SIGINT on Ctrl-C) to the `reagent serve` process.
+
+**2. Downstream disconnect.**
+Reagent calls `disconnectAll()`, which closes the stdio transport to each downstream server
+client connection.
+
+**3. Downstream process exit.**
+Closing a downstream server's stdin causes the server to detect EOF and exit normally. This
+is the standard graceful exit path for stdio-transport MCP servers.
+
+**4. Transport close.**
+Reagent closes its own stdio transport toward Claude Code.
+
+**5. Process exit.**
+Reagent sets `process.exitCode = 0` and allows the Node.js event loop to drain naturally.
+`process.exit()` is not called, so pending async operations (such as the final audit log
+write) complete before the process exits.
+
+## The `/mcp` command and reagent's internal connections
+
+Claude Code provides a `/mcp` command that shows the status of MCP servers declared in
+`.mcp.json` and lets you reconnect them if they crashed. This command is aware of reagent as
+a top-level server.
+
+However, `/mcp` cannot see or manage reagent's **internal** connections to proxied servers.
+Those connections exist inside the reagent process — Claude Code has no visibility into them.
+
+| Action | `/mcp` can do it | How to do it instead |
+| ------ | ---------------- | -------------------- |
+| Show reagent connection status | Yes | `/mcp` |
+| Reconnect reagent if it crashed | Yes | `/mcp` → Reconnect |
+| Show helixir connection status | No | Check stderr output at startup |
+| Reconnect helixir if it crashed | No | Restart Claude Code |
+| List all tools from all proxied servers | Indirectly | Tool list in Claude Code's UI |
+
+If reagent itself crashes, use `/mcp` to reconnect it. This restarts the reagent process,
+which re-runs the full startup sequence and re-establishes all downstream connections.
+
+## Environment variable resolution order
+
+For proxied server processes, environment variables are resolved in this order (highest
+priority last, meaning later entries win):
+
+1. **Reagent's inherited environment** — everything in `process.env` when reagent started,
+   which includes your shell's exported variables passed through Claude Code
+2. **Shell environment variables** — variables like `BOOKED_DISCORD_BOT_TOKEN` that you
+   exported before starting Claude Code are present at this level
+3. **`env:` overrides in `gateway.yaml`** — per-server variable overrides declared explicitly;
+   these take precedence over anything in the inherited environment
+
+```yaml
+servers:
+  github:
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-github"]
+    env:
+      # This overrides GITHUB_TOKEN from the shell environment for this server only.
+      # Other servers still see the original shell value.
+      GITHUB_TOKEN: "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+```
+
+Use `${VAR_NAME}` syntax in `env:` values to reference variables from the inherited
+environment. This lets you rename or remap variables on a per-server basis without hard-coding
+secret values in `gateway.yaml`.
+
+<Aside type="tip">
+`gateway.yaml` is committed to the repository. Never put literal secret values in it. Use
+`${VAR_NAME}` references and set the actual values in your shell environment or a `.env` file
+that is gitignored.
+</Aside>
+
+## Startup failure modes
+
+| Symptom | Likely cause | Resolution |
+| ------- | ------------ | ---------- |
+| Claude Code shows reagent as disconnected | `reagent serve` exited at startup | Check Claude Code's MCP log for the error message |
+| Some tools missing from Claude's list | A downstream server failed to start | Check `gateway.yaml` command and args; verify the package is installed |
+| Tool calls return "server not found" errors | A downstream server crashed mid-session | Restart Claude Code |
+| "Gateway ready" shows fewer tools than expected | Tool collision renamed a tool | Check stderr for collision warnings; use `tool_overrides` if needed |
+| Tool calls blocked immediately | `.reagent/HALT` file exists | Run `reagent unfreeze` or delete `.reagent/HALT` |
+
+## References
+
+- [Governance Scope Guide](/guides/governance-scope/) — when to proxy versus direct-connect
+- [MCP Server Proxy](/guides/mcp-gateway/) — how to configure `gateway.yaml`
+- [Gateway Config reference](/reference/gateway-config/) — full field specification
+- [Middleware Chain](/concepts/middleware-chain/) — the 12 layers that wrap every proxied call

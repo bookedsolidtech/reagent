@@ -1,11 +1,8 @@
 # @bookedsolid/reagent
 
-Zero-trust MCP server for AI-assisted development. Every tool call — policy enforced.
+Governance layer for Claude Code — policy enforcement, hook-based safety gates, and audit logging for AI-assisted projects.
 
-reagent sits between Claude Code and every tool your AI agent can reach. It enforces
-graduated autonomy policies, redacts secrets before they touch the model, logs a
-hash-chained audit trail, and can halt all agent operations with a single command.
-Put it in `.mcp.json` once, and every project that uses it gets the same safety layer.
+reagent enforces policy, prevents dangerous operations, and audits AI agent activity in Claude Code projects. One command (`reagent init`) installs 23 safety hooks and a full engineering team of AI specialists into your project. Every tool call — from every AI agent — is governed by your `policy.yaml`. It's Claude Code + accountability.
 
 ## What it is
 

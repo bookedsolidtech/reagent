@@ -131,8 +131,28 @@ Those connections exist inside the reagent process — Claude Code has no visibi
 | Reconnect helixir if it crashed | No | Restart Claude Code |
 | List all tools from all proxied servers | Indirectly | Tool list in Claude Code's UI |
 
-If reagent itself crashes, use `/mcp` to reconnect it. This restarts the reagent process,
-which re-runs the full startup sequence and re-establishes all downstream connections.
+### Manual reconnect
+
+**If reagent itself crashes**, use `/mcp` to reconnect it. This is the built-in Claude Code
+reconnect UX — no additional tooling required:
+
+1. Type `/mcp` in the Claude Code input
+2. Find `reagent` in the server list
+3. Select **Reconnect**
+
+This restarts the reagent process and re-runs the full startup sequence, re-establishing all
+downstream connections from scratch.
+
+**If a proxied downstream server crashes** (helixir, discord-ops, etc.), the `/mcp` command
+cannot help — those connections are internal to reagent. The recovery path is to restart
+Claude Code entirely, which terminates the reagent process and starts a fresh one.
+
+<Aside type="tip">
+When a downstream server crashes, reagent's circuit-breaker (middleware layer 8) opens after
+a configurable failure threshold. Calls to that server's tools return a clear denial rather
+than hanging. After you restart Claude Code and all connections re-establish, the circuit
+resets automatically.
+</Aside>
 
 ## Environment variable resolution order
 

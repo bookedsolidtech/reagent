@@ -4,14 +4,21 @@ _Last updated: 2026-04-11_
 
 ## Current State
 
-- **Version:** `@bookedsolid/reagent@0.13.0` — live on npm
+- **Version:** `@bookedsolid/reagent@0.13.1` — live on npm
 - **Branch:** `staging`
 - **Autonomy level:** L3 / max L3
 - **Profile:** `bst-internal`
 
 ## What Was Done This Session
 
-### Architecture overhaul (v0.11.0 → v0.13.0)
+### Client-engagement profile verification and doc updates (v0.13.1 → 0.13.2 pending)
+
+- **`client-engagement` profile verified** — L1/max L2 autonomy, correct hooks, attribution blocking enabled
+- **`.claude/agents/` removed from gitignoreEntries** in `client-engagement.json` — agents are project config, not machine-local; should be committed so they're available to all team members
+- **`connection-lifecycle.mdx` updated** — added "Manual Reconnect" subsection explaining `/mcp` command as the reconnect UX; added circuit-breaker behavior note on reconnect
+- **Pending changeset** — `governance-scope-and-connection-lifecycle-docs.md` + new profile fix changeset
+
+### Architecture overhaul (v0.11.0 → v0.13.1)
 
 - **Rust daemon removed entirely** — `daemon/` directory deleted, all `reagent daemon` CLI subcommands removed
 - **Reagent is now a pure MCP server** — `reagent serve` is what Claude Code connects to via stdio; no daemon, no HTTP transport, no port 3737
@@ -72,6 +79,7 @@ All projects on this machine updated to remove old HTTP daemon config:
 2. **Restart Claude Code** — picks up updated `.mcp.json` (reagent + discord-ops)
 3. **Verify docs:** https://bookedsolidtech.github.io/reagent/
 4. **Run tests:** `npm test` — 620 tests, all should pass
+5. **Pending release:** changeset exists for v0.13.2 — run `pnpm changeset:version && pnpm changeset:publish` after merging to main
 
 ## Repo State
 

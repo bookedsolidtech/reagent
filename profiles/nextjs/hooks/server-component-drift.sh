@@ -11,6 +11,7 @@ LIB="$HOOK_DIR/../../../hooks/_lib/common.sh"
 if [[ -f "$LIB" ]]; then
   source "$LIB"
   check_halt
+  check_project_type "nextjs"
 fi
 
 INPUT=$(cat)

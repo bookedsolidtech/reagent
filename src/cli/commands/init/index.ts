@@ -9,6 +9,7 @@ import { installClaudeHooks } from './claude-hooks.js';
 import { installClaudeMd } from './claude-md.js';
 import { installPolicy } from './policy.js';
 import { installGatewayConfig, checkMcpDuplicates } from './gateway-config.js';
+import { installMcpJson } from './mcp-config.js';
 import { installAgents } from './agents.js';
 import { installClaudeCommands } from './commands.js';
 import { installPm } from './pm.js';
@@ -24,12 +25,6 @@ export function runInit(args: string[]): void {
   const withDiscord = args.includes('--discord');
   const PKG_VERSION = getPkgVersion();
 
-  console.log(`\n@bookedsolid/reagent v${PKG_VERSION} init`);
-  console.log(`  Profile: ${profileName}`);
-  console.log(`  Target:  ${targetDir}`);
-  if (dryRun) console.log(`  Mode:    dry-run (no changes written)`);
-  console.log('');
-
   // Validate profile name format
   if (!/^[a-z0-9][a-z0-9-]*$/.test(profileName)) {
     console.error(
@@ -42,38 +37,26 @@ export function runInit(args: string[]): void {
   const techProfiles = listTechProfiles();
   const isTechProfile = techProfiles.includes(profileName);
 
-  // If this is a tech stack profile (directory-based), run it directly
+  // Tech profiles layer on top of a base JSON profile.
+  // --base-profile selects which base to use; defaults to client-engagement.
+  const baseProfileName = isTechProfile
+    ? parseFlag(args, '--base-profile') || 'client-engagement'
+    : profileName;
+
+  console.log(`\n@bookedsolid/reagent v${PKG_VERSION} init`);
   if (isTechProfile) {
-    const results: InstallResult[] = [];
-    const profileResult = installProfile(profileName, targetDir, dryRun);
-    results.push(...profileResult.results);
-
-    // Announce gates
-    if (profileResult.gatesInstalled.length > 0) {
-      console.log(`Tech profile "${profileName}" gates (add to your preflight script):`);
-      for (const gate of profileResult.gatesInstalled) {
-        console.log(`  [${gate.on_failure}] ${gate.name}: ${gate.command}`);
-      }
-      console.log('');
-    }
-
-    // Announce recommended agents
-    if (profileResult.agentsInstalled.length > 0) {
-      console.log(`Recommended agents for "${profileName}":`);
-      for (const agent of profileResult.agentsInstalled) {
-        console.log(`  - ${agent}`);
-      }
-      console.log('');
-    }
-
-    printSummary(results, dryRun, false);
-    return;
+    console.log(`  Profile: ${baseProfileName} + ${profileName}`);
+  } else {
+    console.log(`  Profile: ${profileName}`);
   }
+  console.log(`  Target:  ${targetDir}`);
+  if (dryRun) console.log(`  Mode:    dry-run (no changes written)`);
+  console.log('');
 
   // Load base JSON profile — validate path to prevent traversal
-  const profilePath = path.resolve(profilesDir, `${profileName}.json`);
+  const profilePath = path.resolve(profilesDir, `${baseProfileName}.json`);
   if (!profilePath.startsWith(profilesDir + path.sep)) {
-    console.error(`Invalid profile name: "${profileName}" (path traversal detected)`);
+    console.error(`Invalid profile name: "${baseProfileName}" (path traversal detected)`);
     process.exit(1);
   }
   if (!fs.existsSync(profilePath)) {
@@ -81,7 +64,11 @@ export function runInit(args: string[]): void {
       .readdirSync(profilesDir)
       .filter((f) => f.endsWith('.json'))
       .map((f) => f.replace('.json', ''));
-    console.error(`Profile not found: ${profileName}`);
+    console.error(
+      isTechProfile
+        ? `Base profile not found: ${baseProfileName} (override with --base-profile)`
+        : `Profile not found: ${baseProfileName}`
+    );
     console.error(`Available base profiles: ${availableJson.join(', ')}`);
     console.error(`Available tech profiles: ${techProfiles.join(', ')}`);
     process.exit(1);
@@ -131,12 +118,17 @@ export function runInit(args: string[]): void {
   }
 
   // Step 8: Policy
-  results.push(...installPolicy(targetDir, profileName, profile, dryRun));
+  results.push(
+    ...installPolicy(targetDir, profileName, profile, dryRun, isTechProfile ? profileName : undefined)
+  );
 
-  // Step 9: Gateway config
+  // Step 9: MCP server config (.mcp.json — tells Claude Code how to connect to reagent serve)
+  results.push(...installMcpJson(targetDir, dryRun));
+
+  // Step 9a: Gateway config (.reagent/gateway.yaml — downstream servers proxied through reagent)
   results.push(...installGatewayConfig(targetDir, dryRun));
 
-  // Step 9a: Warn about duplicate MCP server entries (skip in dry-run — files may not exist)
+  // Step 9b: Warn about duplicate MCP server entries (skip in dry-run — files may not exist)
   if (!dryRun) {
     checkMcpDuplicates(targetDir);
   }
@@ -176,6 +168,28 @@ export function runInit(args: string[]): void {
     results.push(...installDiscord(targetDir, discordOpts, dryRun));
   }
 
+  // Step 15: Tech profile overlay (hooks, gates, agents) — runs after base init
+  if (isTechProfile) {
+    const profileResult = installProfile(profileName, targetDir, dryRun);
+    results.push(...profileResult.results);
+
+    if (profileResult.gatesInstalled.length > 0) {
+      console.log(`Tech profile "${profileName}" gates (add to your preflight script):`);
+      for (const gate of profileResult.gatesInstalled) {
+        console.log(`  [${gate.on_failure}] ${gate.name}: ${gate.command}`);
+      }
+      console.log('');
+    }
+
+    if (profileResult.agentsInstalled.length > 0) {
+      console.log(`Recommended agents for "${profileName}":`);
+      for (const agent of profileResult.agentsInstalled) {
+        console.log(`  - ${agent}`);
+      }
+      console.log('');
+    }
+  }
+
   printSummary(results, dryRun, true);
 }
 
@@ -212,7 +226,7 @@ function printSummary(
     if (showCommitInstructions) {
       console.log('\nCommit these files (safe to commit):');
       console.log(
-        '  git add .cursor/rules/ .husky/ .claude/commands/ CLAUDE.md .reagent/policy.yaml .reagent/gateway.yaml && git commit -m "chore: add reagent zero-trust config"'
+        '  git add .mcp.json .cursor/rules/ .husky/ .claude/commands/ CLAUDE.md .reagent/policy.yaml .reagent/gateway.yaml && git commit -m "chore: add reagent zero-trust config"'
       );
       console.log('');
       console.log('Do NOT commit (gitignored — stays on your machine):');

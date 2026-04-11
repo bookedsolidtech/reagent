@@ -1,10 +1,12 @@
 use anyhow::{Context, Result};
 use axum::response::sse::Event;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Instant;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot, Mutex};
 use tracing::{error, info, warn};
 
 /// A bounded SSE sender channel. Capacity 64 — a slow client causes message
@@ -19,6 +21,13 @@ pub type SseReceiver = mpsc::Receiver<Result<Event, std::convert::Infallible>>;
 
 /// Sender used to write JSON-RPC messages into the child's stdin.
 pub type StdinSender = mpsc::Sender<String>;
+
+/// Pending request-response waiters: JSON-RPC `id` → oneshot response sender.
+///
+/// When a POST /mcp body contains a JSON-RPC request (has an `id`), the handler
+/// registers a oneshot sender here before forwarding to child stdin. The stdout
+/// reader task routes matching responses back to the waiter, bypassing SSE.
+pub type PendingResponses = Arc<Mutex<HashMap<serde_json::Value, oneshot::Sender<String>>>>;
 
 /// Owns a spawned `reagent serve` child process and the stdio channels bridging
 /// it to the SSE transport layer.
@@ -35,6 +44,8 @@ pub struct ProjectContext {
     pub stdin_tx: StdinSender,
     /// Updated on every MCP message; used for TTL eviction.
     pub last_activity: Instant,
+    /// Pending request-response correlation map (shared with stdout reader task).
+    pub pending: PendingResponses,
 }
 
 impl ProjectContext {
@@ -95,14 +106,26 @@ impl ProjectContext {
             .take()
             .context("Child stdin was not piped — this is a bug")?;
 
-        // SSE channel: child stdout → editor client
+        // SSE channel: child stdout → editor client (for server-initiated events)
         let (sse_tx, sse_rx) =
             mpsc::channel::<Result<Event, std::convert::Infallible>>(SSE_CHANNEL_CAPACITY);
 
         // Stdin channel: HTTP POST handler → child stdin
         let (stdin_tx, stdin_rx) = mpsc::channel::<String>(64);
 
-        // Spawn the reader task: child stdout → SSE sender
+        // Pending response map: JSON-RPC id → oneshot sender (shared with reader task)
+        let pending: PendingResponses = Arc::new(Mutex::new(HashMap::new()));
+        let pending_clone = Arc::clone(&pending);
+
+        // Spawn the reader task: child stdout → (pending response OR SSE)
+        //
+        // Routing priority:
+        //   1. If the line is valid JSON with an `id` field AND a waiter is registered
+        //      in `pending`, route to the waiter's oneshot channel (Streamable HTTP response).
+        //   2. Otherwise, forward to the SSE channel for server-initiated delivery.
+        //
+        // IMPORTANT: SSE send failures do NOT terminate the reader. The child may still
+        // produce responses for in-flight requests even after the SSE client disconnects.
         let sse_tx_clone = sse_tx.clone();
         let sid = session_id.to_string();
         tokio::spawn(async move {
@@ -110,11 +133,23 @@ impl ProjectContext {
             loop {
                 match lines.next_line().await {
                     Ok(Some(line)) => {
+                        // Attempt to route to a pending request waiter first
+                        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&line) {
+                            if let Some(id) = v.get("id").cloned() {
+                                let mut pending_map = pending_clone.lock().await;
+                                if let Some(tx) = pending_map.remove(&id) {
+                                    // Route response to awaiting POST handler
+                                    let _ = tx.send(line);
+                                    continue;
+                                }
+                            }
+                        }
+                        // Forward to SSE (server-initiated events, unmatched lines)
                         let event = Event::default().data(line);
-                        if sse_tx_clone.send(Ok(event)).await.is_err() {
-                            // SSE receiver dropped — client disconnected
-                            info!(session_id = %sid, "SSE receiver dropped, stopping stdout reader");
-                            break;
+                        if let Err(e) = sse_tx_clone.send(Ok(event)).await {
+                            // SSE receiver dropped — client disconnected. Keep reading
+                            // child stdout so pending request waiters still get routed.
+                            warn!(session_id = %sid, "SSE send failed (client likely disconnected): {}", e);
                         }
                     }
                     Ok(None) => {
@@ -157,6 +192,7 @@ impl ProjectContext {
             sse_rx: Some(sse_rx),
             stdin_tx,
             last_activity: Instant::now(),
+            pending,
         })
     }
 

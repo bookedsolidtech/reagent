@@ -12,6 +12,7 @@ if [[ -f "$LIB" ]]; then
   # shellcheck source=hooks/_lib/common.sh
   source "$LIB"
   check_halt
+  check_project_type "lit-wc"
 fi
 
 # Read tool input from stdin

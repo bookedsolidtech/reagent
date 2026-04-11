@@ -7,7 +7,8 @@ export function installPolicy(
   targetDir: string,
   profileName: string,
   profile: ProfileConfig,
-  dryRun: boolean
+  dryRun: boolean,
+  techProfile?: string
 ): InstallResult[] {
   const PKG_VERSION = getPkgVersion();
   const reagentDir = path.join(targetDir, '.reagent');
@@ -41,7 +42,7 @@ export function installPolicy(
 
 version: "1"
 profile: "${profileName}"
-installed_by: "reagent@${PKG_VERSION}"
+${techProfile ? `tech_profile: "${techProfile}"\n` : ''}installed_by: "reagent@${PKG_VERSION}"
 installed_at: "${now}"
 
 # Autonomy levels:

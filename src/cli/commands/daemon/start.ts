@@ -3,7 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { parseFlag } from '../../utils.js';
+import { parseFlag, getPkgVersion } from '../../utils.js';
 import { loadDaemonConfig } from '../../../config/daemon-loader.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -130,7 +130,7 @@ export function runDaemonStart(args: string[]): void {
   };
 
   if (foreground) {
-    console.log(`\nStarting reagent daemon on ${bind}:${port} (foreground)`);
+    console.log(`\nStarting reagent daemon v${getPkgVersion()} on ${bind}:${port} (foreground)`);
     console.log(`  Binary: ${binaryPath}\n`);
 
     const child = spawn(binaryPath, [], { env, stdio: 'inherit' });
@@ -165,7 +165,7 @@ export function runDaemonStart(args: string[]): void {
   const pidPath = getPidFilePath();
   fs.writeFileSync(pidPath, String(child.pid), 'utf8');
 
-  console.log(`\nreagent daemon started`);
+  console.log(`\nreagent daemon v${getPkgVersion()} started`);
   console.log(`  PID:     ${child.pid}`);
   console.log(`  Address: http://${bind}:${port}`);
   console.log(`  Log:     ${logFile}`);

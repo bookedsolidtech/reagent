@@ -36,8 +36,6 @@ export function runUpgrade(args: string[]): void {
     process.exit(1);
   }
 
-  let hooksUpdated = 0;
-
   for (const { hookName, srcFileName } of HOOK_MAP) {
     const huskyHookPath = path.join(huskyDir, hookName);
     const srcFile = path.join(PKG_ROOT, 'husky', srcFileName);
@@ -55,9 +53,6 @@ export function runUpgrade(args: string[]): void {
 
     const hookResults = installHuskyHook(targetDir, hookName, srcFileName, dryRun);
     results.push(...hookResults);
-
-    const anyChanged = hookResults.some((r) => r.status === 'updated' || r.status === 'installed');
-    if (anyChanged) hooksUpdated++;
   }
 
   // Step 2: Update installed_by in .reagent/policy.yaml to reflect current version.

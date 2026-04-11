@@ -239,9 +239,9 @@ goes through the full middleware chain before forwarding.
 ```yaml
 tool_overrides:
   execute_query:
-    tier: destructive      # Treat this tool as destructive regardless of its name
+    tier: destructive # Treat this tool as destructive regardless of its name
   drop_table:
-    blocked: true          # Always deny calls to this tool, regardless of autonomy level
+    blocked: true # Always deny calls to this tool, regardless of autonomy level
 ```
 
 **`calls_per_minute`** and **`max_concurrent_calls`** are per-server rate limits enforced
@@ -429,16 +429,16 @@ paths, and quality gate settings for this project.
 ```yaml
 version: '1'
 profile: 'client-engagement'
-autonomy_level: L2          # L0 | L1 | L2 | L3
-max_autonomy_level: L3      # ceiling — agents cannot escalate beyond this
+autonomy_level: L2 # L0 | L1 | L2 | L3
+max_autonomy_level: L3 # ceiling — agents cannot escalate beyond this
 promotion_requires_human_approval: true
-block_ai_attribution: true  # reject AI attribution in commits and PRs
+block_ai_attribution: true # reject AI attribution in commits and PRs
 blocked_paths:
   - '.reagent/'
   - '.github/workflows/'
   - '.env'
   - '.env.*'
-notification_channel: ''    # Discord webhook for halt/promote events
+notification_channel: '' # Discord webhook for halt/promote events
 quality_gates:
   push_review: false
 ```
@@ -471,14 +471,14 @@ gateway:
 
 Fields per server entry:
 
-| Field | Description |
-|-------|-------------|
-| `command` | The executable to spawn |
-| `args` | Arguments passed to the command |
-| `env` | Environment variables (supports `${VAR}` expansion) |
-| `tool_overrides` | Per-tool tier overrides or hard blocks |
-| `calls_per_minute` | Rate limit for this server (0 = unlimited) |
-| `max_concurrent_calls` | Concurrency limit (0 = unlimited) |
+| Field                  | Description                                         |
+| ---------------------- | --------------------------------------------------- |
+| `command`              | The executable to spawn                             |
+| `args`                 | Arguments passed to the command                     |
+| `env`                  | Environment variables (supports `${VAR}` expansion) |
+| `tool_overrides`       | Per-tool tier overrides or hard blocks              |
+| `calls_per_minute`     | Rate limit for this server (0 = unlimited)          |
+| `max_concurrent_calls` | Concurrency limit (0 = unlimited)                   |
 
 ### `~/.reagent/daemon.yaml`
 

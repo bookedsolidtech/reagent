@@ -1,5 +1,5 @@
 ---
-"@bookedsolid/reagent": minor
+'@bookedsolid/reagent': minor
 ---
 
 Remove `reagent daemon` commands entirely.

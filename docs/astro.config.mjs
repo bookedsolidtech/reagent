@@ -39,6 +39,7 @@ export default defineConfig({
           label: 'Guides',
           items: [
             { label: 'MCP Server Proxy', slug: 'guides/mcp-gateway' },
+            { label: 'Governance Scope', slug: 'guides/governance-scope' },
             { label: 'Config Scaffolder', slug: 'guides/config-scaffolder' },
             { label: 'Stack Analyzer', slug: 'guides/stack-analyzer' },
             { label: 'Project Management', slug: 'guides/project-management' },
@@ -52,6 +53,7 @@ export default defineConfig({
             { label: 'CLI Commands', slug: 'reference/cli-commands' },
             { label: 'Policy File', slug: 'reference/policy-file' },
             { label: 'Gateway Config', slug: 'reference/gateway-config' },
+            { label: 'Connection Lifecycle', slug: 'reference/connection-lifecycle' },
             { label: 'Hooks', slug: 'reference/hooks' },
             { label: 'MCP Tools', slug: 'reference/mcp-tools' },
             { label: 'Profiles', slug: 'reference/profiles' },

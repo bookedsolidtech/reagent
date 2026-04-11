@@ -1,0 +1,201 @@
+---
+title: Governance Scope Guide
+description: Understand when to put an MCP server in .mcp.json versus gateway.yaml, and what governance each choice provides.
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Every MCP server you use must be declared somewhere. The question is where — and that choice
+determines whether reagent governs its tool calls at all.
+
+## The two connection paths
+
+### Direct connection (`.mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "helixir": {
+      "command": "npx",
+      "args": ["-y", "helixir"]
+    }
+  }
+}
+```
+
+Claude Code reads `.mcp.json` at startup and spawns `helixir` directly as a peer process.
+Reagent is never in the picture. Helixir's tools are registered straight into Claude Code's
+tool list. When Claude calls `helixir__read_file`, Claude Code sends that call directly to
+helixir. Reagent never sees it.
+
+**Result: zero governance.** No audit log. No secret redaction. No kill switch. No rate
+limits. No blocked-path enforcement.
+
+### Proxied connection (`gateway.yaml`)
+
+```yaml
+# .reagent/gateway.yaml
+servers:
+  helixir:
+    command: npx
+    args: ["-y", "helixir"]
+```
+
+Reagent reads `gateway.yaml` at startup and spawns `helixir` as a child process of the
+reagent process. Reagent discovers helixir's tools, wraps each one in its 12-layer middleware
+chain, and re-registers them on its own MCP server. Claude Code only ever communicates with
+reagent — it has no direct connection to helixir.
+
+**Result: full governance.** Every call to a helixir tool passes through all middleware layers
+before helixir receives it, and again before the response reaches Claude.
+
+## What governance actually does
+
+When a tool call from a proxied server hits the middleware chain, here is what happens
+concretely:
+
+**Secret redaction.** If helixir returns a response that contains `GITHUB_TOKEN=ghp_abc123`,
+reagent replaces the token value with `[REDACTED]` before Claude sees it. This applies to
+GitHub tokens, AWS keys, Discord bot tokens, PEM private keys, and other common secret
+patterns. See [Middleware Chain](/concepts/middleware-chain/) for the full list.
+
+**Blocked paths.** If helixir receives a `write_file` call with a path argument pointing to
+`.env` or `.claude/settings.json`, reagent blocks the call before it reaches helixir. The
+blocked-paths middleware scans all string arguments against the `blocked_paths` list in
+`policy.yaml`. `.reagent/` is always protected regardless of configuration.
+
+**Rate limiting.** Per-server `calls_per_minute` and `max_concurrent_calls` limits from
+`gateway.yaml` apply equally to proxied tools. A burst of helixir calls respects the same
+budget as a burst of native calls.
+
+**Audit log.** Every proxied tool call gets a hash-chained entry written to
+`.reagent/audit.jsonl`. Denials are recorded. Errors are recorded. The chain links each entry
+to the previous one so tampering with any record invalidates every subsequent hash.
+
+**Kill switch.** When you run `reagent freeze`, reagent writes a `.reagent/HALT` file. The
+kill-switch middleware checks for this file on every single call. With helixir proxied through
+reagent, `reagent freeze` stops helixir's tools too. With helixir in `.mcp.json` directly,
+`reagent freeze` has no effect on it.
+
+**Policy tier.** Each proxied tool is classified as `read`, `write`, or `destructive`. The
+project's `autonomy_level` in `policy.yaml` controls which tiers are permitted. A project at
+`L1` cannot invoke destructive tools from any proxied server. You can also override individual
+tool tiers via `tool_overrides` in `gateway.yaml`.
+
+## Decision guide
+
+### Use direct (`.mcp.json`) when
+
+- The server provides only read-only, low-risk tools — for example, a local documentation
+  lookup server that reads static files and makes no network calls
+- You have explicitly decided this server does not need governance and have documented why
+- The server manages its own credentials in a way that must stay invisible to reagent (unusual)
+
+### Use proxied (`gateway.yaml`) when
+
+- The server can write files, execute commands, or make network calls
+- You want `reagent freeze` to stop it along with everything else
+- You want secret redaction applied to its responses
+- You want its operations in the audit log
+- You want consistent rate limiting across all your AI tools
+- You are unsure — when in doubt, proxy
+
+<Aside type="tip">
+The recommended default is to proxy everything through `gateway.yaml`. Only use `.mcp.json`
+for a server when you have a specific, documented reason to exclude it from governance.
+Security is easier to maintain when the rule is simple: reagent in `.mcp.json`, everything
+else in `gateway.yaml`.
+</Aside>
+
+## Connection lifecycle
+
+Reagent connects to proxied servers at startup — when Claude Code first spawns `reagent serve`.
+The subprocess connections stay open for the lifetime of that session. There is no hot-reload.
+
+If you add a server to `gateway.yaml` while a session is running, the change has no effect
+until you restart Claude Code. Reagent only reads `gateway.yaml` once, at process start.
+
+<Aside type="caution">
+If a proxied server crashes mid-session, its tools will return errors for the rest of the
+session. Reagent keeps running and other servers continue working normally, but there is no
+automatic reconnect. To restore the crashed server, restart Claude Code — this restarts
+reagent, which re-spawns all proxied servers from scratch.
+</Aside>
+
+## Environment variable inheritance
+
+Proxied servers inherit the full `process.env` of the reagent process. Since reagent is
+spawned by Claude Code, which inherits your shell environment, proxied servers see the same
+environment variables your shell has.
+
+This means a server like `discord-ops` automatically has access to `BOOKED_DISCORD_BOT_TOKEN`
+if that variable is set in your shell — no explicit configuration required. You can also add
+or override specific variables per-server in `gateway.yaml`:
+
+```yaml
+servers:
+  helixir:
+    command: npx
+    args: ["-y", "helixir"]
+    env:
+      MCP_WC_PROJECT_ROOT: /your/project
+      MCP_WC_COMPONENT_PREFIX: hx-
+```
+
+Variables in `env:` take precedence over the inherited environment for that server process.
+Variables not listed in `env:` still flow through from the parent environment.
+
+## Complete example
+
+A correctly configured project has only reagent in `.mcp.json`, with all other servers in
+`gateway.yaml`:
+
+```json
+// .mcp.json
+{
+  "mcpServers": {
+    "reagent": {
+      "command": "npx",
+      "args": ["-y", "@bookedsolid/reagent@latest", "serve"]
+    }
+  }
+}
+```
+
+```yaml
+# .reagent/gateway.yaml
+version: '1'
+
+servers:
+  helixir:
+    command: npx
+    args: ["-y", "helixir"]
+    env:
+      MCP_WC_PROJECT_ROOT: /your/project
+      MCP_WC_COMPONENT_PREFIX: hx-
+
+  discord-ops:
+    command: npx
+    args: ["-y", "discord-ops@latest"]
+
+  filesystem:
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/your/project"]
+    calls_per_minute: 120
+
+gateway:
+  max_result_size_kb: 512
+```
+
+With this setup, Claude Code connects to one process (reagent) and reagent manages all
+downstream connections. Every tool call — from helixir, discord-ops, or filesystem — passes
+through the full governance stack.
+
+## References
+
+- [MCP Server Proxy](/guides/mcp-gateway/) — how to configure `gateway.yaml`
+- [Gateway Config reference](/reference/gateway-config/) — full field specification
+- [Middleware Chain](/concepts/middleware-chain/) — the 12 layers explained
+- [Connection Lifecycle](/reference/connection-lifecycle/) — startup, crash, and shutdown behavior

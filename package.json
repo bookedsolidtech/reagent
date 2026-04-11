@@ -57,7 +57,7 @@
     "daemon:status": "[ -f ~/.reagent/daemon.pid ] && kill -0 $(cat ~/.reagent/daemon.pid) 2>/dev/null && echo \"running (PID $(cat ~/.reagent/daemon.pid))\" || echo \"not running\"",
     "daemon:logs": "tail -f ~/.reagent/daemon.log",
     "daemon:eject": "pkill -KILL -f reagent-daemon 2>/dev/null; rm -f ~/.reagent/daemon.pid; echo \"ejected\"",
-    "daemon:restart": "reagent daemon restart",
+    "daemon:restart": "npx reagent daemon restart",
     "daemon:build": "cargo build --release --manifest-path daemon/Cargo.toml",
     "lint": "eslint .",
     "format": "prettier --write .",

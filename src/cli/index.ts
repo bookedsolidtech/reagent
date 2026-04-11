@@ -8,8 +8,6 @@ import { runUnfreeze } from './commands/unfreeze.js';
 import { runServe } from './commands/serve.js';
 import { runCache } from './commands/cache.js';
 import { runCatalyze } from './commands/catalyze/index.js';
-import { runDaemon } from './commands/daemon/index.js';
-import { runSupervisorLoop } from './commands/daemon/start.js';
 import { runUpgrade } from './commands/upgrade.js';
 
 const [, , cmd, ...rest] = process.argv;
@@ -41,22 +39,6 @@ switch (cmd) {
   case 'catalyze':
     runCatalyze(rest);
     break;
-  case 'daemon':
-    runDaemon(rest);
-    break;
-  case '__supervisor__':
-    // Internal: entered when the background-detached child process starts.
-    // Never exposed in help output.
-    {
-      const bin = process.env['REAGENT_SUPERVISOR_BIN'];
-      const logLevel = process.env['REAGENT_SUPERVISOR_LOG_LEVEL'] ?? 'info';
-      if (!bin) {
-        console.error('[reagent] __supervisor__: REAGENT_SUPERVISOR_BIN not set');
-        process.exit(1);
-      }
-      runSupervisorLoop(bin, logLevel);
-    }
-    break;
   case 'upgrade':
     runUpgrade(rest);
     break;
@@ -69,7 +51,7 @@ switch (cmd) {
 function printHelp(): void {
   const PKG_VERSION = getPkgVersion();
   console.log(`
-@bookedsolid/reagent v${PKG_VERSION} — zero-trust MCP gateway
+@bookedsolid/reagent v${PKG_VERSION} — zero-trust MCP server
 
 Usage:
   npx @bookedsolid/reagent <command> [options]
@@ -80,8 +62,7 @@ Commands:
   check      Check what reagent components are installed
   freeze     Create .reagent/HALT to suspend all agent operations
   unfreeze   Remove .reagent/HALT to resume agent operations
-  serve      Start the MCP gateway server (stdio transport)
-  daemon     Manage the keep-alive supervisor for reagent serve
+  serve      Start the MCP server (stdio transport — called by Claude Code via .mcp.json)
   cache      Manage review cache (check, set, clear)
   upgrade    Re-sync installed hooks and update policy.yaml version stamp
   help       Show this help
@@ -126,10 +107,6 @@ Examples:
   npx @bookedsolid/reagent freeze --reason "security incident"
   npx @bookedsolid/reagent unfreeze
   npx @bookedsolid/reagent serve
-  npx @bookedsolid/reagent daemon start
-  npx @bookedsolid/reagent daemon status
-  npx @bookedsolid/reagent daemon stop
-  npx @bookedsolid/reagent daemon restart
   npx @bookedsolid/reagent upgrade
   npx @bookedsolid/reagent upgrade --dry-run
 `);

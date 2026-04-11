@@ -2,17 +2,18 @@
 '@bookedsolid/reagent': minor
 ---
 
-Replace Rust daemon with lightweight Node.js process supervisor.
+Remove daemon — reagent is an MCP server, not a gateway.
 
-The Rust daemon provided no meaningful session state persistence — all real state
-is persisted to disk (tasks.jsonl, audit logs, policy.yaml). The "session" it
-maintained was just process lifecycle management, which a simple supervisor delivers
-without a custom HTTP/SSE gateway.
+reagent is an MCP server. Claude Code connects to it via stdio transport, declared
+in `.mcp.json`. Claude Code owns the process lifecycle — it spawns `reagent serve`
+when the session starts and manages the process for the duration of the session.
 
-The new supervisor keeps `reagent serve` alive between Claude Code sessions, writes
-a health file to ~/.reagent/daemon-health.json, and re-spawns on unexpected exit.
-All MCP communication uses stdio transport only — no HTTP port, no session registry,
-no Rust binary, no CI cross-compilation.
+There is no role for a separate daemon or process supervisor. The previous Node.js
+supervisor kept `reagent serve` alive between sessions via a PID file and health
+polling — this is not needed when Claude Code manages the process directly.
 
-Breaking: `~/.reagent/daemon.yaml` no longer accepts `port`, `bind`, or
-`session_ttl_minutes`. Remove these fields if present.
+Removed: `reagent daemon start`, `stop`, `status`, `restart`, `eject` commands.
+Removed: daemon npm scripts (`daemon:start`, `daemon:stop`, etc.).
+Removed: `~/.reagent/daemon.yaml` config file support.
+Removed: `~/.reagent/daemon.pid` and `~/.reagent/daemon-health.json` runtime files.
+Removed: Rust daemon binary and cross-compilation CI.

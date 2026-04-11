@@ -1,5 +1,11 @@
 # @bookedsolid/reagent
 
+## 0.13.2
+
+### Patch Changes
+
+- c3d66d6: Add Governance Scope guide and Connection Lifecycle reference — explains `.mcp.json` vs `gateway.yaml` decision, what governance actually means for proxied servers, and connection startup/crash/shutdown behavior
+
 ## 0.13.1
 
 ### Patch Changes

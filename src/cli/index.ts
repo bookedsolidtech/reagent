@@ -9,6 +9,7 @@ import { runServe } from './commands/serve.js';
 import { runCache } from './commands/cache.js';
 import { runCatalyze } from './commands/catalyze/index.js';
 import { runDaemon } from './commands/daemon/index.js';
+import { runUpgrade } from './commands/upgrade.js';
 
 const [, , cmd, ...rest] = process.argv;
 
@@ -42,6 +43,9 @@ switch (cmd) {
   case 'daemon':
     runDaemon(rest);
     break;
+  case 'upgrade':
+    runUpgrade(rest);
+    break;
   default:
     console.error(`\nUnknown command: ${cmd}`);
     printHelp();
@@ -65,6 +69,7 @@ Commands:
   serve      Start the MCP gateway server (stdio transport)
   daemon     Manage the persistent HTTP/SSE multi-project daemon
   cache      Manage review cache (check, set, clear)
+  upgrade    Re-sync installed hooks and update policy.yaml version stamp
   help       Show this help
 
 Options for init:
@@ -111,5 +116,7 @@ Examples:
   npx @bookedsolid/reagent daemon status
   npx @bookedsolid/reagent daemon stop
   npx @bookedsolid/reagent daemon restart
+  npx @bookedsolid/reagent upgrade
+  npx @bookedsolid/reagent upgrade --dry-run
 `);
 }

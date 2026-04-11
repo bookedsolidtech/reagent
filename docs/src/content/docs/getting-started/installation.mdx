@@ -8,6 +8,7 @@ sidebar:
 ## Requirements
 
 - **Node.js** >= 22
+- **Claude Code** (reagent serves as its MCP server via stdio)
 - **Git** repository (for hooks and init)
 - **jq** (for hook scripts that parse JSON)
 - **gh** CLI (optional, for GitHub issue sync and repo scaffolding)
@@ -24,6 +25,31 @@ npm install -g @bookedsolid/reagent
 npx @bookedsolid/reagent init
 ```
 
+## Initialize your project
+
+```bash
+cd your-project
+reagent init
+```
+
+`reagent init` writes `.mcp.json` to your project root so Claude Code automatically spawns
+`reagent serve` via stdio transport when a session starts:
+
+```json
+{
+  "mcpServers": {
+    "reagent": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["reagent", "serve"]
+    }
+  }
+}
+```
+
+Restart Claude Code after running `reagent init`. It will pick up `.mcp.json` on the next
+session start.
+
 ## Dependencies
 
 Reagent has only 3 runtime dependencies:
@@ -36,7 +62,7 @@ Reagent has only 3 runtime dependencies:
 
 ## Verify installation
 
-After installing, verify the CLI is available:
+After initializing, verify the CLI is available:
 
 ```bash
 reagent help

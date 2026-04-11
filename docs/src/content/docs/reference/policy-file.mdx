@@ -5,53 +5,77 @@ sidebar:
   order: 2
 ---
 
-`.reagent/policy.yaml` controls agent behavior and is the primary configuration file for Reagent's security model.
+`.reagent/policy.yaml` controls agent behavior and is the primary configuration file for
+reagent's security model. It is written by `reagent init` and committed to the repository.
 
 ## Example
 
 ```yaml
 version: '1'
-profile: bst-internal
-installed_by: 'reagent@0.7.2'
-installed_at: '2026-04-09T00:00:00.000Z'
-autonomy_level: L1
-max_autonomy_level: L2
+profile: 'client-engagement'
+installed_by: 'reagent@0.13.0'
+installed_at: '2026-04-01T00:00:00.000Z'
+
+# Autonomy levels:
+#   L0 — Read-only; every write requires explicit user approval
+#   L1 — Writes allowed to non-blocked paths; destructive operations blocked
+#   L2 — Writes + PR creation allowed; destructive tier blocked
+#   L3 — All writes allowed; advisory on anomalous patterns
+autonomy_level: L2
+max_autonomy_level: L3
+
+# Human must approve any autonomy level increase
 promotion_requires_human_approval: true
+
+# Block AI attribution in commits and PRs
 block_ai_attribution: true
+
+# Paths hooks and agents must never modify
 blocked_paths:
   - '.reagent/'
+  - '.github/workflows/'
   - '.env'
   - '.env.*'
+
+# Optional: Discord webhook for halt/promote notifications
 notification_channel: ''
-task_link_gate: false
+
+quality_gates:
+  push_review: false
 ```
 
 ## Fields
 
-| Field                               | Type       | Description                                                   |
-| ----------------------------------- | ---------- | ------------------------------------------------------------- |
-| `version`                           | `string`   | Schema version (currently `"1"`)                              |
-| `profile`                           | `string`   | Profile name used during init                                 |
-| `installed_by`                      | `string`   | Tool and version that generated this file                     |
-| `installed_at`                      | `string`   | ISO 8601 timestamp of installation                            |
-| `autonomy_level`                    | `enum`     | Current level (L0-L3) — controls which tool tiers are allowed |
-| `max_autonomy_level`                | `enum`     | Ceiling — `autonomy_level` is clamped to this on load         |
-| `promotion_requires_human_approval` | `boolean`  | Whether level changes need human sign-off                     |
-| `block_ai_attribution`              | `boolean`  | When true, commit-msg hook rejects AI attribution markers     |
-| `blocked_paths`                     | `string[]` | Paths the agent must never modify (`.reagent/` always added)  |
-| `notification_channel`              | `string`   | Optional notification channel identifier                      |
-| `task_link_gate`                    | `boolean`  | When true, commits must reference a task ID (T-NNN)           |
+| Field                               | Type       | Description                                                    |
+| ----------------------------------- | ---------- | -------------------------------------------------------------- |
+| `version`                           | `string`   | Schema version (currently `"1"`)                               |
+| `profile`                           | `string`   | Profile name used during init                                  |
+| `installed_by`                      | `string`   | Tool and version that generated this file                      |
+| `installed_at`                      | `string`   | ISO 8601 timestamp of installation                             |
+| `autonomy_level`                    | `enum`     | Current level (L0–L3) — controls which tool tiers are allowed  |
+| `max_autonomy_level`                | `enum`     | Ceiling — `autonomy_level` is clamped to this on load          |
+| `promotion_requires_human_approval` | `boolean`  | Whether level changes need explicit human sign-off             |
+| `block_ai_attribution`              | `boolean`  | When true, commit-msg hook rejects AI attribution markers      |
+| `blocked_paths`                     | `string[]` | Paths the agent must never modify (`.reagent/` always included) |
+| `notification_channel`              | `string`   | Optional Discord webhook or channel ID for halt/promote events |
+| `quality_gates.push_review`         | `boolean`  | When true, push-review-gate requires a passing review before push |
 
 ## Behavior
 
 ### Max autonomy clamping
 
-The `max_autonomy_level` field is enforced at config load time: if `autonomy_level` exceeds `max_autonomy_level`, it is clamped down with a warning.
+The `max_autonomy_level` field is enforced at config load time. If `autonomy_level` exceeds
+`max_autonomy_level`, it is clamped down with a warning. No agent instruction can escalate
+beyond `max_autonomy_level` — it is a ceiling set by a human.
 
 ### Blocked paths
 
-The `.reagent/` directory is always included in `blocked_paths` regardless of configuration. This prevents agents from modifying their own safety rails.
+The `.reagent/` directory is always included in `blocked_paths` regardless of configuration.
+This prevents agents from modifying their own safety rails. Additional paths are additive.
 
 ### Attribution blocking
 
-When `block_ai_attribution` is `true`, the commit-msg hook rejects commits containing structural AI attribution markers such as `Co-Authored-By` with AI names, `Generated with [Tool]` footers, or `AI-generated` markers.
+When `block_ai_attribution` is `true`, the `commit-msg` hook rejects commits containing
+structural AI attribution markers such as `Co-Authored-By` with AI names, `Generated with
+[Tool]` footers, or `AI-generated` markers. The `attribution-advisory.sh` Claude Code hook
+also blocks `git commit` and `gh pr create/edit` commands containing these patterns.

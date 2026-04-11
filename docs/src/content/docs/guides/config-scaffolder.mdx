@@ -9,22 +9,23 @@ sidebar:
 
 ## What gets installed
 
-| Path                         | Committed       | Purpose                              |
-| ---------------------------- | --------------- | ------------------------------------ |
-| `.reagent/policy.yaml`       | Yes             | Autonomy levels and agent policy     |
-| `.reagent/gateway.yaml`      | Yes             | MCP gateway downstream server config |
-| `.reagent/audit/`            | No (gitignored) | Hash-chained JSONL audit logs        |
-| `.reagent/tasks.jsonl`       | No (gitignored) | Task event store                     |
-| `.reagent/review-cache.json` | No (gitignored) | Review cache for quality gates       |
-| `.cursor/rules/`             | Yes             | Cursor IDE behavioral rules          |
-| `.husky/commit-msg`          | Yes             | Git commit message validation        |
-| `.husky/pre-commit`          | Yes             | Pre-commit checks                    |
-| `.husky/pre-push`            | Yes             | Pre-push quality gates               |
-| `.claude/hooks/`             | No (gitignored) | Claude Code safety hooks             |
-| `.claude/settings.json`      | No (gitignored) | Claude Code permissions              |
-| `.claude/agents/`            | No (gitignored) | Agent team definitions (89 agents)   |
-| `.claude/commands/`          | Yes             | Slash commands                       |
-| `CLAUDE.md`                  | Yes             | AI agent project instructions        |
+| Path                         | Committed       | Purpose                                      |
+| ---------------------------- | --------------- | -------------------------------------------- |
+| `.mcp.json`                  | Yes             | MCP server declaration for Claude Code       |
+| `.reagent/policy.yaml`       | Yes             | Autonomy levels and agent policy             |
+| `.reagent/gateway.yaml`      | Yes             | Downstream MCP server proxy config           |
+| `.reagent/audit/`            | No (gitignored) | Hash-chained JSONL audit logs                |
+| `.reagent/tasks.jsonl`       | No (gitignored) | Task event store                             |
+| `.reagent/review-cache.json` | No (gitignored) | Review cache for quality gates               |
+| `.cursor/rules/`             | Yes             | Cursor IDE behavioral rules                  |
+| `.husky/commit-msg`          | Yes             | Git commit message validation                |
+| `.husky/pre-commit`          | Yes             | Pre-commit checks                            |
+| `.husky/pre-push`            | Yes             | Pre-push quality gates                       |
+| `.claude/hooks/`             | No (gitignored) | Claude Code safety hooks (23 scripts)        |
+| `.claude/settings.json`      | No (gitignored) | Claude Code permissions                      |
+| `.claude/agents/`            | No (gitignored) | Agent team definitions (89 agents)           |
+| `.claude/commands/`          | Yes             | Slash commands                               |
+| `CLAUDE.md`                  | Yes             | AI agent project instructions                |
 
 ## Usage
 
@@ -60,6 +61,11 @@ npx @bookedsolid/reagent init --dry-run
 | `--tasks-channel <id>`    | Discord channel for task events                | —                   |
 | `--releases-channel <id>` | Discord channel for release events             | —                   |
 | `--dev-channel <id>`      | Discord channel for dev activity               | —                   |
+
+## After init
+
+Restart Claude Code after running `reagent init`. Claude Code reads `.mcp.json` on session
+start and spawns `reagent serve` automatically via stdio transport.
 
 ## Idempotent
 

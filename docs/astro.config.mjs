@@ -8,7 +8,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Reagent',
-      description: 'Zero-trust MCP gateway and agentic infrastructure for AI-assisted development.',
+      description: 'Zero-trust MCP server for AI-assisted development. Every tool call — policy enforced.',
       social: [
         {
           icon: 'github',
@@ -38,7 +38,7 @@ export default defineConfig({
         {
           label: 'Guides',
           items: [
-            { label: 'MCP Gateway', slug: 'guides/mcp-gateway' },
+            { label: 'MCP Server Proxy', slug: 'guides/mcp-gateway' },
             { label: 'Config Scaffolder', slug: 'guides/config-scaffolder' },
             { label: 'Stack Analyzer', slug: 'guides/stack-analyzer' },
             { label: 'Project Management', slug: 'guides/project-management' },

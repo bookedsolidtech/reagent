@@ -38,25 +38,29 @@ sidebar:
 │   │   │   ├── cache.ts               # Review cache CLI (check/set/clear)
 │   │   │   ├── check.ts               # Installation verification
 │   │   │   ├── freeze.ts              # Kill switch (freeze/unfreeze)
-│   │   │   └── serve.ts               # Gateway server launcher
+│   │   │   └── serve.ts               # MCP server launcher (stdio)
 │   │   └── utils.ts                   # Shared CLI utilities
 │   ├── config/                        # Configuration loaders
 │   │   ├── policy-loader.ts           # Zod-validated policy.yaml parser
 │   │   ├── gateway-config.ts          # Zod-validated gateway.yaml parser
 │   │   └── tier-map.ts                # Tool tier classification
-│   ├── gateway/                       # MCP gateway core
-│   │   ├── server.ts                  # Gateway orchestrator (startup, shutdown)
+│   ├── gateway/                       # MCP server core
+│   │   ├── server.ts                  # Server orchestrator (startup, shutdown)
 │   │   ├── client-manager.ts          # Downstream MCP server connections
 │   │   ├── tool-proxy.ts              # Tool discovery, namespacing, registration
 │   │   ├── native-tools.ts            # 9 first-party MCP tools
-│   │   └── middleware/                # Middleware chain
+│   │   └── middleware/                # 12-layer middleware chain
 │   │       ├── chain.ts               # Onion-style middleware executor
 │   │       ├── session.ts             # Session ID attachment
 │   │       ├── kill-switch.ts         # HALT file check
 │   │       ├── tier.ts                # Tier classification
 │   │       ├── policy.ts              # Autonomy level enforcement
 │   │       ├── blocked-paths.ts       # Blocked path enforcement
+│   │       ├── rate-limit.ts          # Per-server rate limiting
+│   │       ├── circuit-breaker.ts     # Downstream failure protection
 │   │       ├── redact.ts              # Secret pattern redaction
+│   │       ├── injection.ts           # Prompt injection detection
+│   │       ├── result-size-cap.ts     # Response size enforcement
 │   │       └── audit.ts               # Hash-chained JSONL logging
 │   ├── pm/                            # Project management layer
 │   │   ├── types.ts                   # Zod task schema (single source of truth)
@@ -89,7 +93,7 @@ sidebar:
 
 ### Onion middleware
 
-The gateway uses Koa-style onion middleware where each layer wraps the next. This means audit (outermost) captures everything, including denials from inner layers.
+The MCP server uses Koa-style onion middleware where each layer wraps the next. This means audit (outermost) captures everything, including denials from inner layers.
 
 ### Append-only event store
 

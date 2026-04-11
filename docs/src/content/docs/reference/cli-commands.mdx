@@ -7,18 +7,19 @@ sidebar:
 
 ## Commands
 
-| Command                         | Description                                       |
-| ------------------------------- | ------------------------------------------------- |
-| `reagent serve`                 | Start the MCP gateway server (stdio transport)    |
-| `reagent init`                  | Install reagent config into the current directory |
-| `reagent catalyze`              | Analyze project stack and generate gap report     |
-| `reagent check`                 | Verify what reagent components are installed      |
-| `reagent freeze --reason "..."` | Create `.reagent/HALT` — suspends all tool calls  |
-| `reagent unfreeze`              | Remove `.reagent/HALT` — resumes tool calls       |
-| `reagent cache check <sha>`     | Check review cache for a file SHA                 |
-| `reagent cache set <sha> <res>` | Store a review result (pass/fail/advisory)        |
-| `reagent cache clear`           | Clear all cached review results                   |
-| `reagent help`                  | Show usage help                                   |
+| Command                         | Description                                                        |
+| ------------------------------- | ------------------------------------------------------------------ |
+| `reagent init`                  | Install reagent config into the current directory                  |
+| `reagent serve`                 | Start the MCP server on stdio (spawned by Claude Code via .mcp.json) |
+| `reagent check`                 | Verify which reagent components are installed                      |
+| `reagent freeze --reason "..."` | Create `.reagent/HALT` — suspends all tool calls and hook actions  |
+| `reagent unfreeze`              | Remove `.reagent/HALT` — resumes tool calls and hook actions       |
+| `reagent catalyze`              | Analyze project stack and generate gap report                      |
+| `reagent upgrade`               | Re-sync installed hooks from the current package version           |
+| `reagent cache check <sha>`     | Check review cache for a file SHA                                  |
+| `reagent cache set <sha> <res>` | Store a review result (pass/fail/advisory)                         |
+| `reagent cache clear`           | Clear all cached review results                                    |
+| `reagent help`                  | Show usage help                                                     |
 
 ## `reagent init`
 
@@ -27,6 +28,7 @@ See [Config Scaffolder](/guides/config-scaffolder/) for full details.
 | Flag                      | Description                                    | Default             |
 | ------------------------- | ---------------------------------------------- | ------------------- |
 | `--profile <name>`        | Profile to install                             | `client-engagement` |
+| `--base-profile <name>`   | Base profile to use with a tech stack profile  | `client-engagement` |
 | `--dry-run`               | Preview what would be installed without writes | —                   |
 | `--github`                | Scaffold GitHub labels, milestones, and topics | —                   |
 | `--discord`               | Configure Discord notifications in gateway     | —                   |
@@ -35,6 +37,14 @@ See [Config Scaffolder](/guides/config-scaffolder/) for full details.
 | `--tasks-channel <id>`    | Discord channel for task events                | —                   |
 | `--releases-channel <id>` | Discord channel for release events             | —                   |
 | `--dev-channel <id>`      | Discord channel for dev activity               | —                   |
+
+## `reagent serve`
+
+Starts the MCP server on stdio. This command is called by Claude Code automatically via the
+`.mcp.json` declaration written by `reagent init`. You do not normally invoke this manually.
+
+reagent loads `.reagent/policy.yaml` and `.reagent/gateway.yaml` from the current directory,
+connects to any configured downstream servers, and starts listening on stdio.
 
 ## `reagent catalyze`
 
@@ -49,9 +59,32 @@ See [Stack Analyzer](/guides/stack-analyzer/) for full details.
 
 ## `reagent freeze`
 
+Creates `.reagent/HALT` with the provided reason as the file content. Every hook checks for
+this file at the top of its script. Every tool call checks it at the kill-switch middleware
+layer. Nothing gets through while the file exists.
+
 | Flag              | Description                        | Default         |
 | ----------------- | ---------------------------------- | --------------- |
 | `--reason <text>` | Reason for freeze (stored in HALT) | `Manual freeze` |
+
+## `reagent unfreeze`
+
+Removes `.reagent/HALT`. Agent operations resume immediately.
+
+## `reagent upgrade`
+
+Re-syncs installed hooks from the current package version and updates the `installed_by`
+version stamp in `policy.yaml`. Run this after upgrading the `@bookedsolid/reagent` package
+to pull in any new or updated hook scripts.
+
+```bash
+npm update -g @bookedsolid/reagent
+reagent upgrade
+```
+
+| Flag        | Description                              |
+| ----------- | ---------------------------------------- |
+| `--dry-run` | Print what would be updated without writing |
 
 ## `reagent cache`
 

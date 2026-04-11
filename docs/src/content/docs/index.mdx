@@ -1,12 +1,12 @@
 ---
 title: Reagent
-description: Zero-trust MCP gateway and agentic infrastructure for AI-assisted development.
+description: Zero-trust MCP server for AI-assisted development. Every tool call — policy enforced.
 template: splash
 hero:
-  tagline: Zero-trust MCP gateway and agentic infrastructure for AI-assisted development.
+  tagline: Zero-trust MCP server for AI-assisted development. Every tool call — policy enforced.
   actions:
     - text: Get Started
-      link: /getting-started/installation/
+      link: getting-started/installation/
       icon: right-arrow
       variant: primary
     - text: View on GitHub
@@ -22,18 +22,19 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 Reagent is four things:
 
 <CardGrid stagger>
-  <Card title="MCP Gateway" icon="setting">
-    A proxy server (`reagent serve`) that sits between your AI assistant and downstream MCP tool
-    servers. Every tool call flows through a zero-trust middleware chain: policy enforcement, tier
-    classification, blocked path enforcement, secret redaction, and hash-chained audit logging.
+  <Card title="MCP Server" icon="setting">
+    `reagent serve` sits between Claude Code and every tool your AI agent can reach. Every tool
+    call — whether native or proxied — flows through a 12-layer zero-trust middleware chain:
+    policy enforcement, tier classification, blocked path enforcement, secret redaction, and
+    hash-chained audit logging.
   </Card>
   <Card title="Config Scaffolder" icon="puzzle">
-    `reagent init` installs safety hooks, behavioral policies, quality gates, agent teams, and
-    developer tooling into any project.
+    `reagent init` writes `.mcp.json` and installs safety hooks, behavioral policies, quality
+    gates, agent teams, and developer tooling into any project in one command.
   </Card>
   <Card title="Stack Analyzer" icon="magnifier">
-    `reagent catalyze` detects your project's tech stack and generates a gap analysis report showing
-    which hooks, gates, and agents are missing.
+    `reagent catalyze` detects your project's tech stack and generates a gap analysis report
+    showing which hooks, gates, and agents are missing.
   </Card>
   <Card title="Project Management" icon="list-format">
     Lightweight task tracking with JSONL event store, native MCP tools, GitHub issue sync, and a
@@ -46,8 +47,8 @@ Reagent is four things:
 AI coding assistants are powerful but unconstrained. Reagent adds the missing governance layer:
 
 - **Policy enforcement** — graduated autonomy levels (L0–L3) control which tiers of tools an agent can invoke
-- **Kill switch** — `reagent freeze` immediately blocks all tool calls across every connected MCP server
+- **Kill switch** — `reagent freeze` immediately blocks all tool calls and hook-guarded commands
 - **Secret redaction** — tool arguments and outputs are scanned for AWS keys, GitHub tokens, API keys, PEM private keys, and more
 - **Audit trail** — every tool invocation is logged as hash-chained JSONL with serialized writes for chain integrity
-- **20 security hooks** — settings protection, secret scanning, dangerous command interception, blocked path enforcement, and more
+- **23 security hooks** — settings protection, secret scanning, dangerous command interception, blocked path enforcement, and more
 - **Quality gates** — commit and push review gates with triage scoring and agent-spawned code review

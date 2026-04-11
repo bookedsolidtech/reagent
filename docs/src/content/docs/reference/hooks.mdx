@@ -1,11 +1,15 @@
 ---
 title: Hooks
-description: Complete reference for all 20 Claude Code hooks installed by Reagent.
+description: Complete reference for all 23 Claude Code hooks installed by Reagent.
 sidebar:
   order: 4
 ---
 
-Reagent installs 20 Claude Code hooks that enforce security, quality, and project management policies. Hooks are shell scripts that run as PreToolUse or PostToolUse interceptors.
+Reagent installs 23 Claude Code hooks that enforce security, quality, and project management
+policies. Hooks are shell scripts that run as PreToolUse or PostToolUse interceptors.
+
+Every hook checks for `.reagent/HALT` at the top of its script. If the file exists, the hook
+returns exit code 2 (hard block) immediately.
 
 ## Hook architecture
 

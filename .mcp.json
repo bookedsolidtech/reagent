@@ -4,6 +4,14 @@
       "type": "stdio",
       "command": "node",
       "args": ["dist/cli/index.js", "serve"]
+    },
+    "discord-ops": {
+      "command": "npx",
+      "args": ["-y", "discord-ops@latest"],
+      "env": {
+        "BOOKED_DISCORD_BOT_TOKEN": "${BOOKED_DISCORD_BOT_TOKEN}",
+        "CLARITY_DISCORD_BOT_TOKEN": "${CLARITY_DISCORD_BOT_TOKEN}"
+      }
     }
   }
 }

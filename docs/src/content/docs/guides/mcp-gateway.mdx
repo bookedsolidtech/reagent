@@ -1,24 +1,49 @@
 ---
-title: MCP Gateway
-description: Set up and configure the Reagent MCP gateway server.
+title: MCP Server Proxy
+description: Proxy additional MCP servers through Reagent so every tool call gets the same middleware enforcement.
 sidebar:
   order: 1
 ---
 
-The MCP gateway (`reagent serve`) is a proxy server that sits between your AI assistant and downstream MCP tool servers. Every tool call flows through the [middleware chain](/concepts/middleware-chain/).
+reagent is an MCP server, not just a proxy. Claude Code connects to it via stdio transport
+declared in `.mcp.json`. reagent then connects outward to any downstream MCP servers you
+configure in `.reagent/gateway.yaml`.
+
+Instead of listing your filesystem server, GitHub server, and other tools directly in `.mcp.json`
+(which would bypass reagent's middleware), declare them in `gateway.yaml`. Every proxied call
+goes through the same 12-layer middleware chain as native tool calls — policy, redaction, audit,
+rate-limiting, and the kill switch all apply.
 
 ## How it works
 
-1. Connects to all downstream MCP servers defined in `.reagent/gateway.yaml`
-2. Discovers their tools via MCP `tools/list`
-3. Re-registers each tool on the gateway with namespace prefixes (`servername__toolname`)
-4. Registers native first-party tools through the same middleware chain
-5. Wraps every tool call in the middleware chain
-6. Listens on stdio for incoming MCP requests from the AI assistant
+1. Claude Code spawns `reagent serve` on session start via `.mcp.json`
+2. reagent reads `.reagent/gateway.yaml` and connects to each downstream server
+3. It discovers their tools via MCP `tools/list`
+4. Each tool is re-registered with a namespace prefix (`servername__toolname`)
+5. Native first-party tools are registered through the same middleware chain
+6. Every tool call — native or proxied — passes through the 12-layer middleware chain
+7. reagent listens on stdio for incoming MCP requests from Claude Code
+
+## `.mcp.json` (written by `reagent init`)
+
+```json
+{
+  "mcpServers": {
+    "reagent": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["reagent", "serve"]
+    }
+  }
+}
+```
+
+Do not add downstream servers directly to `.mcp.json`. Add them to `.reagent/gateway.yaml`
+so they are proxied through reagent's middleware.
 
 ## Configuration
 
-Create `.reagent/gateway.yaml`:
+Create or edit `.reagent/gateway.yaml`:
 
 ```yaml
 version: '1'
@@ -39,15 +64,21 @@ servers:
       delete_channel:
         tier: destructive
         blocked: true
+
+gateway:
+  max_result_size_kb: 512
 ```
 
 ### Environment variable resolution
 
-Use `${VAR_NAME}` syntax in env values — Reagent resolves them from `process.env` at startup. Missing env vars produce a warning and resolve to empty string.
+Use `${VAR_NAME}` syntax in env values. reagent resolves them from `process.env` at startup.
+Missing env vars produce a warning and resolve to empty string.
 
 ### Tool overrides
 
-Each downstream tool can be assigned a tier (`read`, `write`, `destructive`) and optionally blocked entirely. Overrides cannot lower a tool's tier below its static or convention-based classification (the override is ignored with a warning if attempted).
+Each downstream tool can be assigned a tier (`read`, `write`, `destructive`) and optionally
+blocked entirely. Overrides cannot lower a tool's tier below its static or convention-based
+classification — the override is ignored with a warning if attempted.
 
 ## Tool namespacing
 
@@ -68,31 +99,45 @@ servers:
   discord-ops:
     command: node
     args: [/path/to/discord-ops/dist/index.js]
+
   filesystem:
     command: npx
     args: [-y, '@modelcontextprotocol/server-filesystem', '/allowed/path']
+
   github:
     command: npx
     args: [-y, '@modelcontextprotocol/server-github']
     env:
       GITHUB_PERSONAL_ACCESS_TOKEN: '${GITHUB_TOKEN}'
+    calls_per_minute: 120
+
+gateway:
+  max_result_size_kb: 512
 ```
 
-All tools from all servers are aggregated into a single gateway.
+All tools from all servers are aggregated and served over reagent's single stdio connection
+to Claude Code.
 
-## Connecting your AI assistant
+## Rate limiting and circuit breaking
 
-Point your AI assistant's MCP configuration at the gateway:
+Per-server rate limits and concurrency limits are enforced by the middleware chain:
 
-```json
-{
-  "mcpServers": {
-    "reagent": {
-      "command": "reagent",
-      "args": ["serve"]
-    }
-  }
-}
+```yaml
+postgres:
+  command: npx
+  args: ['@modelcontextprotocol/server-postgres', '${DATABASE_URL}']
+  calls_per_minute: 60
+  max_concurrent_calls: 5
+  tool_overrides:
+    execute_query:
+      tier: destructive
 ```
 
-All downstream tool calls now flow through Reagent's middleware chain.
+The circuit breaker tracks consecutive downstream failures and opens after a configurable
+threshold, denying calls to that server until it resets.
+
+## References
+
+- [Gateway Config reference](/reference/gateway-config/)
+- [Middleware Chain](/concepts/middleware-chain/)
+- [Autonomy Levels](/concepts/autonomy-levels/)

@@ -9,6 +9,7 @@ import { runServe } from './commands/serve.js';
 import { runCache } from './commands/cache.js';
 import { runCatalyze } from './commands/catalyze/index.js';
 import { runDaemon } from './commands/daemon/index.js';
+import { runSupervisorLoop } from './commands/daemon/start.js';
 import { runUpgrade } from './commands/upgrade.js';
 
 const [, , cmd, ...rest] = process.argv;
@@ -43,6 +44,19 @@ switch (cmd) {
   case 'daemon':
     runDaemon(rest);
     break;
+  case '__supervisor__':
+    // Internal: entered when the background-detached child process starts.
+    // Never exposed in help output.
+    {
+      const bin = process.env['REAGENT_SUPERVISOR_BIN'];
+      const logLevel = process.env['REAGENT_SUPERVISOR_LOG_LEVEL'] ?? 'info';
+      if (!bin) {
+        console.error('[reagent] __supervisor__: REAGENT_SUPERVISOR_BIN not set');
+        process.exit(1);
+      }
+      runSupervisorLoop(bin, logLevel);
+    }
+    break;
   case 'upgrade':
     runUpgrade(rest);
     break;
@@ -67,7 +81,7 @@ Commands:
   freeze     Create .reagent/HALT to suspend all agent operations
   unfreeze   Remove .reagent/HALT to resume agent operations
   serve      Start the MCP gateway server (stdio transport)
-  daemon     Manage the persistent HTTP/SSE multi-project daemon
+  daemon     Manage the keep-alive supervisor for reagent serve
   cache      Manage review cache (check, set, clear)
   upgrade    Re-sync installed hooks and update policy.yaml version stamp
   help       Show this help

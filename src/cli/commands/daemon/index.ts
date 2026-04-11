@@ -40,26 +40,25 @@ export function runDaemon(args: string[]): void {
 
 function printDaemonHelp(): void {
   console.log(`
-reagent daemon — persistent HTTP/SSE multi-project MCP gateway
+reagent daemon — keep-alive supervisor for reagent serve
 
 Usage:
   reagent daemon <subcommand> [options]
 
 Subcommands:
-  start     Start the daemon in the background
-  stop      Stop the running daemon
-  status    Show daemon health and active sessions
-  restart   Gracefully restart the daemon
-  eject     Nuclear kill — SIGKILL daemon and sweep orphans (last resort)
+  start     Start the supervisor in the background (keeps reagent serve alive)
+  stop      Stop the running supervisor
+  status    Show supervisor health and uptime
+  restart   Gracefully restart the supervisor
+  eject     Nuclear kill — SIGKILL supervisor (last resort)
 
 Options for start:
-  --port <port>       Override the listen port (default: 3737)
-  --bind <addr>       Override the bind address (default: 127.0.0.1)
   --foreground        Run in foreground instead of backgrounding
+  --reagent-bin <p>   Override the path to the reagent binary
 
 Examples:
   reagent daemon start
-  reagent daemon start --port 8888
+  reagent daemon start --foreground
   reagent daemon status
   reagent daemon stop
   reagent daemon restart

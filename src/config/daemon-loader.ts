@@ -11,23 +11,13 @@ function getDaemonConfigPath(): string {
   return path.join(os.homedir(), '.reagent', 'daemon.yaml');
 }
 
-const DaemonAuthSchema = z.object({
-  api_keys: z.array(z.string()).optional(),
-});
-
 const DaemonConfigSchema = z.object({
-  port: z.number().int().min(1).max(65535).default(7777),
-  bind: z.string().default('127.0.0.1'),
-  session_ttl_minutes: z.number().int().min(1).default(30),
+  reagent_bin: z.string().optional(),
   log_level: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
-  auth: DaemonAuthSchema.optional(),
 });
 
 /** Default config used when ~/.reagent/daemon.yaml is absent. */
 const DAEMON_DEFAULTS: DaemonConfig = {
-  port: 7777,
-  bind: '127.0.0.1',
-  session_ttl_minutes: 30,
   log_level: 'info',
 };
 
@@ -55,8 +45,7 @@ function parseRawDaemonConfig(raw: string, configPath: string): DaemonConfig {
  * Async daemon config loader.
  *
  * Reads ~/.reagent/daemon.yaml and returns a validated DaemonConfig.
- * Falls back to defaults if the file is absent — the daemon does not require
- * the config file to exist.
+ * Falls back to defaults if the file is absent.
  */
 export async function loadDaemonConfigAsync(): Promise<DaemonConfig> {
   const configPath = getDaemonConfigPath();
@@ -65,7 +54,6 @@ export async function loadDaemonConfigAsync(): Promise<DaemonConfig> {
   try {
     raw = await fsPromises.readFile(configPath, 'utf8');
   } catch {
-    // File absent — return defaults
     return { ...DAEMON_DEFAULTS };
   }
 

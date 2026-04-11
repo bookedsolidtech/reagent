@@ -12,11 +12,11 @@ function getPidFilePath(): string {
  * `reagent daemon eject` — unconditional nuclear kill.
  *
  * Does not attempt graceful shutdown. Suitable as a last resort when the
- * daemon is stuck and `reagent daemon stop` is unresponsive.
+ * supervisor is stuck and `reagent daemon stop` is unresponsive.
  *
  * Steps:
  *   1. SIGKILL the PID recorded in ~/.reagent/daemon.pid
- *   2. pkill -f reagent-daemon as a fallback (catches orphans not in PID file)
+ *   2. pkill -f "__supervisor__" as a fallback (catches orphans not in PID file)
  *   3. Remove ~/.reagent/daemon.pid
  */
 export function runDaemonEject(_args: string[]): void {
@@ -49,11 +49,11 @@ export function runDaemonEject(_args: string[]): void {
     console.log(`[reagent] No PID file found at ${pidPath}`);
   }
 
-  // Step 2: pkill fallback — catches orphaned processes not tracked by PID file
+  // Step 2: pkill fallback — catches orphaned supervisor processes not tracked by PID file
   try {
-    execSync('pkill -KILL -f reagent-daemon 2>/dev/null || true', { stdio: 'ignore' });
+    execSync('pkill -KILL -f __supervisor__ 2>/dev/null || true', { stdio: 'ignore' });
     if (!killedViaPid) {
-      console.log('[reagent] pkill -KILL -f reagent-daemon executed (orphan sweep)');
+      console.log('[reagent] pkill -KILL -f __supervisor__ executed (orphan sweep)');
     }
   } catch {
     // pkill exits non-zero when no processes matched — that is acceptable

@@ -29,3 +29,6 @@ src/__tests__/gateway/_mock-downstream.mjs
 .reagent/audit/
 .reagent/tasks.lock
 /.scratch/
+
+# Rust build artifacts (daemon/ crate — kept for historical reference)
+daemon/target/

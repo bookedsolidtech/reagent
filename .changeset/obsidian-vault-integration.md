@@ -1,5 +1,5 @@
 ---
-"@bookedsolid/reagent": minor
+'@bookedsolid/reagent': minor
 ---
 
 Add opt-in Obsidian vault integration for syncing project state as plain markdown

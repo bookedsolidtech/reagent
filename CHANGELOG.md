@@ -1,5 +1,19 @@
 # @bookedsolid/reagent
 
+## 0.14.2
+
+### Patch Changes
+
+- Bug fixes from code review, README Obsidian docs, serve npx resolution
+  - Fix empty/malformed YAML crash in upgrade-policy merge
+  - Add 'tasks' target to obsidian_sync MCP tool enum
+  - Fix TASKS_PATH extraction in tasks hook (was matching sync.tasks instead of paths.tasks)
+  - Anchor grep patterns in hooks to indentation level (prevent false positives)
+  - Add REAGENT_OBSIDIAN_CLI env var override for non-standard install paths
+  - Fix npx resolution: use scoped '@bookedsolid/reagent' in .mcp.json init
+  - Update init/obsidian template with all current schema fields
+  - Add comprehensive Obsidian vault integration section to README
+
 ## 0.14.0
 
 ### Minor Changes

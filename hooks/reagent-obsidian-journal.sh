@@ -28,8 +28,8 @@ if [[ ! -f "$GATEWAY" ]]; then
 fi
 
 # ── Guard: journal sync enabled ──────────────────────────────────────
-# Simple grep check — avoids YAML parsing dependency
-if ! grep -q 'journal:\s*true' "$GATEWAY" 2>/dev/null; then
+# Anchored grep — must be indented (under sync: block), avoids matching comments
+if ! grep -qE '^\s+journal:\s*true' "$GATEWAY" 2>/dev/null; then
   exit 0
 fi
 

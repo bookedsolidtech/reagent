@@ -334,7 +334,7 @@ export function registerNativeTools(
     'Sync project state to an Obsidian vault. Requires obsidian_vault to be enabled in .reagent/gateway.yaml and REAGENT_OBSIDIAN_VAULT env var (or vault_path in config).',
     {
       target: z
-        .enum(['kanban', 'context', 'wiki', 'all'])
+        .enum(['kanban', 'context', 'wiki', 'tasks', 'all'])
         .optional()
         .default('all')
         .describe('Sync target (default: all enabled targets)'),
@@ -366,6 +366,8 @@ export function registerNativeTools(
           return obsidian.syncContextDump(dryRun);
         case 'wiki':
           return obsidian.syncWiki(dryRun);
+        case 'tasks':
+          return obsidian.syncTasks(dryRun);
         default:
           return { error: `Unknown target: ${target}` };
       }

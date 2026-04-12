@@ -20,15 +20,24 @@ function buildObsidianVaultYaml(opts: ObsidianInitOptions): string {
 obsidian_vault:
   enabled: false
   vault_path: '${opts.vaultPath || ''}'
+  vault_name: ''
   paths:
     root: 'Projects/Reagent'
     kanban: 'Projects/Reagent/Kanban.md'
     sources: 'Projects/Reagent/Sources'
     wiki: 'Projects/Reagent/Auto'
+    tasks: 'Tasks'
+    sessions: 'Wiki/Sessions'
   sync:
     kanban: false
     context_dump: false
     wiki_refresh: false
+    journal: true
+    precompact: false
+    tasks: true
+  precompact:
+    engine: 'claude'
+    model: null
 `;
 }
 

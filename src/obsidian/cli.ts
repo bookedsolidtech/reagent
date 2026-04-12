@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
-const OBSIDIAN_CLI = '/usr/local/bin/obsidian';
+const OBSIDIAN_CLI = process.env['REAGENT_OBSIDIAN_CLI'] || '/usr/local/bin/obsidian';
 const EXEC_TIMEOUT = 10_000; // 10s
 
 /**

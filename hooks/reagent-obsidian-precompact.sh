@@ -30,7 +30,8 @@ if [[ ! -f "$GATEWAY" ]]; then
 fi
 
 # ── Guard: precompact sync enabled ───────────────────────────────────
-if ! grep -q 'precompact:\s*true' "$GATEWAY" 2>/dev/null; then
+# Anchored grep — must be indented (under sync: block), avoids matching comments
+if ! grep -qE '^\s+precompact:\s*true' "$GATEWAY" 2>/dev/null; then
   exit 0
 fi
 

@@ -104,4 +104,28 @@ describe('mergePolicy', () => {
     expect(afterSecond).toBe(afterFirst);
     expect(results.every((r) => r.status === 'skipped')).toBe(true);
   });
+
+  it('handles empty policy.yaml gracefully', () => {
+    writePolicy('');
+    const results = mergePolicy(tmpDir, '1.0.0', false);
+    expect(results).toHaveLength(1);
+    expect(results[0].status).toBe('warn');
+    // File should not be modified
+    expect(readPolicy()).toBe('');
+  });
+
+  it('handles comment-only policy.yaml gracefully', () => {
+    writePolicy('# just a comment\n');
+    const results = mergePolicy(tmpDir, '1.0.0', false);
+    expect(results).toHaveLength(1);
+    expect(results[0].status).toBe('warn');
+  });
+
+  it('handles YAML with syntax errors gracefully', () => {
+    writePolicy('version: "1"\n  bad indent: [unclosed\n');
+    // parseDocument stores errors but doesn't throw — mergePolicy catches
+    // the stringify error and returns a warn result
+    const results = mergePolicy(tmpDir, '1.0.0', false);
+    expect(results.some((r) => r.status === 'warn')).toBe(true);
+  });
 });

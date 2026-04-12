@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseDocument, type Document } from 'yaml';
+import { parseDocument } from 'yaml';
 import type { InstallResult } from './init/types.js';
 
 /**
@@ -49,6 +49,15 @@ export function mergePolicy(
   const raw = fs.readFileSync(policyPath, 'utf8');
   const doc = parseDocument(raw);
 
+  // Guard: empty or malformed YAML (no mapping node)
+  if (!doc.contents) {
+    results.push({ file: '.reagent/policy.yaml', status: 'warn' });
+    console.warn(
+      '  Warning: .reagent/policy.yaml is empty or malformed. Run `reagent init` to recreate.'
+    );
+    return results;
+  }
+
   let changed = false;
 
   // 1. Update installed_by version stamp
@@ -73,36 +82,21 @@ export function mergePolicy(
 
   // 3. Clean blocked_paths if requested
   if (options?.cleanBlockedPaths) {
-    const blockedPaths = doc.get('blocked_paths');
-    if (Array.isArray(blockedPaths)) {
-      const hasReagentBlanket = blockedPaths.some(
-        (p: unknown) => p === '.reagent/' || p === '.reagent'
-      );
-      if (hasReagentBlanket) {
-        // Remove .reagent/ and add granular entries
-        const cleaned = blockedPaths.filter((p: unknown) => p !== '.reagent/' && p !== '.reagent');
-        for (const granular of GRANULAR_BLOCKED_PATHS) {
-          if (!cleaned.includes(granular)) {
-            cleaned.push(granular);
-          }
-        }
-        doc.set('blocked_paths', cleaned);
-        changed = true;
-        results.push({
-          file: '.reagent/policy.yaml (blocked_paths: .reagent/ → granular)',
-          status: 'updated',
-        });
-      }
-    } else if (isYamlSeq(doc, 'blocked_paths')) {
-      // Handle YAML Seq node (parsed as YAML AST, not plain array)
-      const node = doc.getIn(['blocked_paths'], true) as {
-        items?: Array<{ value?: unknown }>;
-      };
-      if (node && 'items' in node && Array.isArray(node.items)) {
-        const values = node.items.map((item) => ('value' in item ? item.value : item));
+    // doc.get() on a parseDocument returns YAML AST nodes, not plain arrays.
+    // Use toJSON() to resolve to plain JS values for manipulation.
+    const blockedNode = doc.get('blocked_paths');
+    if (blockedNode != null) {
+      const values: unknown[] =
+        typeof (blockedNode as { toJSON?: () => unknown }).toJSON === 'function'
+          ? ((blockedNode as { toJSON: () => unknown }).toJSON() as unknown[])
+          : Array.isArray(blockedNode)
+            ? blockedNode
+            : [];
+
+      if (Array.isArray(values)) {
         const hasReagentBlanket = values.some((v) => v === '.reagent/' || v === '.reagent');
         if (hasReagentBlanket) {
-          const cleaned = values.filter((v) => v !== '.reagent/' && v !== '.reagent');
+          const cleaned = values.filter((v: unknown) => v !== '.reagent/' && v !== '.reagent');
           for (const granular of GRANULAR_BLOCKED_PATHS) {
             if (!cleaned.includes(granular)) {
               cleaned.push(granular);
@@ -122,7 +116,13 @@ export function mergePolicy(
   // 4. Write or report
   if (changed) {
     if (!dryRun) {
-      fs.writeFileSync(policyPath, doc.toString(), 'utf8');
+      try {
+        fs.writeFileSync(policyPath, doc.toString(), 'utf8');
+      } catch {
+        results.push({ file: '.reagent/policy.yaml', status: 'warn' });
+        console.warn('  Warning: .reagent/policy.yaml has YAML errors and cannot be updated.');
+        return results;
+      }
       results.push({
         file: '.reagent/policy.yaml (installed_by updated)',
         status: 'updated',
@@ -138,12 +138,4 @@ export function mergePolicy(
   }
 
   return results;
-}
-
-/**
- * Check if a key in the document is a YAML Seq node (not yet resolved to array).
- */
-function isYamlSeq(doc: Document, key: string): boolean {
-  const node = doc.getIn([key], true);
-  return node !== undefined && typeof node === 'object' && node !== null && 'items' in node;
 }

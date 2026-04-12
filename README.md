@@ -374,6 +374,143 @@ the task board from within Claude Code conversations.
 {"id":"T-001","type":"completed","title":"Implement login flow","commit_refs":["abc1234"],"pr_ref":"#42","timestamp":"2026-04-01T14:30:00.000Z"}
 ```
 
+## Obsidian vault integration
+
+reagent can integrate with [Obsidian](https://obsidian.md) vaults for project knowledge
+management. Session journaling, task sync, knowledge extraction before context compaction,
+and vault health monitoring — all driven by hooks and the CLI.
+
+The integration is **opt-in by default**. Nothing Obsidian-related activates unless you
+explicitly configure it. Every Obsidian operation is fail-silent: if the CLI is missing,
+the vault path is wrong, or a sync target is disabled, reagent exits cleanly with no
+errors and no blocked operations.
+
+### Prerequisites
+
+- **Obsidian CLI** installed at `/usr/local/bin/obsidian`
+- An Obsidian vault directory for each project you want to integrate
+
+### Setup
+
+Enable the integration during init:
+
+```bash
+reagent init --obsidian --vault-path /path/to/vault
+```
+
+Or set the vault path via environment variable:
+
+```bash
+export REAGENT_OBSIDIAN_VAULT=/path/to/vault
+```
+
+Both methods write an `obsidian_vault` block to `.reagent/gateway.yaml`:
+
+```yaml
+obsidian_vault:
+  enabled: true
+  vault_path: '/path/to/vault'
+  vault_name: 'MyProject'
+  paths:
+    root: 'Projects/Reagent'
+    kanban: 'Projects/Reagent/Kanban.md'
+    sources: 'Projects/Reagent/Sources'
+    wiki: 'Projects/Reagent/Auto'
+    tasks: 'Tasks'
+    sessions: 'Wiki/Sessions'
+  sync:
+    kanban: false
+    context_dump: false
+    wiki_refresh: false
+    journal: true # Tier 1 — on by default when integration is enabled
+    precompact: false # Tier 2 — opt-in
+    tasks: true # Tier 3 — on by default when integration is enabled
+  precompact:
+    engine: 'claude' # 'claude' or 'ollama'
+    model: null # null = use default model for the engine
+```
+
+Vault path resolution order:
+
+1. `REAGENT_OBSIDIAN_VAULT` environment variable (absolute path)
+2. `obsidian_vault.vault_path` in `gateway.yaml`
+3. Not set — integration disabled
+
+### Three-tier hook architecture
+
+Obsidian sync is organized into three tiers, each backed by a dedicated Claude Code hook.
+Each tier operates independently and can be enabled or disabled individually.
+
+**Tier 1 — Session Journal** (`reagent-obsidian-journal.sh`)
+
+Fires when a Claude Code session ends. Appends a session summary to the daily note in
+your vault via `obsidian daily:append`. The summary includes the project name, a session
+identifier, timestamp, and task state counts (completed, in progress, blocked, backlog)
+pulled from `.reagent/tasks.jsonl`.
+
+Enable: `sync.journal: true` (default when integration is enabled).
+
+**Tier 2 — PreCompact Knowledge Extraction** (`reagent-obsidian-precompact.sh`)
+
+Fires before Claude Code compacts context. Creates a session knowledge note in
+`Wiki/Sessions/` (or your configured `paths.sessions` directory) with frontmatter
+tagging the project, date, session ID, and extraction engine.
+
+This tier is a stub — the knowledge extraction engine is not yet fully implemented.
+The hook creates a structured placeholder note with sections for Decisions, Discoveries,
+and Open Questions. The `precompact.engine` field (`claude` or `ollama`) determines which
+backend will perform extraction when the implementation is complete.
+
+Enable: `sync.precompact: true` (disabled by default).
+
+**Tier 3 — Task Materialization** (`reagent-obsidian-tasks.sh`)
+
+Fires after `task_create` and `task_update` MCP tool calls. Materializes each task as an
+individual Obsidian note in the `Tasks/` directory with typed frontmatter:
+
+```yaml
+---
+reagent_managed: true
+task_id: T-001
+project: my-project
+status: started
+urgency: critical
+assignee: frontend-specialist
+---
+```
+
+Sync is one-way: JSONL to Obsidian. The hook extracts the task ID from the tool result,
+reads the latest event for that task from `.reagent/tasks.jsonl`, and creates or overwrites
+the corresponding note.
+
+Enable: `sync.tasks: true` (default when integration is enabled).
+
+### CLI commands
+
+```
+reagent obsidian sync [--target kanban|context|wiki|tasks] [--dry-run]
+  Sync enabled targets to the Obsidian vault. Without --target, syncs all
+  enabled targets. --dry-run previews what would be written.
+
+reagent obsidian status
+  Show current Obsidian configuration: vault path, CLI availability,
+  configured paths, and which sync targets are enabled or disabled.
+
+reagent obsidian health
+  Show vault health metrics: orphan notes, unresolved links, and dead ends.
+  Requires vault_name set in gateway.yaml and the Obsidian CLI installed.
+
+reagent obsidian journal
+  Manually trigger a session journal entry in the daily note. Useful for
+  ad-hoc journaling outside of the automatic session-end hook.
+```
+
+### Vault-per-project mapping
+
+Each project maps to its own Obsidian vault. The vault path is resolved per-project from
+that project's `.reagent/gateway.yaml` or `REAGENT_OBSIDIAN_VAULT` environment variable.
+There is no global vault registry — each project is self-contained.
+
 ## CLI reference
 
 ```
@@ -388,6 +525,8 @@ reagent init [options]
   --tasks-channel <id>  Discord channel ID for task events
   --releases-channel    Discord channel ID for release events
   --dev-channel <id>    Discord channel ID for dev activity
+  --obsidian            Enable Obsidian vault integration in gateway.yaml
+  --vault-path <path>   Absolute path to the Obsidian vault directory
 
 reagent serve
   Starts the MCP server on stdio. Loaded by Claude Code via .mcp.json.
@@ -408,12 +547,19 @@ reagent catalyze [targetDir]
   --audit   Compare current state against the last plan and show drift
   --dry-run Print analysis without writing files
 
-reagent upgrade [--dry-run]
+reagent upgrade [--dry-run] [--clean-blocked-paths]
   Re-syncs installed hooks from the current package version and updates the
   version stamp in policy.yaml. Run after upgrading the reagent package.
+  --clean-blocked-paths replaces the blanket '.reagent/' blocked path with
+  granular entries, allowing agents to write to operational files (tasks,
+  review cache) while keeping policy and audit files protected.
 
 reagent cache <set|get|del> <key> [value]
   Manages the review cache used by commit-review-gate and push-review-gate.
+
+reagent obsidian <sync|status|health|journal>
+  Obsidian vault integration commands. See the Obsidian vault integration
+  section above for full documentation.
 ```
 
 ## Configuration

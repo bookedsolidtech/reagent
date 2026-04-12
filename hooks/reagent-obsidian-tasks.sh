@@ -30,7 +30,8 @@ if [[ ! -f "$GATEWAY" ]]; then
 fi
 
 # ── Guard: tasks sync enabled ────────────────────────────────────────
-if ! grep -q 'tasks:\s*true' "$GATEWAY" 2>/dev/null; then
+# Match sync.tasks specifically — use awk to only match within the sync: block
+if ! awk '/^\s+sync:/{found=1} found && /tasks:\s*true/{exit 0} END{exit 1}' "$GATEWAY" 2>/dev/null; then
   exit 0
 fi
 
@@ -45,15 +46,16 @@ if [[ -z "$VAULT_NAME" ]]; then
   exit 0
 fi
 
-TASKS_PATH=$(grep -E '^\s+tasks:' "$GATEWAY" 2>/dev/null | head -1 | sed "s/.*tasks:\s*['\"]*//" | sed "s/['\"].*//")
+# Extract paths.tasks — use awk to match only within the paths: block (not sync:)
+TASKS_PATH=$(awk '/^\s+paths:/{found=1} found && /tasks:/{print; exit}' "$GATEWAY" 2>/dev/null | sed "s/.*tasks:\s*['\"]*//" | sed "s/['\"].*//")
 TASKS_PATH="${TASKS_PATH:-Tasks}"
 
 PROJECT_NAME=$(basename "$(pwd)")
 
 # ── Read tool result from stdin (Claude hook protocol) ────────────────
 TOOL_RESULT=""
-if [[ -p /dev/stdin ]]; then
-  TOOL_RESULT=$(cat)
+if [[ ! -t 0 ]]; then
+  TOOL_RESULT=$(cat 2>/dev/null || true)
 fi
 
 # Extract task ID from the tool result JSON

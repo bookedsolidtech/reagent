@@ -252,7 +252,7 @@ servers:
       runInit();
       const content = fs.readFileSync(path.join(tmpDir, '.reagent', 'policy.yaml'), 'utf8');
 
-      expect(content).toContain('.reagent/');
+      expect(content).toContain('.reagent/policy.yaml');
       expect(content).toContain('.env');
     });
 
@@ -532,7 +532,8 @@ servers:
       runInit(['--profile', 'bst-internal']);
       const content = fs.readFileSync(path.join(tmpDir, '.reagent', 'policy.yaml'), 'utf8');
 
-      expect(content).toContain('.reagent/');
+      expect(content).toContain('.reagent/policy.yaml');
+      expect(content).toContain('.reagent/HALT');
       expect(content).toContain('.env');
     });
   });

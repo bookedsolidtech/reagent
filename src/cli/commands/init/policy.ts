@@ -28,7 +28,6 @@ export function installPolicy(
     const blockedPaths = profile.blockedPaths ?? [
       '.reagent/policy.yaml',
       '.reagent/HALT',
-      '.reagent/review-cache.json',
       '.github/workflows/',
       '.env',
       '.env.*',
@@ -86,6 +85,16 @@ coverage:
 #   disabled — no gate (not recommended)
 security:
   disclosure_mode: "${disclosureMode}"
+
+# Context protection — commands that must run in subagents, never in coordinator
+# The dangerous-bash-interceptor hook blocks these commands when run directly.
+# Prevents context window exhaustion from verbose test/build output.
+context_protection:
+  delegate_to_subagent:
+    - "pnpm run preflight"
+    - "pnpm run test"
+    - "pnpm run build"
+  max_bash_output_lines: 100
 `;
     fs.writeFileSync(policyPath, content, 'utf8');
   }

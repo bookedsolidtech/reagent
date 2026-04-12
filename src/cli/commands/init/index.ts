@@ -16,6 +16,7 @@ import { installPm } from './pm.js';
 import { installGitHub } from './github.js';
 import { installProfile, listTechProfiles } from './profiles.js';
 import { installDiscord, parseDiscordArgs } from './discord.js';
+import { installObsidian, parseObsidianArgs } from './obsidian.js';
 
 export function runInit(args: string[]): void {
   const profileName = parseFlag(args, '--profile') || 'client-engagement';
@@ -23,6 +24,7 @@ export function runInit(args: string[]): void {
   const dryRun = args.includes('--dry-run');
   const withGitHub = args.includes('--github');
   const withDiscord = args.includes('--discord');
+  const withObsidian = args.includes('--obsidian');
   const PKG_VERSION = getPkgVersion();
   // --preflight-cmd overrides lockfile detection; used to inject a custom preflight command
   const preflightCmdOverride = parseFlag(args, '--preflight-cmd');
@@ -179,7 +181,13 @@ export function runInit(args: string[]): void {
     results.push(...installDiscord(targetDir, discordOpts, dryRun));
   }
 
-  // Step 15: Tech profile overlay (hooks, gates, agents) — runs after base init
+  // Step 15: Obsidian vault integration (opt-in via --obsidian flag)
+  if (withObsidian) {
+    const obsidianOpts = parseObsidianArgs(args);
+    results.push(...installObsidian(targetDir, obsidianOpts, dryRun));
+  }
+
+  // Step 16: Tech profile overlay (hooks, gates, agents) — runs after base init
   if (isTechProfile) {
     const profileResult = installProfile(profileName, targetDir, dryRun);
     results.push(...profileResult.results);

@@ -1,5 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { runHook, bashPayload } from './test-utils.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { runHook, bashPayload, createTempProjectDir, cleanupTempProjectDir } from './test-utils.js';
 
 describe('dangerous-bash-interceptor', () => {
   const hook = 'dangerous-bash-interceptor';
@@ -107,6 +109,77 @@ describe('dangerous-bash-interceptor', () => {
       // So we test by using a temp dir with a HALT file
       const result = runHook(hook, bashPayload('git status'));
       // Project root should not have HALT, so this should pass
+      expect(result.exitCode).toBe(0);
+    });
+  });
+
+  // ── Context protection (H17) ─────────────────────────────────────
+
+  describe('context_protection — delegate_to_subagent', () => {
+    let tmpDir: string;
+
+    beforeEach(() => {
+      tmpDir = createTempProjectDir();
+      const policyContent = [
+        'version: "1"',
+        'profile: "test"',
+        'autonomy_level: L1',
+        'max_autonomy_level: L2',
+        'blocked_paths: []',
+        'context_protection:',
+        '  delegate_to_subagent:',
+        '    - "pnpm run preflight"',
+        '    - "pnpm run test"',
+        '    - "pnpm vitest run"',
+        '  max_bash_output_lines: 100',
+      ].join('\n');
+      fs.writeFileSync(path.join(tmpDir, '.reagent', 'policy.yaml'), policyContent);
+    });
+
+    afterEach(() => {
+      cleanupTempProjectDir(tmpDir);
+    });
+
+    it('blocks commands matching delegate_to_subagent patterns', () => {
+      const result = runHook(hook, bashPayload('pnpm run test'), {
+        CLAUDE_PROJECT_DIR: tmpDir,
+      });
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain('Context protection');
+      expect(result.stderr).toContain('subagent');
+    });
+
+    it('blocks preflight command', () => {
+      const result = runHook(hook, bashPayload('pnpm run preflight'), {
+        CLAUDE_PROJECT_DIR: tmpDir,
+      });
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain('Context protection');
+    });
+
+    it('blocks vitest run command', () => {
+      const result = runHook(hook, bashPayload('pnpm vitest run'), {
+        CLAUDE_PROJECT_DIR: tmpDir,
+      });
+      expect(result.exitCode).toBe(2);
+    });
+
+    it('allows commands not in delegate_to_subagent list', () => {
+      const result = runHook(hook, bashPayload('git status'), {
+        CLAUDE_PROJECT_DIR: tmpDir,
+      });
+      expect(result.exitCode).toBe(0);
+    });
+
+    it('allows commands when no context_protection in policy', () => {
+      // Overwrite policy without context_protection
+      fs.writeFileSync(
+        path.join(tmpDir, '.reagent', 'policy.yaml'),
+        'version: "1"\nprofile: "test"\nblocked_paths: []\n'
+      );
+      const result = runHook(hook, bashPayload('pnpm run test'), {
+        CLAUDE_PROJECT_DIR: tmpDir,
+      });
       expect(result.exitCode).toBe(0);
     });
   });

@@ -10,6 +10,38 @@
 
   Also adds a `SECURITY.md` with the project's vulnerability disclosure policy (security@bookedsolid.tech, 24-hour acknowledge SLA, 7-day patch SLA for critical issues), and updates the README, package.json description, and docs to use "governance layer for Claude Code" framing in place of "zero-trust MCP server".
 
+- eab02f7: Add context_protection policy to prevent coordinator context window exhaustion
+  - New `context_protection.delegate_to_subagent` in policy.yaml — lists commands that must run in subagents
+  - Hook H17 in dangerous-bash-interceptor blocks matching Bash commands with delegation instructions
+  - Default patterns: `pnpm run preflight`, `pnpm run test`, `pnpm run build`
+  - Prevents verbose test/build output from consuming coordinator context (root cause of HELiX 3.0.0 session death)
+
+- f1335d2: Add opt-in Obsidian vault integration for syncing project state as plain markdown
+  - New `reagent obsidian sync` and `reagent obsidian status` CLI commands
+  - New `obsidian_sync` MCP tool for gateway consumers
+  - New `reagent init --obsidian --vault-path <path>` init step
+  - Kanban board generation from task store (Obsidian Kanban plugin compatible)
+  - Vault path configurable via `REAGENT_OBSIDIAN_VAULT` env var or gateway.yaml
+  - Disabled by default — zero side effects when not configured
+  - Context dump and wiki refresh stubbed for future phases
+
+- 017e456: YAML-aware policy merge for `reagent upgrade` and Obsidian deep integration (Tiers 1-3)
+
+  **upgrade-policy**: `reagent upgrade` now uses YAML-aware merging via `parseDocument` to add missing canonical sections (like `context_protection`) without overwriting existing values. New `--clean-blocked-paths` flag replaces blanket `.reagent/` with granular `.reagent/policy.yaml` + `.reagent/HALT`.
+
+  **Obsidian CLI wrapper**: New `ObsidianCli` class wrapping `/usr/local/bin/obsidian` with fail-silent pattern for daily notes, note creation, property setting, search, and vault health.
+
+  **Obsidian Tiers 1-3**:
+  - Tier 1 (journal): `reagent-obsidian-journal.sh` hook appends session summaries to daily notes on Stop
+  - Tier 2 (precompact): `reagent-obsidian-precompact.sh` stub for knowledge extraction before context compaction
+  - Tier 3 (tasks): `reagent-obsidian-tasks.sh` hook materializes tasks as individual Obsidian notes
+
+  **CLI extensions**: `reagent obsidian health` (vault metrics), `reagent obsidian journal` (manual entry), tasks sync target
+
+  **Config schema**: Extended `vault-config` with `vault_name`, `tasks`/`sessions` paths, `journal`/`precompact`/`tasks` sync flags
+
+  **Profiles**: Updated `bst-internal` and `client-engagement` blocked_paths from `.reagent/` to granular entries
+
 ### Patch Changes
 
 - a0087ff: Remove `.claude/agents/` from `client-engagement` profile gitignore — agent definitions are project configuration and should be committed to the repo, not gitignored. This ensures agent teams are available to all contributors and persist through `reagent upgrade`.

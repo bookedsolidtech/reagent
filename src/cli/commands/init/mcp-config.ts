@@ -8,17 +8,17 @@ import type { InstallResult } from './types.js';
  * Uses stdio transport so Claude Code spawns `reagent serve` directly —
  * no daemon required, works immediately after `reagent init`.
  *
- * `npx reagent serve` resolves in order:
- *   1. ./node_modules/.bin/reagent  (local install)
- *   2. PATH reagent                 (global install)
+ * `npx @bookedsolid/reagent serve` resolves in order:
+ *   1. ./node_modules/.bin/reagent  (local install — npx checks here first)
+ *   2. npm registry fetch           (npx auto-installs if not found locally)
  *
- * This means the committed .mcp.json works on any machine regardless of
- * whether reagent was installed locally or globally.
+ * Using the scoped package name ensures npx can always resolve the binary,
+ * whether reagent is installed locally, globally, or fetched on demand.
  */
 const REAGENT_MCP_ENTRY = {
   type: 'stdio',
   command: 'npx',
-  args: ['reagent', 'serve'],
+  args: ['@bookedsolid/reagent', 'serve'],
 } as const;
 
 /**

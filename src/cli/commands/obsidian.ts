@@ -91,7 +91,12 @@ function runObsidianStatus(): void {
   console.log(`    wiki_refresh: ${config.sync.wiki_refresh ? 'enabled' : 'disabled'}`);
 }
 
-function printSyncResult(result: { target: string; written: boolean; path?: string; error?: string }): void {
+function printSyncResult(result: {
+  target: string;
+  written: boolean;
+  path?: string;
+  error?: string;
+}): void {
   if (result.written) {
     console.log(`  [synced] ${result.target} → ${result.path}`);
   } else if (result.error) {

@@ -47,9 +47,7 @@ export function installObsidian(
   const gatewayPath = path.join(targetDir, '.reagent', 'gateway.yaml');
 
   if (!fs.existsSync(gatewayPath)) {
-    return [
-      { file: '.reagent/gateway.yaml (not found — run reagent init first)', status: 'warn' },
-    ];
+    return [{ file: '.reagent/gateway.yaml (not found — run reagent init first)', status: 'warn' }];
   }
 
   const raw = fs.readFileSync(gatewayPath, 'utf8');

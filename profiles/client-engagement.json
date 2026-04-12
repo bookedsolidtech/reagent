@@ -6,7 +6,7 @@
   "huskyPreCommit": true,
   "huskyPrePush": true,
   "cursorRules": ["001-no-hallucination", "002-verify-before-act", "003-attribution"],
-  "blockedPaths": [".reagent/", ".github/workflows/", ".env", ".env.*"],
+  "blockedPaths": [".reagent/policy.yaml", ".reagent/HALT", ".github/workflows/", ".env", ".env.*"],
   "gitignoreEntries": [".claude/hooks/", ".claude/settings.json", "RESTART.md"],
   "qualityGates": {
     "commitReview": { "enabled": true, "trivialThreshold": 20, "significantThreshold": 200 },

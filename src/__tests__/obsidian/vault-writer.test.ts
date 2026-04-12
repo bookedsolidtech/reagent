@@ -165,8 +165,8 @@ describe('VaultWriter', () => {
     const writer = new VaultWriter(tmpDir);
     const results = writer.syncAll();
 
-    expect(results).toHaveLength(3);
-    expect(results.map((r) => r.target)).toEqual(['kanban', 'context', 'wiki']);
+    expect(results).toHaveLength(4);
+    expect(results.map((r) => r.target)).toEqual(['kanban', 'context', 'wiki', 'tasks']);
   });
 
   // ── graceful degradation ───────────────────────────────────────────

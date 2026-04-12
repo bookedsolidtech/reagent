@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { loadObsidianConfig, type ResolvedObsidianConfig } from './vault-config.js';
 import { generateKanban } from './kanban-generator.js';
+import { ObsidianCli } from './cli.js';
 import { TaskStore } from '../pm/task-store.js';
 
 export interface SyncResult {
@@ -109,9 +110,81 @@ export class VaultWriter {
   }
 
   /**
+   * Sync tasks as individual Obsidian notes via the CLI.
+   * Writes only if sync.tasks is enabled and the Obsidian CLI is available.
+   */
+  syncTasks(dryRun = false): SyncResult {
+    if (!this.config) {
+      return { target: 'tasks', written: false };
+    }
+    if (!this.config.sync.tasks) {
+      return { target: 'tasks', written: false, error: 'tasks sync not enabled in config' };
+    }
+    if (!this.config.vault_name) {
+      return { target: 'tasks', written: false, error: 'vault_name not set in config' };
+    }
+    if (!ObsidianCli.isAvailable()) {
+      return { target: 'tasks', written: false, error: 'Obsidian CLI not available' };
+    }
+
+    try {
+      const tasks = this.store.listTasks();
+      if (tasks.length === 0) {
+        return { target: 'tasks', written: false, error: 'No tasks to sync' };
+      }
+
+      if (dryRun) {
+        return { target: 'tasks', written: false, path: `${tasks.length} tasks would be synced` };
+      }
+
+      const cli = new ObsidianCli(this.config.vault_name);
+      const tasksPath = this.config.paths.tasks;
+      let synced = 0;
+
+      for (const task of tasks) {
+        const noteName = `${task.id} ${task.title}`;
+        const content = [
+          '---',
+          'reagent_managed: true',
+          `task_id: "${task.id}"`,
+          `status: "${task.status}"`,
+          `urgency: "${task.urgency}"`,
+          `assignee: "${task.assignee || 'unassigned'}"`,
+          '---',
+          '',
+          `# ${task.title}`,
+          '',
+          `- **ID:** ${task.id}`,
+          `- **Status:** ${task.status}`,
+          `- **Urgency:** ${task.urgency}`,
+          `- **Assignee:** ${task.assignee || 'unassigned'}`,
+          '',
+        ].join('\n');
+
+        if (cli.createNote(noteName, content, { path: tasksPath })) {
+          synced++;
+        }
+      }
+
+      return {
+        target: 'tasks',
+        written: synced > 0,
+        path: `${synced}/${tasks.length} tasks synced to ${tasksPath}`,
+      };
+    } catch {
+      return { target: 'tasks', written: false, error: 'Failed to sync tasks' };
+    }
+  }
+
+  /**
    * Sync all enabled targets.
    */
   syncAll(dryRun = false): SyncResult[] {
-    return [this.syncKanban(dryRun), this.syncContextDump(dryRun), this.syncWiki(dryRun)];
+    return [
+      this.syncKanban(dryRun),
+      this.syncContextDump(dryRun),
+      this.syncWiki(dryRun),
+      this.syncTasks(dryRun),
+    ];
   }
 }

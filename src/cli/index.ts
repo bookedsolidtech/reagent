@@ -69,6 +69,7 @@ Commands:
   serve      Start the MCP server (stdio transport — called by Claude Code via .mcp.json)
   cache      Manage review cache (check, set, clear)
   upgrade    Re-sync installed hooks and update policy.yaml version stamp
+             Options: --dry-run, --clean-blocked-paths
   obsidian   Sync project state to an Obsidian vault (opt-in)
   help       Show this help
 
@@ -116,5 +117,6 @@ Examples:
   npx @bookedsolid/reagent serve
   npx @bookedsolid/reagent upgrade
   npx @bookedsolid/reagent upgrade --dry-run
+  npx @bookedsolid/reagent upgrade --clean-blocked-paths
 `);
 }

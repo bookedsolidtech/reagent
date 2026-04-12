@@ -10,12 +10,15 @@ import { parse as parseYaml } from 'yaml';
 export const ObsidianVaultConfigSchema = z.object({
   enabled: z.boolean().default(false),
   vault_path: z.string().optional(),
+  vault_name: z.string().optional(),
   paths: z
     .object({
       root: z.string().default('Projects/Reagent'),
       kanban: z.string().default('Projects/Reagent/Kanban.md'),
       sources: z.string().default('Projects/Reagent/Sources'),
       wiki: z.string().default('Projects/Reagent/Auto'),
+      tasks: z.string().default('Tasks'),
+      sessions: z.string().default('Wiki/Sessions'),
     })
     .default({}),
   sync: z
@@ -23,6 +26,15 @@ export const ObsidianVaultConfigSchema = z.object({
       kanban: z.boolean().default(false),
       context_dump: z.boolean().default(false),
       wiki_refresh: z.boolean().default(false),
+      journal: z.boolean().default(true),
+      precompact: z.boolean().default(false),
+      tasks: z.boolean().default(true),
+    })
+    .default({}),
+  precompact: z
+    .object({
+      engine: z.enum(['claude', 'ollama']).default('claude'),
+      model: z.string().nullable().default(null),
     })
     .default({}),
 });
@@ -35,8 +47,10 @@ export type ObsidianVaultConfig = z.infer<typeof ObsidianVaultConfigSchema>;
  */
 export interface ResolvedObsidianConfig {
   vault_path: string;
+  vault_name?: string;
   paths: ObsidianVaultConfig['paths'];
   sync: ObsidianVaultConfig['sync'];
+  precompact: ObsidianVaultConfig['precompact'];
 }
 
 /**
@@ -83,8 +97,10 @@ export function loadObsidianConfig(baseDir: string): ResolvedObsidianConfig | nu
 
     return {
       vault_path: resolvedPath,
+      vault_name: config.vault_name,
       paths: config.paths,
       sync: config.sync,
+      precompact: config.precompact,
     };
   } catch {
     return null;

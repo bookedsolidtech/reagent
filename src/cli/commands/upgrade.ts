@@ -3,6 +3,7 @@ import path from 'node:path';
 import { PKG_ROOT, getPkgVersion } from '../utils.js';
 import type { InstallResult } from './init/types.js';
 import { installHuskyHook } from './init/husky-hooks.js';
+import { mergePolicy } from './upgrade-policy.js';
 
 // All hook names managed by reagent, mapped to their source file names
 const HOOK_MAP: Array<{ hookName: string; srcFileName: string }> = [
@@ -14,6 +15,7 @@ const HOOK_MAP: Array<{ hookName: string; srcFileName: string }> = [
 export function runUpgrade(args: string[]): void {
   const targetDir = process.cwd();
   const dryRun = args.includes('--dry-run');
+  const cleanBlockedPaths = args.includes('--clean-blocked-paths');
   const PKG_VERSION = getPkgVersion();
 
   console.log(`\n@bookedsolid/reagent v${PKG_VERSION} upgrade`);
@@ -55,34 +57,12 @@ export function runUpgrade(args: string[]): void {
     results.push(...hookResults);
   }
 
-  // Step 2: Update installed_by in .reagent/policy.yaml to reflect current version.
-  // Only touches the installed_by line — all other user config is preserved.
-  const policyPath = path.join(targetDir, '.reagent', 'policy.yaml');
-
-  if (!fs.existsSync(policyPath)) {
-    results.push({ file: '.reagent/policy.yaml', status: 'warn' });
-    console.warn('  Warning: .reagent/policy.yaml not found. Run `reagent init` to create it.');
-  } else {
-    const policyContent = fs.readFileSync(policyPath, 'utf8');
-    const updatedContent = policyContent.replace(
-      /^installed_by:\s*['"]?reagent@[^'">\n]+['"]?/m,
-      `installed_by: 'reagent@${PKG_VERSION}'`
-    );
-
-    if (updatedContent === policyContent) {
-      // Line didn't match the expected pattern — still show as skipped, don't corrupt the file
-      results.push({ file: '.reagent/policy.yaml', status: 'skipped' });
-    } else if (!dryRun) {
-      fs.writeFileSync(policyPath, updatedContent, 'utf8');
-      results.push({ file: '.reagent/policy.yaml (installed_by updated)', status: 'updated' });
-    } else {
-      // dry-run: report what would change
-      results.push({
-        file: '.reagent/policy.yaml (installed_by would be updated)',
-        status: 'updated',
-      });
-    }
-  }
+  // Step 2: YAML-aware policy merge — updates version stamp, adds missing
+  // canonical sections, and optionally cleans blocked_paths.
+  const policyResults = mergePolicy(targetDir, PKG_VERSION, dryRun, {
+    cleanBlockedPaths,
+  });
+  results.push(...policyResults);
 
   printSummary(results, dryRun);
 }

@@ -28,7 +28,6 @@ export function installPolicy(
     const blockedPaths = profile.blockedPaths ?? [
       '.reagent/policy.yaml',
       '.reagent/HALT',
-      '.reagent/review-cache.json',
       '.github/workflows/',
       '.env',
       '.env.*',

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { TaskStore } from '../pm/task-store.js';
 import { GitHubBridge } from '../pm/github-bridge.js';
 import { DiscordNotifier } from '../pm/discord-notifier.js';
+import { VaultWriter } from '../obsidian/vault-writer.js';
 import type { Middleware, InvocationContext } from './middleware/chain.js';
 import { executeChain } from './middleware/chain.js';
 import { InvocationStatus } from '../types/index.js';
@@ -19,6 +20,7 @@ export function registerNativeTools(
   const store = new TaskStore(baseDir);
   const bridge = new GitHubBridge({ baseDir });
   const discord = new DiscordNotifier(baseDir);
+  const obsidian = new VaultWriter(baseDir);
   let count = 0;
 
   function wrapHandler(
@@ -322,6 +324,51 @@ export function registerNativeTools(
       });
 
       return { sent: true, channel, note: 'Notification dispatched (best-effort)' };
+    })
+  );
+  count++;
+
+  // ── obsidian_sync ─────────────────────────────────────────────────
+  gateway.tool(
+    'obsidian_sync',
+    'Sync project state to an Obsidian vault. Requires obsidian_vault to be enabled in .reagent/gateway.yaml and REAGENT_OBSIDIAN_VAULT env var (or vault_path in config).',
+    {
+      target: z
+        .enum(['kanban', 'context', 'wiki', 'all'])
+        .optional()
+        .default('all')
+        .describe('Sync target (default: all enabled targets)'),
+      dry_run: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe('Preview what would be written without writing files'),
+    },
+    wrapHandler('obsidian_sync', (args) => {
+      if (!obsidian.isEnabled()) {
+        return {
+          error:
+            'Obsidian vault integration is not enabled. Set obsidian_vault.enabled: true in .reagent/gateway.yaml and set REAGENT_OBSIDIAN_VAULT env var.',
+        };
+      }
+
+      const target = (args.target as string) || 'all';
+      const dryRun = (args.dry_run as boolean) || false;
+
+      if (target === 'all') {
+        return obsidian.syncAll(dryRun);
+      }
+
+      switch (target) {
+        case 'kanban':
+          return obsidian.syncKanban(dryRun);
+        case 'context':
+          return obsidian.syncContextDump(dryRun);
+        case 'wiki':
+          return obsidian.syncWiki(dryRun);
+        default:
+          return { error: `Unknown target: ${target}` };
+      }
     })
   );
   count++;

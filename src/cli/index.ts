@@ -9,6 +9,7 @@ import { runServe } from './commands/serve.js';
 import { runCache } from './commands/cache.js';
 import { runCatalyze } from './commands/catalyze/index.js';
 import { runUpgrade } from './commands/upgrade.js';
+import { runObsidian } from './commands/obsidian.js';
 
 const [, , cmd, ...rest] = process.argv;
 
@@ -42,6 +43,9 @@ switch (cmd) {
   case 'upgrade':
     runUpgrade(rest);
     break;
+  case 'obsidian':
+    runObsidian(rest);
+    break;
   default:
     console.error(`\nUnknown command: ${cmd}`);
     printHelp();
@@ -65,6 +69,7 @@ Commands:
   serve      Start the MCP server (stdio transport — called by Claude Code via .mcp.json)
   cache      Manage review cache (check, set, clear)
   upgrade    Re-sync installed hooks and update policy.yaml version stamp
+  obsidian   Sync project state to an Obsidian vault (opt-in)
   help       Show this help
 
 Options for init:
@@ -76,6 +81,8 @@ Options for init:
   --tasks-channel     Discord channel ID for task events
   --releases-channel  Discord channel ID for release events
   --dev-channel       Discord channel ID for dev activity
+  --obsidian          Configure Obsidian vault integration in gateway.yaml
+  --vault-path <path> Obsidian vault path (used with --obsidian)
 
 Options for catalyze [targetDir]:
   --plan              Analyze stack and generate report (default)

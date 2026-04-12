@@ -9,6 +9,7 @@ YAML-aware policy merge for `reagent upgrade` and Obsidian deep integration (Tie
 **Obsidian CLI wrapper**: New `ObsidianCli` class wrapping `/usr/local/bin/obsidian` with fail-silent pattern for daily notes, note creation, property setting, search, and vault health.
 
 **Obsidian Tiers 1-3**:
+
 - Tier 1 (journal): `reagent-obsidian-journal.sh` hook appends session summaries to daily notes on Stop
 - Tier 2 (precompact): `reagent-obsidian-precompact.sh` stub for knowledge extraction before context compaction
 - Tier 3 (tasks): `reagent-obsidian-tasks.sh` hook materializes tasks as individual Obsidian notes

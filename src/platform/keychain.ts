@@ -60,11 +60,9 @@ export function keychainDelete(service: string): boolean {
  */
 export function keychainExists(service: string): boolean {
   try {
-    execFileSync(
-      'security',
-      ['find-generic-password', '-s', service, '-a', KEYCHAIN_ACCOUNT],
-      { stdio: 'pipe' }
-    );
+    execFileSync('security', ['find-generic-password', '-s', service, '-a', KEYCHAIN_ACCOUNT], {
+      stdio: 'pipe',
+    });
     return true;
   } catch {
     return false;
@@ -99,11 +97,9 @@ export function readClaudeCodeCredential(): AccountCredential | null {
  */
 export function writeClaudeCodeCredential(data: string): void {
   try {
-    execFileSync(
-      'security',
-      ['delete-generic-password', '-s', 'Claude Code-credentials'],
-      { stdio: 'pipe' }
-    );
+    execFileSync('security', ['delete-generic-password', '-s', 'Claude Code-credentials'], {
+      stdio: 'pipe',
+    });
   } catch {
     // Doesn't exist yet
   }

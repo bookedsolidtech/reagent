@@ -42,15 +42,15 @@ const { runAccount } = await import('../../cli/commands/account.js');
 describe('runAccount', () => {
   let logSpy: ReturnType<typeof vi.spyOn>;
   let errorSpy: ReturnType<typeof vi.spyOn>;
-  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let exitSpy: any;
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
     logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
+    exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
       throw new Error(`process.exit(${code})`);
-    });
+    }) as any);
   });
 
   afterEach(() => {
@@ -146,18 +146,14 @@ describe('runAccount', () => {
 
     it('exits with error when no account name provided', () => {
       expect(() => runAccount(['env'])).toThrow('process.exit(1)');
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Usage:')
-      );
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Usage:'));
     });
 
     it('exits with error when account not found', () => {
       mockLoadAccounts.mockReturnValue({ version: '1', accounts: {} });
 
       expect(() => runAccount(['env', 'missing'])).toThrow('process.exit(1)');
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('not found')
-      );
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('not found'));
     });
 
     it('exits with error when keychain credential is missing', () => {
@@ -173,9 +169,7 @@ describe('runAccount', () => {
       mockKeychainGet.mockReturnValue(null);
 
       expect(() => runAccount(['env', 'broken'])).toThrow('process.exit(1)');
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('No credential found')
-      );
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('No credential found'));
     });
 
     it('escapes single quotes in token values', () => {
@@ -662,12 +656,8 @@ describe('runAccount', () => {
     });
 
     it('exits with error for unsupported shell', () => {
-      expect(() => runAccount(['setup-shell', '--shell', 'powershell'])).toThrow(
-        'process.exit(1)'
-      );
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Unsupported shell')
-      );
+      expect(() => runAccount(['setup-shell', '--shell', 'powershell'])).toThrow('process.exit(1)');
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Unsupported shell'));
     });
   });
 
@@ -681,9 +671,7 @@ describe('runAccount', () => {
 
     it('exits with error for invalid account name (uppercase)', () => {
       expect(() => runAccount(['add', 'MyAccount'])).toThrow('process.exit(1)');
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('lowercase alphanumeric')
-      );
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('lowercase alphanumeric'));
     });
 
     it('exits with error for invalid account name (starts with hyphen)', () => {
@@ -692,9 +680,7 @@ describe('runAccount', () => {
 
     it('exits with error for invalid account name (special chars)', () => {
       expect(() => runAccount(['add', 'bad_name'])).toThrow('process.exit(1)');
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('lowercase alphanumeric')
-      );
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('lowercase alphanumeric'));
     });
 
     it('exits with error if account already exists', () => {
@@ -709,9 +695,7 @@ describe('runAccount', () => {
       });
 
       expect(() => runAccount(['add', 'existing'])).toThrow('process.exit(1)');
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('already exists')
-      );
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('already exists'));
     });
   });
 

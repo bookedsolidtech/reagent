@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
 // Mock child_process.execFileSync before importing the module under test
 const mockExecFileSync = vi.fn();
@@ -62,7 +62,9 @@ describe('keychain', () => {
     it('ignores error when deleting non-existent entry', () => {
       mockExecFileSync
         .mockImplementationOnce(() => {
-          throw new Error('security: SecKeychainSearchCopyNext: The specified item could not be found in the keychain.');
+          throw new Error(
+            'security: SecKeychainSearchCopyNext: The specified item could not be found in the keychain.'
+          );
         })
         .mockReturnValueOnce('');
 
@@ -78,9 +80,9 @@ describe('keychain', () => {
           throw new Error('security: add failed');
         });
 
-      expect(() =>
-        keychainSet('reagent-test', { accessToken: 'tok' })
-      ).toThrow('security: add failed');
+      expect(() => keychainSet('reagent-test', { accessToken: 'tok' })).toThrow(
+        'security: add failed'
+      );
     });
   });
 
@@ -259,7 +261,14 @@ describe('keychain', () => {
       expect(mockExecFileSync).toHaveBeenNthCalledWith(
         2,
         'security',
-        ['add-generic-password', '-s', 'Claude Code-credentials', '-w', '{"oauth_token":"new"}', '-U'],
+        [
+          'add-generic-password',
+          '-s',
+          'Claude Code-credentials',
+          '-w',
+          '{"oauth_token":"new"}',
+          '-U',
+        ],
         { stdio: 'pipe' }
       );
     });

@@ -13,7 +13,6 @@ import {
   readClaudeCodeCredential,
   writeClaudeCodeCredential as writeClaudeCredential,
 } from '../../platform/keychain.js';
-import type { AccountCredential } from '../../types/accounts.js';
 
 export function runAccount(args: string[]): void {
   const [subcommand, ...rest] = args;
@@ -104,7 +103,9 @@ function accountAdd(args: string[]): void {
   const config = loadAccounts();
 
   if (config.accounts[name]) {
-    console.error(`Account "${name}" already exists. Use 'reagent account rotate ${name}' to re-authenticate.`);
+    console.error(
+      `Account "${name}" already exists. Use 'reagent account rotate ${name}' to re-authenticate.`
+    );
     process.exit(1);
   }
 
@@ -244,7 +245,9 @@ function accountEnv(args: string[]): void {
 
   const credential = keychainGet(account.keychain_service);
   if (!credential) {
-    console.error(`No credential found in keychain for "${name}" (service: ${account.keychain_service})`);
+    console.error(
+      `No credential found in keychain for "${name}" (service: ${account.keychain_service})`
+    );
     console.error(`Run: reagent account rotate ${name}`);
     process.exit(1);
   }
@@ -252,7 +255,9 @@ function accountEnv(args: string[]): void {
   // Output shell export commands — safe for eval
   console.log(`export CLAUDE_CODE_OAUTH_TOKEN='${escapeShellSingleQuote(credential.accessToken)}'`);
   if (credential.refreshToken) {
-    console.log(`export CLAUDE_CODE_OAUTH_REFRESH_TOKEN='${escapeShellSingleQuote(credential.refreshToken)}'`);
+    console.log(
+      `export CLAUDE_CODE_OAUTH_REFRESH_TOKEN='${escapeShellSingleQuote(credential.refreshToken)}'`
+    );
   }
   console.log(`export REAGENT_ACCOUNT='${escapeShellSingleQuote(name)}'`);
 }

@@ -14,10 +14,7 @@ export interface ManagedClient {
  * Build a clean env record: merge process.env (filtering out undefined) with config env.
  */
 /** Keys that should never leak to downstream MCP servers. */
-const STRIP_FROM_DOWNSTREAM = [
-  'CLAUDE_CODE_OAUTH_TOKEN',
-  'CLAUDE_CODE_OAUTH_REFRESH_TOKEN',
-];
+const STRIP_FROM_DOWNSTREAM = ['CLAUDE_CODE_OAUTH_TOKEN', 'CLAUDE_CODE_OAUTH_REFRESH_TOKEN'];
 
 function buildEnv(configEnv?: Record<string, string>): Record<string, string> {
   const base: Record<string, string> = {};

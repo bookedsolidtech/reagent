@@ -169,7 +169,7 @@ quality_gates:
   push_review: false
 
 # Prompt injection detection for proxied tool results
-injection_detection: block  # 'block' (default) or 'warn'
+injection_detection: block # 'block' (default) or 'warn'
 
 # Context protection — delegate expensive commands to subagents
 context_protection:
@@ -393,14 +393,14 @@ policy, blocked paths, redaction, and audit all apply.
 Slash commands provide quick access to the task board and team orchestration from within
 Claude Code conversations:
 
-| Command       | Description                                                                |
-| ------------- | -------------------------------------------------------------------------- |
-| `/tasks`      | Render a markdown table of current tasks from tasks.jsonl                  |
-| `/plan-work`  | Invoke the product-owner agent to propose and create tasks for a goal      |
-| `/restart`    | Session handoff — save state on spin-down, orient from saved state on spin-up |
-| `/rea`        | Invoke the REA (Reactive Execution Agent) for autonomous team orchestration |
-| `/pm-status`  | Scan open PRs, report pipeline state, merge ready work, staging promotion  |
-| `/review-pr`  | Fetch a PR diff, run code-reviewer analysis, post findings in owner voice  |
+| Command      | Description                                                                   |
+| ------------ | ----------------------------------------------------------------------------- |
+| `/tasks`     | Render a markdown table of current tasks from tasks.jsonl                     |
+| `/plan-work` | Invoke the product-owner agent to propose and create tasks for a goal         |
+| `/restart`   | Session handoff — save state on spin-down, orient from saved state on spin-up |
+| `/rea`       | Invoke the REA (Reactive Execution Agent) for autonomous team orchestration   |
+| `/pm-status` | Scan open PRs, report pipeline state, merge ready work, staging promotion     |
+| `/review-pr` | Fetch a PR diff, run code-reviewer analysis, post findings in owner voice     |
 
 **Example `tasks.jsonl` entries:**
 

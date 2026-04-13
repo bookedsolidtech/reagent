@@ -6,6 +6,11 @@ vi.mock('node:child_process', () => ({
   execFileSync: (...args: unknown[]) => mockExecFileSync(...args),
 }));
 
+// Mock os.userInfo for writeClaudeCodeCredential
+vi.mock('node:os', () => ({
+  userInfo: () => ({ username: 'testuser' }),
+}));
+
 const {
   keychainSet,
   keychainGet,
@@ -285,6 +290,8 @@ describe('keychain', () => {
           'add-generic-password',
           '-s',
           'Claude Code-credentials',
+          '-a',
+          'testuser',
           '-w',
           '{"oauth_token":"new"}',
           '-U',

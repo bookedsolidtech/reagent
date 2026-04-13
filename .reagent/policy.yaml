@@ -33,3 +33,12 @@ notification_channel: ''
 
 quality_gates:
   push_review: false
+
+# Context protection
+context_protection:
+  delegate_to_subagent:
+    - 'pnpm run preflight'
+    - 'pnpm run test'
+    - 'pnpm run build'
+    - 'pnpm vitest run'
+  max_bash_output_lines: 100

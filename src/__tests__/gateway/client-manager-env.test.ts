@@ -5,10 +5,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
  * logic here to validate the stripping / override behavior without needing to
  * spin up real MCP transports.
  */
-const STRIP_FROM_DOWNSTREAM = [
-  'CLAUDE_CODE_OAUTH_TOKEN',
-  'CLAUDE_CODE_OAUTH_REFRESH_TOKEN',
-];
+const STRIP_FROM_DOWNSTREAM = ['CLAUDE_CODE_OAUTH_TOKEN', 'CLAUDE_CODE_OAUTH_REFRESH_TOKEN'];
 
 function buildEnv(configEnv?: Record<string, string>): Record<string, string> {
   const base: Record<string, string> = {};

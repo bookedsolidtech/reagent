@@ -179,7 +179,33 @@ describe('keychain', () => {
   // --- readClaudeCodeCredential ---
 
   describe('readClaudeCodeCredential', () => {
-    it('reads from Claude Code-credentials service and normalizes field names', () => {
+    it('unwraps claudeAiOauth envelope (real Claude Code format)', () => {
+      const claudeStored = {
+        claudeAiOauth: {
+          accessToken: 'sk-ant-oat01-real-token',
+          refreshToken: 'sk-ant-ort01-real-refresh',
+          expiresAt: 1776151881800,
+          scopes: ['user:inference', 'user:profile'],
+        },
+      };
+      mockExecFileSync.mockReturnValue(JSON.stringify(claudeStored));
+
+      const result = readClaudeCodeCredential();
+      expect(result).toEqual({
+        accessToken: 'sk-ant-oat01-real-token',
+        refreshToken: 'sk-ant-ort01-real-refresh',
+        expiresAt: 1776151881800,
+        scopes: ['user:inference', 'user:profile'],
+      });
+
+      expect(mockExecFileSync).toHaveBeenCalledWith(
+        'security',
+        ['find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+        { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
+      );
+    });
+
+    it('falls back to legacy flat format with oauth_token fields', () => {
       const claudeStored = {
         oauth_token: 'oauth-tok',
         refresh_token: 'oauth-ref',
@@ -195,15 +221,9 @@ describe('keychain', () => {
         expiresAt: '2026-12-31T00:00:00Z',
         scopes: ['user'],
       });
-
-      expect(mockExecFileSync).toHaveBeenCalledWith(
-        'security',
-        ['find-generic-password', '-s', 'Claude Code-credentials', '-w'],
-        { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
-      );
     });
 
-    it('normalizes fields already in reagent format', () => {
+    it('handles flat format with reagent-style field names', () => {
       const stored = {
         accessToken: 'tok-abc',
         refreshToken: 'ref-xyz',

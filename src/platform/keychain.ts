@@ -80,12 +80,14 @@ export function readClaudeCodeCredential(): AccountCredential | null {
       { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
     );
     const parsed = JSON.parse(raw.trim());
-    // Claude Code stores {oauth_token, refresh_token, expiry, ...} — normalize to our shape
+    // Claude Code stores {claudeAiOauth: {accessToken, refreshToken, expiresAt, ...}}
+    // Unwrap the outer envelope if present, then normalize field names
+    const inner = parsed.claudeAiOauth || parsed;
     return {
-      accessToken: parsed.oauth_token || parsed.accessToken,
-      refreshToken: parsed.refresh_token || parsed.refreshToken,
-      expiresAt: parsed.expiry || parsed.expiresAt,
-      scopes: parsed.scopes,
+      accessToken: inner.accessToken || inner.oauth_token,
+      refreshToken: inner.refreshToken || inner.refresh_token,
+      expiresAt: inner.expiresAt || inner.expiry,
+      scopes: inner.scopes,
     };
   } catch {
     return null;

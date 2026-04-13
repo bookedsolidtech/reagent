@@ -1,5 +1,15 @@
 # @bookedsolid/reagent
 
+## 0.14.3
+
+### Patch Changes
+
+- Fix MCP server startup in pnpm projects
+
+  `reagent init` now generates `.mcp.json` with `node node_modules/@bookedsolid/reagent/dist/cli/index.js serve` instead of `npx @bookedsolid/reagent serve`. The `npx` approach fails in pnpm projects because pnpm doesn't create `node_modules/.bin/reagent` symlinks.
+
+  `reagent upgrade` now auto-migrates existing `.mcp.json` files from the broken `npx` pattern to the `node` direct path (step 3 of upgrade).
+
 ## 0.14.2
 
 ### Patch Changes

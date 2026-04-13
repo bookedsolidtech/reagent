@@ -227,10 +227,7 @@ accounts:
   it('rejects YAML that parses to non-object type', () => {
     const reagentDir = path.join(tmpHome, '.reagent');
     fs.mkdirSync(reagentDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(reagentDir, 'accounts.yaml'),
-      'just a plain string'
-    );
+    fs.writeFileSync(path.join(reagentDir, 'accounts.yaml'), 'just a plain string');
 
     expect(() => loadAccounts()).toThrow('Invalid accounts config');
   });

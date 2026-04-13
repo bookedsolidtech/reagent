@@ -3,23 +3,46 @@ import path from 'node:path';
 import type { InstallResult } from './types.js';
 
 /**
- * The reagent MCP server entry to write into .mcp.json.
+ * Build the reagent MCP server entry for .mcp.json.
  *
- * Uses stdio transport so Claude Code spawns `reagent serve` directly —
- * no daemon required, works immediately after `reagent init`.
- *
- * `npx @bookedsolid/reagent serve` resolves in order:
- *   1. ./node_modules/.bin/reagent  (local install — npx checks here first)
- *   2. npm registry fetch           (npx auto-installs if not found locally)
- *
- * Using the scoped package name ensures npx can always resolve the binary,
- * whether reagent is installed locally, globally, or fetched on demand.
+ * Uses `node` with the direct path to the dist CLI entry point.
+ * This works across all package managers (npm, yarn, pnpm, bun)
+ * without relying on bin symlinks or npx resolution, which breaks
+ * in pnpm projects where node_modules/.bin/reagent is not created.
  */
-const REAGENT_MCP_ENTRY = {
-  type: 'stdio',
-  command: 'npx',
-  args: ['@bookedsolid/reagent', 'serve'],
-} as const;
+function buildMcpEntry(targetDir: string): {
+  type: 'stdio';
+  command: string;
+  args: string[];
+} {
+  // Check if reagent is installed locally (node_modules)
+  const localCliPath = path.join(
+    targetDir,
+    'node_modules',
+    '@bookedsolid',
+    'reagent',
+    'dist',
+    'cli',
+    'index.js'
+  );
+
+  if (fs.existsSync(localCliPath)) {
+    // Local install — use relative path from project root
+    return {
+      type: 'stdio',
+      command: 'node',
+      args: ['node_modules/@bookedsolid/reagent/dist/cli/index.js', 'serve'],
+    };
+  }
+
+  // Not installed locally — likely running via npx or global install.
+  // Use npx as fallback (works for npm/yarn, auto-fetches if needed).
+  return {
+    type: 'stdio',
+    command: 'npx',
+    args: ['@bookedsolid/reagent', 'serve'],
+  };
+}
 
 /**
  * Write (or merge into) .mcp.json in `targetDir` with a reagent stdio entry.
@@ -31,6 +54,7 @@ const REAGENT_MCP_ENTRY = {
  */
 export function installMcpJson(targetDir: string, dryRun: boolean): InstallResult[] {
   const mcpPath = path.join(targetDir, '.mcp.json');
+  const mcpEntry = buildMcpEntry(targetDir);
 
   // Case 1: file exists — check if reagent already registered
   if (fs.existsSync(mcpPath)) {
@@ -51,7 +75,7 @@ export function installMcpJson(targetDir: string, dryRun: boolean): InstallResul
 
     // Add reagent entry to existing file
     existing.mcpServers = existing.mcpServers ?? {};
-    existing.mcpServers.reagent = REAGENT_MCP_ENTRY;
+    existing.mcpServers.reagent = mcpEntry;
 
     if (!dryRun) {
       fs.writeFileSync(mcpPath, JSON.stringify(existing, null, 2) + '\n');
@@ -62,7 +86,7 @@ export function installMcpJson(targetDir: string, dryRun: boolean): InstallResul
   // Case 2: file doesn't exist — create it
   const config = {
     mcpServers: {
-      reagent: REAGENT_MCP_ENTRY,
+      reagent: mcpEntry,
     },
   };
 

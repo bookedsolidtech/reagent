@@ -1,6 +1,6 @@
 {
   "name": "@bookedsolid/reagent",
-  "version": "0.14.3",
+  "version": "0.15.0",
   "description": "Governance layer for Claude Code — policy enforcement, hook-based safety gates, and audit logging for AI-assisted projects",
   "license": "MIT",
   "author": "Booked Solid Technology <oss@bookedsolid.tech> (https://bookedsolid.tech)",
@@ -76,7 +76,7 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@bookedsolid/reagent": "^0.14.3",
+    "@bookedsolid/reagent": "^0.15.0",
     "@changesets/cli": "^2.30.0",
     "@types/node": "^25.5.2",
     "@typescript-eslint/eslint-plugin": "^8.0.0",

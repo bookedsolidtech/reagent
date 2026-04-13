@@ -13,6 +13,7 @@ import { installMcpJson } from './mcp-config.js';
 import { installAgents } from './agents.js';
 import { installClaudeCommands } from './commands.js';
 import { installPm } from './pm.js';
+import { installPackageDep } from './package-dep.js';
 import { installGitHub } from './github.js';
 import { installProfile, listTechProfiles } from './profiles.js';
 import { installDiscord, parseDiscordArgs } from './discord.js';
@@ -85,6 +86,9 @@ export function runInit(args: string[]): void {
   if (!dryRun) {
     fs.mkdirSync(path.join(targetDir, '.claude'), { recursive: true });
   }
+
+  // Step 0: Install @bookedsolid/reagent as devDependency (before MCP config needs node_modules)
+  results.push(...installPackageDep(targetDir, dryRun));
 
   // Step 1: .gitignore entries
   if (profile.gitignoreEntries?.length) {

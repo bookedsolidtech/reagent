@@ -32,20 +32,24 @@ cd your-project
 reagent init
 ```
 
-`reagent init` writes `.mcp.json` to your project root so Claude Code automatically spawns
-`reagent serve` via stdio transport when a session starts:
+`reagent init` installs `@bookedsolid/reagent` as a devDependency and writes `.mcp.json` to
+your project root so Claude Code automatically spawns `reagent serve` via stdio transport:
 
 ```json
 {
   "mcpServers": {
     "reagent": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["reagent", "serve"]
+      "command": "node",
+      "args": ["node_modules/@bookedsolid/reagent/dist/cli/index.js", "serve"]
     }
   }
 }
 ```
+
+The direct `node` path works across npm, yarn, pnpm, and bun — unlike `npx`, which fails in
+pnpm projects where `node_modules/.bin/reagent` is not created. If reagent is not yet installed
+locally, init falls back to `npx @bookedsolid/reagent serve` until `reagent upgrade` migrates it.
 
 Restart Claude Code after running `reagent init`. It will pick up `.mcp.json` on the next
 session start.

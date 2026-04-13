@@ -70,9 +70,11 @@ middleware chain:
 
 ## Slash commands
 
-| Command      | Description                                                      |
-| ------------ | ---------------------------------------------------------------- |
-| `/tasks`     | Render a markdown table of current tasks from tasks.jsonl        |
-| `/plan-work` | Invoke the product-owner agent to propose tasks for a goal       |
-| `/restart`   | Session handoff command for agent continuity                     |
-| `/rea`       | Invoke the REA (Reactive Execution Agent) for team orchestration |
+| Command       | Description                                                                |
+| ------------- | -------------------------------------------------------------------------- |
+| `/tasks`      | Render a markdown table of current tasks from `.reagent/tasks.jsonl`       |
+| `/plan-work`  | Invoke the product-owner agent to propose and create tasks for a goal      |
+| `/restart`    | Session handoff — save state on spin-down, orient from saved state on spin-up |
+| `/rea`        | Invoke the REA (Reactive Execution Agent) for autonomous team orchestration |
+| `/pm-status`  | Scan open PRs, report pipeline state, merge ready work, staging promotion  |
+| `/review-pr`  | Fetch a PR diff, run code-reviewer analysis, post findings in owner voice  |

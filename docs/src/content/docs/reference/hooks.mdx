@@ -1,12 +1,12 @@
 ---
 title: Hooks
-description: Complete reference for all 23 Claude Code hooks installed by Reagent.
+description: Complete reference for all 26 Claude Code hooks installed by Reagent.
 sidebar:
   order: 4
 ---
 
-Reagent installs 23 Claude Code hooks that enforce security, quality, and project management
-policies. Hooks are shell scripts that run as PreToolUse or PostToolUse interceptors.
+Reagent installs 26 Claude Code hooks that enforce security, quality, project management, and
+integration policies. Hooks are shell scripts that run as PreToolUse or PostToolUse interceptors.
 
 Every hook checks for `.reagent/HALT` at the top of its script. If the file exists, the hook
 returns exit code 2 (hard block) immediately.
@@ -30,7 +30,7 @@ Hooks use a shared library (`hooks/_lib/common.sh`) providing:
 | `0`  | Allow the tool call |
 | `2`  | Block the tool call |
 
-## Security hooks
+## Security hooks (11)
 
 ### `settings-protection.sh` (PreToolUse: Write, Edit)
 
@@ -73,7 +73,7 @@ Blocks writes to `.env` files. Allows `.env.example` and `.env.template`.
 
 ### `attribution-advisory.sh` (PreToolUse: Bash)
 
-When `block_ai_attribution` is enabled, blocks `gh pr create`, `gh pr edit`, and `git commit` commands containing AI attribution patterns.
+When `block_ai_attribution` is enabled in `policy.yaml`, blocks `gh pr create`, `gh pr edit`, and `git commit` commands containing AI attribution patterns (`Co-Authored-By` with AI names, `Generated with [Tool]` footers, etc.).
 
 ### `symlink-guard.sh` (PreToolUse: Write, Edit)
 
@@ -95,7 +95,7 @@ Blocks `git config` commands that override hook paths, rewrite signing, or modif
 
 Blocks writes to `.github/workflows/` and other CI configuration files.
 
-## Quality gate hooks
+## Quality gate hooks (4)
 
 ### `commit-review-gate.sh` (PreToolUse: Bash)
 
@@ -104,7 +104,7 @@ Intercepts `git commit` and applies triage-based review:
 | Level           | Criteria                                        | Action                                         |
 | --------------- | ----------------------------------------------- | ---------------------------------------------- |
 | **Trivial**     | Fewer than 20 changed lines, no sensitive paths | Pass immediately                               |
-| **Standard**    | 20–200 changed lines                            | Check review cache; pass if cached             |
+| **Standard**    | 20-200 changed lines                            | Check review cache; pass if cached             |
 | **Significant** | More than 200 lines OR sensitive paths          | Block; instruct agent to spawn `code-reviewer` |
 
 ### `push-review-gate.sh` (PreToolUse: Bash)
@@ -115,7 +115,11 @@ Intercepts `git push`. Analyzes the full diff against the target branch and chec
 
 **Advisory only (never blocks).** Flags writes to architecture-sensitive paths (`src/types/`, `src/gateway/`, `src/config/`, `package.json`, etc.).
 
-## Project management hooks
+### `changeset-security-gate.sh` (PreToolUse: Write, Edit)
+
+Validates changeset files before they are written. Prevents injection of malicious content into the changeset workflow.
+
+## Project management hooks (3)
 
 ### `task-link-gate.sh` (PreToolUse: Bash)
 
@@ -125,7 +129,11 @@ Intercepts `git push`. Analyzes the full diff against the target branch and chec
 
 Intercepts `npm install`, `pnpm add`, `yarn add`, and `npx` commands. Verifies each package exists in the npm registry before allowing the install.
 
-## Safety hooks
+### `pr-issue-link-gate.sh` (PreToolUse: Bash)
+
+Requires every PR created via `gh pr create` to reference a GitHub issue in its body or title.
+
+## Safety hooks (4)
 
 ### `output-validation.sh` (PostToolUse)
 
@@ -138,3 +146,31 @@ Blocks writes of files exceeding a configurable size threshold.
 ### `rate-limit-guard.sh` (PreToolUse)
 
 Tracks tool call frequency per session and blocks when a per-minute threshold is exceeded.
+
+### `security-disclosure-gate.sh` (PreToolUse: Bash)
+
+Intercepts `gh issue create` and similar commands. Blocks public disclosure of security vulnerabilities; routes to the configured disclosure mode (issues, security advisories, etc.).
+
+## Integration hooks (4)
+
+### `reagent-notify.sh` (PostToolUse: Bash)
+
+Sends Discord notifications on significant events (commits, PR creation, pushes). Requires `discord_ops` configured in `gateway.yaml` and `DISCORD_BOT_TOKEN` in the environment.
+
+### `reagent-obsidian-journal.sh` (PostToolUse: Stop)
+
+Fires when a Claude Code session ends. Appends a session summary to the daily note in your Obsidian vault via `obsidian daily:append`. Includes project name, session identifier, timestamp, and task state counts (completed, in progress, blocked, backlog) from `.reagent/tasks.jsonl`.
+
+Requires: `sync.journal: true` in `gateway.yaml` Obsidian config. See [Obsidian Vault Integration](/guides/obsidian-vault/).
+
+### `reagent-obsidian-precompact.sh` (PreToolUse: Compact)
+
+Fires before Claude Code compacts context. Creates a session knowledge note in the vault's sessions directory with frontmatter tagging the project, date, session ID, and extraction engine.
+
+Requires: `sync.precompact: true` in `gateway.yaml` Obsidian config (disabled by default).
+
+### `reagent-obsidian-tasks.sh` (PostToolUse: task_create, task_update)
+
+Fires after `task_create` and `task_update` MCP tool calls. Materializes each task as an individual Obsidian note with typed frontmatter (task ID, project, status, urgency, assignee). Sync is one-way: JSONL to Obsidian.
+
+Requires: `sync.tasks: true` in `gateway.yaml` Obsidian config. See [Obsidian Vault Integration](/guides/obsidian-vault/).

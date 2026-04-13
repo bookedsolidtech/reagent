@@ -5,41 +5,104 @@ sidebar:
   order: 6
 ---
 
-Reagent installs 89 AI agent definitions into `.claude/agents/` covering engineering, AI platforms, and project management roles. Each agent has:
+Reagent installs 89 AI agent definitions into `.claude/agents/` covering engineering, AI
+platforms, and project management roles. Each agent has:
 
 - A domain-specific system prompt and tool access list
 - Zero-trust protocol (read before writing, verify before claiming, HALT compliance)
 - Persona metadata (name, inspiration) grounded in real domain pioneers
 
-## Key agents
-
-| Agent                  | Role                                                                    |
-| ---------------------- | ----------------------------------------------------------------------- |
-| `reagent-orchestrator` | Team orchestrator — routes tasks to specialists, governs AI operations  |
-| `product-owner`        | Task backlog management with built-in guardrails                        |
-| `code-reviewer`        | Code review with TypeScript, accessibility, performance, security focus |
-| `security-engineer`    | Application security, OWASP, penetration testing                        |
-| `principal-engineer`   | Architecture decisions and cross-cutting concerns                       |
-
-## Agent categories
-
-### Engineering specialists (64 agents)
-
-Full-stack engineering coverage including frontend, backend, infrastructure, DevOps, database, testing, accessibility, performance, security, and more.
-
-### AI platform specialists (25 agents)
-
-Specialized agents for Anthropic Claude, OpenAI, Google Gemini, open-source models, RAG architecture, fine-tuning, prompt engineering, multi-modal AI, and AI governance.
-
 ## How agents work
 
-Agents are Markdown files with frontmatter metadata. When invoked via `subagent_type` in Claude Code, the agent's system prompt is loaded and the specialist operates within its defined scope.
+Agents are Markdown files with frontmatter metadata. When invoked via `subagent_type` in
+Claude Code's Agent tool, the agent's system prompt is loaded and the specialist operates
+within its defined scope.
+
+```
+Agent tool → subagent_type: "security-engineer" → loads .claude/agents/security-engineer.md
+```
 
 All agents follow the zero-trust protocol:
 
 - Read files before editing
 - Verify state before claiming status
-- Check HALT before taking action
-- Respect blocked paths and autonomy levels
+- Check `.reagent/HALT` before taking action
+- Respect `blocked_paths` and `autonomy_level` from `policy.yaml`
+
+## The orchestrator
+
+The `reagent-orchestrator` is the primary routing layer. CLAUDE.md instructs the main
+conversation to delegate non-trivial tasks here first:
+
+1. Reads `.reagent/policy.yaml` and checks HALT before any work
+2. Selects the right specialist agents based on the task
+3. Enforces engineering processes and quality gates
+4. Launches multiple specialists in parallel for throughput
+5. Coordinates multi-step work across domains
+
+**Fallback:** If the task is narrowly scoped to a single domain, the main conversation
+may route directly to a specialist by using its `subagent_type` name.
+
+## Key agents
+
+| Agent                     | Domain              | Role                                                                    |
+| ------------------------- | ------------------- | ----------------------------------------------------------------------- |
+| `reagent-orchestrator`    | Orchestration       | Team orchestrator — routes tasks to specialists, governs AI operations  |
+| `code-reviewer`           | Quality             | Code review with TypeScript, accessibility, performance, security focus |
+| `pr-voice-reviewer`       | Quality             | Translates code-reviewer findings into GitHub review comments           |
+| `principal-engineer`      | Architecture        | Architecture decisions, system design, cross-cutting concerns           |
+| `security-engineer`       | Security            | Application security, OWASP, penetration testing                        |
+| `senior-backend-engineer` | Backend             | API development, auth, data pipelines, media processing                 |
+| `senior-frontend-engineer`| Frontend            | Complex frontend architecture, mentoring                                |
+| `database-architect`      | Data                | Schema design, query optimization, Supabase, migrations                 |
+| `devops-engineer`         | Infrastructure      | GitHub Actions CI/CD, deployments, release automation                   |
+| `qa-lead`                 | Testing             | Test strategy, automation frameworks, CI/CD testing                     |
+| `technical-writer`        | Documentation       | Developer tools docs, component libraries, integration guides           |
+| `ai-anthropic-specialist` | AI Platform         | Claude API, Agent SDK, MCP server development                           |
+| `ai-rag-architect`        | AI Platform         | Vector databases, embedding models, retrieval systems                   |
+
+## Engineering specialists (64 agents)
+
+Full-stack engineering coverage organized by domain:
+
+| Domain           | Count | Examples                                                                |
+| ---------------- | ----- | ----------------------------------------------------------------------- |
+| Frontend         | 8     | `senior-frontend-engineer`, `nextjs-specialist`, `lit-specialist`, `css3-animation-purist` |
+| Backend          | 6     | `senior-backend-engineer`, `backend-engineer-payments`, `supabase-specialist` |
+| Infrastructure   | 5     | `devops-engineer`, `infrastructure-engineer`, `aws-architect`, `sre-lead` |
+| Database         | 3     | `database-architect`, `senior-database-engineer`, `migration-specialist` |
+| Security         | 5     | `security-engineer`, `security-engineer-appsec`, `security-engineer-compliance`, `privacy-engineer` |
+| Testing / QA     | 6     | `qa-lead`, `qa-engineer`, `qa-engineer-automation`, `qa-engineer-manual`, `test-architect`, `performance-qa-engineer` |
+| Design Systems   | 4     | `design-system-developer`, `design-systems-animator`, `storybook-specialist`, `accessibility-engineer` |
+| Management       | 6     | `vp-engineering`, `backend-engineering-manager`, `engineering-manager-frontend`, `technical-project-manager` |
+| CMS              | 3     | `drupal-specialist`, `drupal-integration-specialist` |
+| Other            | 18    | `technical-writer`, `ux-researcher`, `open-source-specialist`, `solutions-architect`, `mobile-engineer` |
+
+## AI platform specialists (25 agents)
+
+| Domain                | Count | Examples                                                              |
+| --------------------- | ----- | --------------------------------------------------------------------- |
+| Platform-specific     | 7     | `ai-anthropic-specialist`, `ai-openai-specialist`, `ai-gemini-specialist`, `ai-deepseek-specialist` |
+| Architecture          | 4     | `ai-rag-architect`, `ai-agentic-systems-architect`, `ai-mcp-developer`, `ai-platform-strategist` |
+| Safety / Governance   | 4     | `ai-safety-reviewer`, `ai-governance-officer`, `ai-security-red-teamer`, `ai-evaluation-specialist` |
+| Specialized           | 6     | `ai-prompt-engineer`, `ai-fine-tuning-specialist`, `ai-multi-modal-specialist`, `ai-video-ai-specialist` |
+| Operations            | 4     | `ai-rea`, `ai-cost-optimizer`, `ai-research-scientist`, `ai-knowledge-engineer` |
+
+## Invoking agents
+
+Agents are invoked through Claude Code's Agent tool with the `subagent_type` parameter:
+
+```
+Use the Agent tool with subagent_type: "security-engineer" to audit the authentication flow.
+```
+
+The slash commands also invoke agents:
+
+| Command       | Agent invoked            |
+| ------------- | ------------------------ |
+| `/rea`        | `reagent-orchestrator` + `ai-rea` |
+| `/plan-work`  | `product-owner`          |
+| `/review-pr`  | `code-reviewer` + `pr-voice-reviewer` |
+| `/pm-status`  | `reagent-orchestrator`   |
 
 For the full roster with descriptions, see [AGENTS.md](https://github.com/bookedsolidtech/reagent/blob/staging/AGENTS.md) in the repository.

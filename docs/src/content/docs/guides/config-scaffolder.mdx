@@ -5,7 +5,7 @@ sidebar:
   order: 2
 ---
 
-`reagent init` configures your repository with security hooks, behavioral policies, quality gates, agent teams, and developer tooling.
+`reagent init` configures your repository with security hooks, behavioral policies, quality gates, agent teams, and developer tooling. It also installs `@bookedsolid/reagent` as a devDependency (detecting your package manager and workspace roots automatically).
 
 ## What gets installed
 
@@ -21,7 +21,7 @@ sidebar:
 | `.husky/commit-msg`          | Yes             | Git commit message validation                |
 | `.husky/pre-commit`          | Yes             | Pre-commit checks                            |
 | `.husky/pre-push`            | Yes             | Pre-push quality gates                       |
-| `.claude/hooks/`             | No (gitignored) | Claude Code safety hooks (23 scripts)        |
+| `.claude/hooks/`             | No (gitignored) | Claude Code safety hooks (26 scripts)        |
 | `.claude/settings.json`      | No (gitignored) | Claude Code permissions                      |
 | `.claude/agents/`            | No (gitignored) | Agent team definitions (89 agents)           |
 | `.claude/commands/`          | Yes             | Slash commands                               |
@@ -53,6 +53,7 @@ npx @bookedsolid/reagent init --dry-run
 | Flag                      | Description                                    | Default             |
 | ------------------------- | ---------------------------------------------- | ------------------- |
 | `--profile <name>`        | Profile to install                             | `client-engagement` |
+| `--base-profile <name>`   | Base profile for tech stack profiles           | `client-engagement` |
 | `--dry-run`               | Preview what would be installed without writes | —                   |
 | `--github`                | Scaffold GitHub labels, milestones, and topics | —                   |
 | `--discord`               | Configure Discord notifications in gateway     | —                   |
@@ -61,11 +62,27 @@ npx @bookedsolid/reagent init --dry-run
 | `--tasks-channel <id>`    | Discord channel for task events                | —                   |
 | `--releases-channel <id>` | Discord channel for release events             | —                   |
 | `--dev-channel <id>`      | Discord channel for dev activity               | —                   |
+| `--obsidian`              | Enable Obsidian vault integration              | —                   |
+| `--vault-path <path>`     | Absolute path to the Obsidian vault directory  | —                   |
 
 ## After init
 
 Restart Claude Code after running `reagent init`. Claude Code reads `.mcp.json` on session
 start and spawns `reagent serve` automatically via stdio transport.
+
+### Package manager detection
+
+`reagent init` detects your package manager from lockfiles and installs itself as a devDependency:
+
+| Lockfile              | Package manager | Workspace flag  |
+| --------------------- | --------------- | --------------- |
+| `pnpm-lock.yaml`      | pnpm            | `-w` (if workspace root) |
+| `yarn.lock`           | yarn            | `-W` (if workspace root) |
+| `bun.lockb`           | bun             | —               |
+| `package-lock.json`   | npm             | —               |
+
+For workspace monorepos, init detects `pnpm-workspace.yaml` or `workspaces` in `package.json`
+and adds the appropriate workspace flag so the dependency installs at the root.
 
 ## Idempotent
 

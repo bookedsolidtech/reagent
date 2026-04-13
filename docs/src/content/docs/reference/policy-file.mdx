@@ -13,7 +13,7 @@ reagent's security model. It is written by `reagent init` and committed to the r
 ```yaml
 version: '1'
 profile: 'client-engagement'
-installed_by: 'reagent@0.13.0'
+installed_by: 'reagent@0.15.0'
 installed_at: '2026-04-01T00:00:00.000Z'
 
 # Autonomy levels:
@@ -40,25 +40,70 @@ blocked_paths:
 # Optional: Discord webhook for halt/promote notifications
 notification_channel: ''
 
+# Prompt injection detection mode for proxied tool results
+injection_detection: block
+
 quality_gates:
   push_review: false
+
+# Context protection — delegate expensive commands to subagents
+context_protection:
+  delegate_to_subagent:
+    - 'pnpm run preflight'
+    - 'pnpm run test'
+    - 'pnpm run build'
+    - 'pnpm vitest run'
+  max_bash_output_lines: 100
 ```
 
 ## Fields
 
-| Field                               | Type       | Description                                                    |
-| ----------------------------------- | ---------- | -------------------------------------------------------------- |
-| `version`                           | `string`   | Schema version (currently `"1"`)                               |
-| `profile`                           | `string`   | Profile name used during init                                  |
-| `installed_by`                      | `string`   | Tool and version that generated this file                      |
-| `installed_at`                      | `string`   | ISO 8601 timestamp of installation                             |
-| `autonomy_level`                    | `enum`     | Current level (L0–L3) — controls which tool tiers are allowed  |
-| `max_autonomy_level`                | `enum`     | Ceiling — `autonomy_level` is clamped to this on load          |
-| `promotion_requires_human_approval` | `boolean`  | Whether level changes need explicit human sign-off             |
-| `block_ai_attribution`              | `boolean`  | When true, commit-msg hook rejects AI attribution markers      |
-| `blocked_paths`                     | `string[]` | Paths the agent must never modify (`.reagent/` always included) |
-| `notification_channel`              | `string`   | Optional Discord webhook or channel ID for halt/promote events |
-| `quality_gates.push_review`         | `boolean`  | When true, push-review-gate requires a passing review before push |
+| Field                               | Type       | Default   | Description                                                    |
+| ----------------------------------- | ---------- | --------- | -------------------------------------------------------------- |
+| `version`                           | `string`   | `"1"`     | Schema version (currently `"1"`)                               |
+| `profile`                           | `string`   | —         | Profile name used during init                                  |
+| `installed_by`                      | `string`   | —         | Tool and version that generated this file                      |
+| `installed_at`                      | `string`   | —         | ISO 8601 timestamp of installation                             |
+| `autonomy_level`                    | `enum`     | `L2`      | Current level (L0-L3) — controls which tool tiers are allowed  |
+| `max_autonomy_level`                | `enum`     | `L3`      | Ceiling — `autonomy_level` is clamped to this on load          |
+| `promotion_requires_human_approval` | `boolean`  | `true`    | Whether level changes need explicit human sign-off             |
+| `block_ai_attribution`              | `boolean`  | `true`    | When true, commit-msg hook rejects AI attribution markers      |
+| `blocked_paths`                     | `string[]` | varies    | Paths the agent must never modify                              |
+| `notification_channel`              | `string`   | `""`      | Optional Discord webhook or channel ID for halt/promote events |
+| `injection_detection`               | `enum`     | `"block"` | Prompt injection detection mode (`block` or `warn`)            |
+
+### `quality_gates`
+
+Quality gates control the commit and push review pipeline. They determine whether agents must
+pass code review before committing or pushing changes.
+
+| Field                  | Type      | Default | Description                                                      |
+| ---------------------- | --------- | ------- | ---------------------------------------------------------------- |
+| `push_review`          | `boolean` | `false` | When true, push-review-gate requires a passing review before push |
+
+The commit-review-gate always runs regardless of this setting. It uses triage scoring
+(trivial < 20 lines, standard 20-200 lines, significant > 200 lines) to decide review depth.
+
+### `context_protection`
+
+Context protection prevents expensive or noisy commands from consuming the main conversation's
+context window. Commands listed in `delegate_to_subagent` are flagged — CLAUDE.md instructs
+agents to run these in subagent processes rather than the main conversation.
+
+| Field                    | Type       | Default | Description                                                |
+| ------------------------ | ---------- | ------- | ---------------------------------------------------------- |
+| `delegate_to_subagent`   | `string[]` | `[]`    | Commands that should be run in subagent processes          |
+| `max_bash_output_lines`  | `number`   | `100`   | Advisory limit on bash output lines in the main context   |
+
+### `injection_detection`
+
+Controls how the injection middleware handles suspected prompt injection in tool results from
+downstream MCP servers.
+
+| Value   | Behavior                                                             |
+| ------- | -------------------------------------------------------------------- |
+| `block` | Detected injection patterns are denied (default)                     |
+| `warn`  | Detected patterns are flagged in the audit log but allowed through   |
 
 ## Behavior
 
@@ -70,8 +115,15 @@ beyond `max_autonomy_level` — it is a ceiling set by a human.
 
 ### Blocked paths
 
-The `.reagent/` directory is always included in `blocked_paths` regardless of configuration.
-This prevents agents from modifying their own safety rails. Additional paths are additive.
+Paths listed in `blocked_paths` are enforced by both the `blocked-paths-enforcer.sh` Claude
+Code hook (for file writes/edits) and the blocked-paths middleware layer (for tool calls).
+The `.reagent/` directory is always protected regardless of configuration.
+
+:::tip
+Run `reagent upgrade --clean-blocked-paths` to replace a blanket `.reagent/` entry with
+granular entries that protect policy and audit files while allowing agents to write to
+operational files like `tasks.jsonl` and `review-cache.json`.
+:::
 
 ### Attribution blocking
 
@@ -79,3 +131,8 @@ When `block_ai_attribution` is `true`, the `commit-msg` hook rejects commits con
 structural AI attribution markers such as `Co-Authored-By` with AI names, `Generated with
 [Tool]` footers, or `AI-generated` markers. The `attribution-advisory.sh` Claude Code hook
 also blocks `git commit` and `gh pr create/edit` commands containing these patterns.
+
+### Policy reload behavior
+
+- **Hooks** read `policy.yaml` fresh on every invocation — changes take effect immediately
+- **`reagent serve`** reads `policy.yaml` at startup only — restart Claude Code to pick up changes

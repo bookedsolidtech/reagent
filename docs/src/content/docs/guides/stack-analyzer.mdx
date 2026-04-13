@@ -34,10 +34,55 @@ reagent catalyze /path/to/project
 
 ## How it works
 
-1. **Stack detection** — examines `package.json`, project files, and directory structure to identify your tech stack (Astro, Next.js, Drupal, Lit/Web Components, React, Node API, monorepo)
-2. **Gap analysis** — compares installed hooks, gates, and agents against the recommended catalog for your detected stack
-3. **Report generation** — produces `catalyze-report.md` and `catalyze-report.html` listing gaps by severity
+### 1. Stack detection
+
+Examines `package.json`, project files, and directory structure to identify your tech stack:
+
+| Detected Stack      | Detection signals                                                     |
+| ------------------- | --------------------------------------------------------------------- |
+| **Astro**           | `astro` in dependencies, `astro.config.*` file                        |
+| **Next.js**         | `next` in dependencies, `next.config.*` file                          |
+| **Lit/Web Components** | `lit` in dependencies, Custom Elements Manifest (`custom-elements.json`) |
+| **Drupal**          | `composer.json` with `drupal/core`, `web/modules/` directory          |
+| **React**           | `react` in dependencies (without Next.js signals)                     |
+| **Node API**        | `express`/`fastify`/`hono` in dependencies                           |
+| **Monorepo**        | `pnpm-workspace.yaml`, `workspaces` in `package.json`                |
+
+Multiple stacks can be detected simultaneously (e.g., a Next.js monorepo).
+
+### 2. Gap analysis
+
+Compares installed components against the recommended catalog for your detected stack:
+
+| Gap category      | What it checks                                                    |
+| ----------------- | ----------------------------------------------------------------- |
+| **Hooks**         | Missing Claude Code hooks from the recommended set                |
+| **Quality gates** | Missing review gates, CI integrations                             |
+| **Agents**        | Missing specialist agents for the detected tech stack             |
+| **Profiles**      | Whether the correct tech stack profile has been applied           |
+
+Gaps are classified by severity:
+
+| Severity     | Meaning                                                         |
+| ------------ | --------------------------------------------------------------- |
+| **Critical** | Security hook missing — immediate action needed                 |
+| **High**     | Quality gate missing — affects code review pipeline             |
+| **Medium**   | Specialist agent missing — affects domain coverage              |
+| **Low**      | Optional enhancement — nice-to-have for the detected stack      |
+
+### 3. Report generation
+
+Produces two output files:
+
+- `catalyze-report.md` — Markdown report with gap tables, severity counts, and remediation steps
+- `catalyze-report.html` — Styled HTML version for browser viewing
 
 ## Audit mode
 
-`--audit` re-runs the analysis and diffs against the previous report to surface new or resolved gaps. This is useful for tracking drift over time.
+`--audit` re-runs the analysis and diffs against the previous `catalyze-report.md` to surface:
+
+- **New gaps** — components that were present last time but are now missing
+- **Resolved gaps** — components that were missing last time but are now installed
+- **Persistent gaps** — components that remain missing across both runs
+
+This is useful for tracking drift over time and verifying that `reagent init --profile <stack>` closed the gaps identified in the plan.

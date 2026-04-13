@@ -15,15 +15,28 @@ sidebar:
 | `reagent freeze --reason "..."` | Create `.reagent/HALT` — suspends all tool calls and hook actions  |
 | `reagent unfreeze`              | Remove `.reagent/HALT` — resumes tool calls and hook actions       |
 | `reagent catalyze`              | Analyze project stack and generate gap report                      |
-| `reagent upgrade`               | Re-sync installed hooks from the current package version           |
+| `reagent upgrade`               | Re-sync hooks, merge policy, migrate .mcp.json, install devDep    |
 | `reagent cache check <sha>`     | Check review cache for a file SHA                                  |
 | `reagent cache set <sha> <res>` | Store a review result (pass/fail/advisory)                         |
 | `reagent cache clear`           | Clear all cached review results                                    |
+| `reagent obsidian <subcommand>` | Obsidian vault integration commands                                |
 | `reagent help`                  | Show usage help                                                     |
+
+---
 
 ## `reagent init`
 
 See [Config Scaffolder](/guides/config-scaffolder/) for full details.
+
+`reagent init` performs these steps in order:
+
+1. Detects your package manager (npm, yarn, pnpm, bun) and installs `@bookedsolid/reagent` as a devDependency
+2. Writes `.mcp.json` with a direct `node` path for cross-PM compatibility
+3. Scaffolds `.reagent/policy.yaml` and `.reagent/gateway.yaml`
+4. Installs Claude Code hooks (26 scripts) into `.claude/hooks/`
+5. Installs agent team definitions (89 agents) into `.claude/agents/`
+6. Installs slash commands into `.claude/commands/`
+7. Writes Cursor rules, husky git hooks, and `CLAUDE.md`
 
 | Flag                      | Description                                    | Default             |
 | ------------------------- | ---------------------------------------------- | ------------------- |
@@ -37,6 +50,8 @@ See [Config Scaffolder](/guides/config-scaffolder/) for full details.
 | `--tasks-channel <id>`    | Discord channel for task events                | —                   |
 | `--releases-channel <id>` | Discord channel for release events             | —                   |
 | `--dev-channel <id>`      | Discord channel for dev activity               | —                   |
+| `--obsidian`              | Enable Obsidian vault integration              | —                   |
+| `--vault-path <path>`     | Absolute path to the Obsidian vault directory  | —                   |
 
 ## `reagent serve`
 
@@ -73,18 +88,32 @@ Removes `.reagent/HALT`. Agent operations resume immediately.
 
 ## `reagent upgrade`
 
-Re-syncs installed hooks from the current package version and updates the `installed_by`
-version stamp in `policy.yaml`. Run this after upgrading the `@bookedsolid/reagent` package
-to pull in any new or updated hook scripts.
+Re-syncs installed hooks, merges new policy fields into `policy.yaml`, ensures reagent is
+installed as a devDependency, and migrates `.mcp.json` from the legacy `npx` pattern to the
+direct `node` path (for pnpm compatibility).
+
+Run this after upgrading the `@bookedsolid/reagent` package:
 
 ```bash
 npm update -g @bookedsolid/reagent
 reagent upgrade
 ```
 
-| Flag        | Description                              |
-| ----------- | ---------------------------------------- |
-| `--dry-run` | Print what would be updated without writing |
+**Upgrade steps performed:**
+
+1. **Husky hooks** — re-syncs `commit-msg`, `pre-commit`, `pre-push` from the package (only updates hooks that already exist in `.husky/`)
+2. **Policy merge** — YAML-aware merge that adds missing canonical sections (e.g., `context_protection`), updates the `installed_by` version stamp, and preserves existing values and YAML comments
+3. **Package dependency** — ensures `@bookedsolid/reagent` is a devDependency with `^{currentVersion}` range (detects PM and workspace roots)
+4. **`.mcp.json` migration** — detects the broken `npx reagent serve` pattern and migrates to `node node_modules/@bookedsolid/reagent/dist/cli/index.js serve`
+
+| Flag                    | Description                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| `--dry-run`             | Print what would be updated without writing                                     |
+| `--clean-blocked-paths` | Replace blanket `.reagent/` blocked path with granular entries for policy/audit  |
+
+The `--clean-blocked-paths` flag replaces a blanket `.reagent/` entry in `blocked_paths` with
+granular entries that protect security-critical files (policy, audit, HALT) while allowing
+agents to write to operational files like `tasks.jsonl` and `review-cache.json`.
 
 ## `reagent cache`
 
@@ -110,3 +139,30 @@ reagent cache clear
 | `--ttl <seconds>`   | Cache entry TTL           | `86400`   |
 
 Cache file: `.reagent/review-cache.json`, keyed on `${branch}:${baseCommit}:${fileSHA256}`.
+
+## `reagent obsidian`
+
+Obsidian vault integration commands. See [Obsidian Vault Integration](/guides/obsidian-vault/) for full details.
+
+| Subcommand                                    | Description                                              |
+| --------------------------------------------- | -------------------------------------------------------- |
+| `reagent obsidian sync [--target <t>]`        | Sync enabled targets to the vault                        |
+| `reagent obsidian sync --dry-run`             | Preview what would be written                            |
+| `reagent obsidian status`                     | Show Obsidian config, CLI availability, enabled targets  |
+| `reagent obsidian health`                     | Show vault health metrics (orphans, unresolved links)    |
+| `reagent obsidian journal`                    | Manually trigger a session journal entry in daily note   |
+
+Valid `--target` values: `kanban`, `context`, `wiki`, `tasks`.
+
+## Slash commands
+
+reagent installs these slash commands into `.claude/commands/` for use within Claude Code conversations:
+
+| Command       | Description                                                                |
+| ------------- | -------------------------------------------------------------------------- |
+| `/tasks`      | Render a markdown table of current tasks from `.reagent/tasks.jsonl`       |
+| `/plan-work`  | Invoke the product-owner agent to propose and create tasks for a goal      |
+| `/restart`    | Session handoff — save state on spin-down, orient from saved state on spin-up |
+| `/rea`        | Invoke the REA (Reactive Execution Agent) for autonomous team orchestration |
+| `/pm-status`  | Scan open PRs, report pipeline state, merge ready work, staging promotion  |
+| `/review-pr`  | Fetch a PR diff, run code-reviewer analysis, post findings in owner voice  |

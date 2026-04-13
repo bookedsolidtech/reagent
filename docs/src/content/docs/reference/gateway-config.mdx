@@ -98,3 +98,36 @@ discord_ops:
 | `channels.tasks`    | `string` | Channel ID for task events     |
 | `channels.releases` | `string` | Channel ID for release events  |
 | `channels.dev`      | `string` | Channel ID for dev activity    |
+
+## Obsidian vault configuration
+
+The `obsidian_vault` top-level block configures Obsidian vault integration. It is written
+when you run `reagent init --obsidian --vault-path /path/to/vault` or set the
+`REAGENT_OBSIDIAN_VAULT` environment variable.
+
+```yaml
+obsidian_vault:
+  enabled: true
+  vault_path: '/path/to/vault'
+  vault_name: 'MyProject'
+  paths:
+    root: 'Projects/Reagent'
+    kanban: 'Projects/Reagent/Kanban.md'
+    sources: 'Projects/Reagent/Sources'
+    wiki: 'Projects/Reagent/Auto'
+    tasks: 'Tasks'
+    sessions: 'Wiki/Sessions'
+  sync:
+    kanban: false
+    context_dump: false
+    wiki_refresh: false
+    journal: true
+    precompact: false
+    tasks: true
+  precompact:
+    engine: 'claude'
+    model: null
+```
+
+See [Obsidian Vault Integration](/guides/obsidian-vault/) for full field documentation and
+the three-tier hook architecture.

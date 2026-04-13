@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { userInfo } from 'node:os';
 import type { AccountCredential } from '../types/accounts.js';
 
 const KEYCHAIN_ACCOUNT = 'reagent';
@@ -96,8 +97,13 @@ export function readClaudeCodeCredential(): AccountCredential | null {
 
 /**
  * Write back a credential to Claude Code's own keychain entry.
+ *
+ * Claude Code stores its credential with `-a <os-username>`.
+ * macOS `security add-generic-password` requires `-a`, so we
+ * use the current OS username to match Claude Code's convention.
  */
 export function writeClaudeCodeCredential(data: string): void {
+  const account = userInfo().username;
   try {
     execFileSync('security', ['delete-generic-password', '-s', 'Claude Code-credentials'], {
       stdio: 'pipe',
@@ -107,7 +113,7 @@ export function writeClaudeCodeCredential(data: string): void {
   }
   execFileSync(
     'security',
-    ['add-generic-password', '-s', 'Claude Code-credentials', '-w', data, '-U'],
+    ['add-generic-password', '-s', 'Claude Code-credentials', '-a', account, '-w', data, '-U'],
     { stdio: 'pipe' }
   );
 }

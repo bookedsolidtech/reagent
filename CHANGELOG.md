@@ -1,5 +1,11 @@
 # @bookedsolid/reagent
 
+## 0.15.0
+
+### Minor Changes
+
+- a691c58: Add multi-credential management (`reagent account`) for switching between multiple Claude billing accounts. Store OAuth tokens in macOS Keychain, swap with `rswitch` shell function or `eval "$(reagent account env <name>)"`. Includes 8 CLI subcommands, comprehensive documentation, and security threat model.
+
 ## 0.14.3
 
 ### Patch Changes

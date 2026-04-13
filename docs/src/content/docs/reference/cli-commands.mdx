@@ -19,6 +19,7 @@ sidebar:
 | `reagent cache check <sha>`     | Check review cache for a file SHA                                  |
 | `reagent cache set <sha> <res>` | Store a review result (pass/fail/advisory)                         |
 | `reagent cache clear`           | Clear all cached review results                                    |
+| `reagent account <subcommand>`  | Multi-credential management (add, list, switch, rotate, remove)    |
 | `reagent obsidian <subcommand>` | Obsidian vault integration commands                                |
 | `reagent help`                  | Show usage help                                                     |
 
@@ -153,6 +154,29 @@ Obsidian vault integration commands. See [Obsidian Vault Integration](/guides/ob
 | `reagent obsidian journal`                    | Manually trigger a session journal entry in daily note   |
 
 Valid `--target` values: `kanban`, `context`, `wiki`, `tasks`.
+
+## `reagent account`
+
+Multi-credential management for switching between Claude billing accounts. See
+[Multi-Credential Management](/guides/multi-credential-management/) for the full guide and
+[Account Security Model](/architecture/account-security-model/) for threat model details.
+
+| Subcommand | Description |
+|---|---|
+| `reagent account add <name>` | Register a new account via OAuth login, store in Keychain |
+| `reagent account list` | Show all registered accounts and active status |
+| `reagent account env <name>` | Output shell export commands for `eval` |
+| `reagent account env --clear` | Output shell unset commands to clear override |
+| `reagent account check [--all]` | Validate token health (expiry, keychain access) |
+| `reagent account whoami` | Show active account details |
+| `reagent account rotate <name>` | Re-authenticate and store new token |
+| `reagent account remove <name>` | Delete keychain entry and remove from config |
+| `reagent account setup-shell` | Print shell function and completions for `rswitch` |
+
+| Flag | Description | Default |
+|---|---|---|
+| `--shell <zsh\|bash\|fish>` | Target shell for `setup-shell` | `zsh` |
+| `--all` | Check all accounts (for `check` subcommand) | Active only |
 
 ## Slash commands
 

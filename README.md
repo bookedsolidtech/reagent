@@ -591,6 +591,21 @@ reagent upgrade [--dry-run] [--clean-blocked-paths]
   granular entries, allowing agents to write to operational files (tasks,
   review cache) while keeping policy and audit files protected.
 
+reagent account <subcommand>
+  Multi-credential management. Switch between Claude billing accounts by
+  storing OAuth tokens in macOS Keychain and exporting CLAUDE_CODE_OAUTH_TOKEN.
+
+  Subcommands:
+    add <name>        Register a new account via OAuth login
+    list              Show all registered accounts and active status
+    env <name>        Output shell export commands (for eval/rswitch)
+    env --clear       Output shell unset commands
+    check [--all]     Validate token health (expiry, keychain access)
+    whoami            Show active account details
+    rotate <name>     Re-authenticate and store new token
+    remove <name>     Delete keychain entry and remove from config
+    setup-shell       Print shell function and completions for rswitch
+
 reagent cache <set|get|del> <key> [value]
   Manages the review cache used by commit-review-gate and push-review-gate.
 

@@ -1,5 +1,11 @@
 # @bookedsolid/reagent
 
+## 0.15.1
+
+### Patch Changes
+
+- 54cecbb: Fix `reagent account add` failing to read Claude Code's keychain credential. Claude Code wraps credentials in a `{claudeAiOauth: {...}}` envelope — now correctly unwrapped.
+
 ## 0.15.0
 
 ### Minor Changes

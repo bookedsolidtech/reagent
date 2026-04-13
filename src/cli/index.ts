@@ -10,6 +10,7 @@ import { runCache } from './commands/cache.js';
 import { runCatalyze } from './commands/catalyze/index.js';
 import { runUpgrade } from './commands/upgrade.js';
 import { runObsidian } from './commands/obsidian.js';
+import { runAccount } from './commands/account.js';
 
 const [, , cmd, ...rest] = process.argv;
 
@@ -46,6 +47,9 @@ switch (cmd) {
   case 'obsidian':
     runObsidian(rest);
     break;
+  case 'account':
+    runAccount(rest);
+    break;
   default:
     console.error(`\nUnknown command: ${cmd}`);
     printHelp();
@@ -70,6 +74,7 @@ Commands:
   cache      Manage review cache (check, set, clear)
   upgrade    Re-sync installed hooks and update policy.yaml version stamp
              Options: --dry-run, --clean-blocked-paths
+  account    Manage multiple Claude billing accounts (add, list, env, whoami, rotate, remove)
   obsidian   Sync project state to an Obsidian vault (opt-in)
   help       Show this help
 

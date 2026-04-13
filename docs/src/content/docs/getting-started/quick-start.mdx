@@ -13,22 +13,30 @@ cd your-project
 reagent init
 ```
 
-`reagent init` writes `.mcp.json` to your project root:
+`reagent init` does four things:
+
+1. Installs `@bookedsolid/reagent` as a devDependency (detects your package manager automatically)
+2. Writes `.mcp.json` to your project root so Claude Code spawns `reagent serve` on session start
+3. Scaffolds `.reagent/policy.yaml`, `.reagent/gateway.yaml`, Claude Code hooks, quality gates, Cursor rules, agent team files, and slash commands
+4. Sets up husky git hooks for commit message validation, pre-commit checks, and pre-push gates
+
+The `.mcp.json` it writes uses a direct `node` path for cross-package-manager compatibility:
 
 ```json
 {
   "mcpServers": {
     "reagent": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["reagent", "serve"]
+      "command": "node",
+      "args": ["node_modules/@bookedsolid/reagent/dist/cli/index.js", "serve"]
     }
   }
 }
 ```
 
-It also installs `.reagent/policy.yaml`, `.reagent/gateway.yaml`, Claude Code hooks, quality
-gates, Cursor rules, agent team files, and slash commands.
+:::note
+If reagent is not yet installed as a local dependency (e.g., running via `npx` for the first time), init falls back to `npx @bookedsolid/reagent serve`. Run `reagent upgrade` after installing the package to migrate to the direct node path.
+:::
 
 **Restart Claude Code.** It picks up `.mcp.json` and spawns `reagent serve` automatically via
 stdio transport. reagent loads your policy and gateway config, connects to any downstream
@@ -114,8 +122,21 @@ reagent catalyze --dry-run
 
 This generates `catalyze-report.md` and `catalyze-report.html` listing gaps by severity.
 
+## Keeping reagent up to date
+
+After upgrading the npm package, run `upgrade` to re-sync hooks and migrate configs:
+
+```bash
+npm update -g @bookedsolid/reagent   # or: npm update -D @bookedsolid/reagent
+reagent upgrade
+```
+
+`reagent upgrade` re-syncs husky hooks, merges new policy fields into `policy.yaml`, ensures
+reagent is a devDependency, and migrates `.mcp.json` from legacy patterns. See [CLI Commands](/reference/cli-commands/) for all flags.
+
 ## Next steps
 
 - Learn about the [zero-trust security model](/concepts/zero-trust/)
 - Configure the [MCP server proxy](/guides/mcp-gateway/)
+- Set up [Obsidian vault integration](/guides/obsidian-vault/)
 - Explore [CLI commands](/reference/cli-commands/)

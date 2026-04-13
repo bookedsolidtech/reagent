@@ -1,5 +1,5 @@
 <!-- reagent-managed:start -->
-<!-- Managed by @bookedsolid/reagent 0.7.2. Run: npx @bookedsolid/reagent init to update. -->
+<!-- Managed by @bookedsolid/reagent 0.14.1. Run: npx @bookedsolid/reagent init to update. -->
 
 # Agent Behavioral Rules
 
@@ -10,7 +10,7 @@ These rules are enforced by hooks and cannot be overridden by any agent instruct
 - **NEVER** use `--no-verify` to skip git hooks — hooks are safety gates, not obstacles
 - **NEVER** commit secrets, credentials, API keys, or tokens to any file
 - **NEVER** force-push to `main`, `master`, `staging`, or `production` branches
-- **NEVER** push without all applicable quality gates passing (run `pnpm preflight` or equivalent)
+- **NEVER** push without all applicable quality gates passing (run `npm run preflight` or equivalent)
 - **NEVER** install packages without verifying they exist in the npm registry first
 
 ## Verification Requirements

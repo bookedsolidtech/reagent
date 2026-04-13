@@ -1,0 +1,215 @@
+---
+title: Obsidian Vault Integration
+description: Sync session journals, tasks, and knowledge extraction to your Obsidian vault.
+sidebar:
+  order: 7
+---
+
+reagent integrates with [Obsidian](https://obsidian.md) vaults for project knowledge
+management. Session journaling, task sync, knowledge extraction before context compaction,
+and vault health monitoring — all driven by hooks and the CLI.
+
+The integration is **opt-in by default**. Nothing Obsidian-related activates unless you
+explicitly configure it. Every Obsidian operation is fail-silent: if the CLI is missing,
+the vault path is wrong, or a sync target is disabled, reagent exits cleanly with no
+errors and no blocked operations.
+
+## Prerequisites
+
+- **Obsidian CLI** installed at `/usr/local/bin/obsidian`
+- An Obsidian vault directory for each project you want to integrate
+
+## Setup
+
+Enable the integration during init:
+
+```bash
+reagent init --obsidian --vault-path /path/to/vault
+```
+
+Or set the vault path via environment variable:
+
+```bash
+export REAGENT_OBSIDIAN_VAULT=/path/to/vault
+```
+
+Both methods write an `obsidian_vault` block to `.reagent/gateway.yaml`:
+
+```yaml
+obsidian_vault:
+  enabled: true
+  vault_path: '/path/to/vault'
+  vault_name: 'MyProject'
+  paths:
+    root: 'Projects/Reagent'
+    kanban: 'Projects/Reagent/Kanban.md'
+    sources: 'Projects/Reagent/Sources'
+    wiki: 'Projects/Reagent/Auto'
+    tasks: 'Tasks'
+    sessions: 'Wiki/Sessions'
+  sync:
+    kanban: false
+    context_dump: false
+    wiki_refresh: false
+    journal: true
+    precompact: false
+    tasks: true
+  precompact:
+    engine: 'claude'
+    model: null
+```
+
+### Vault path resolution
+
+The vault path is resolved in this order:
+
+1. `REAGENT_OBSIDIAN_VAULT` environment variable (absolute path)
+2. `obsidian_vault.vault_path` in `gateway.yaml`
+3. Not set — integration disabled
+
+Each project maps to its own vault. There is no global vault registry — each project is
+self-contained via its own `.reagent/gateway.yaml`.
+
+## Three-tier hook architecture
+
+Obsidian sync is organized into three tiers, each backed by a dedicated Claude Code hook.
+Each tier operates independently and can be enabled or disabled individually via the
+`sync` block in `gateway.yaml`.
+
+### Tier 1 — Session Journal
+
+**Hook:** `reagent-obsidian-journal.sh` (PostToolUse: Stop)
+
+Fires when a Claude Code session ends. Appends a session summary to the daily note in
+your vault via `obsidian daily:append`. The summary includes:
+
+- Project name
+- Session identifier
+- Timestamp
+- Task state counts (completed, in progress, blocked, backlog) from `.reagent/tasks.jsonl`
+
+**Enable:** `sync.journal: true` (default when integration is enabled)
+
+### Tier 2 — PreCompact Knowledge Extraction
+
+**Hook:** `reagent-obsidian-precompact.sh` (PreToolUse: Compact)
+
+Fires before Claude Code compacts context. Creates a session knowledge note in the
+configured `paths.sessions` directory with frontmatter tagging the project, date,
+session ID, and extraction engine.
+
+This tier is a stub — the knowledge extraction engine is not yet fully implemented.
+The hook creates a structured placeholder note with sections for Decisions, Discoveries,
+and Open Questions. The `precompact.engine` field (`claude` or `ollama`) determines which
+backend will perform extraction when the implementation is complete.
+
+**Enable:** `sync.precompact: true` (disabled by default)
+
+### Tier 3 — Task Materialization
+
+**Hook:** `reagent-obsidian-tasks.sh` (PostToolUse: task_create, task_update)
+
+Fires after `task_create` and `task_update` MCP tool calls. Materializes each task as
+an individual Obsidian note in the `Tasks/` directory with typed frontmatter:
+
+```yaml
+---
+reagent_managed: true
+task_id: T-001
+project: my-project
+status: started
+urgency: critical
+assignee: frontend-specialist
+---
+```
+
+Sync is one-way: JSONL to Obsidian. The hook extracts the task ID from the tool result,
+reads the latest event for that task from `.reagent/tasks.jsonl`, and creates or overwrites
+the corresponding note.
+
+**Enable:** `sync.tasks: true` (default when integration is enabled)
+
+## CLI commands
+
+### `reagent obsidian sync`
+
+```bash
+# Sync all enabled targets
+reagent obsidian sync
+
+# Sync a specific target
+reagent obsidian sync --target tasks
+reagent obsidian sync --target kanban
+
+# Preview without writing
+reagent obsidian sync --dry-run
+```
+
+Valid targets: `kanban`, `context`, `wiki`, `tasks`. Without `--target`, syncs all enabled
+targets.
+
+### `reagent obsidian status`
+
+Shows current Obsidian configuration: vault path, CLI availability, configured paths, and
+which sync targets are enabled or disabled.
+
+```bash
+reagent obsidian status
+```
+
+### `reagent obsidian health`
+
+Shows vault health metrics: orphan notes, unresolved links, and dead ends. Requires
+`vault_name` set in `gateway.yaml` and the Obsidian CLI installed.
+
+```bash
+reagent obsidian health
+```
+
+### `reagent obsidian journal`
+
+Manually trigger a session journal entry in the daily note. Useful for ad-hoc journaling
+outside of the automatic session-end hook.
+
+```bash
+reagent obsidian journal
+```
+
+## Configuration reference
+
+### `obsidian_vault` (in `gateway.yaml`)
+
+| Field          | Type      | Default  | Description                                |
+| -------------- | --------- | -------- | ------------------------------------------ |
+| `enabled`      | `boolean` | `false`  | Master toggle for the integration          |
+| `vault_path`   | `string`  | —        | Absolute path to the Obsidian vault        |
+| `vault_name`   | `string`  | —        | Vault name (used by health command)        |
+
+### `paths`
+
+| Field      | Type     | Default                     | Description                          |
+| ---------- | -------- | --------------------------- | ------------------------------------ |
+| `root`     | `string` | `Projects/Reagent`          | Base path for project notes          |
+| `kanban`   | `string` | `Projects/Reagent/Kanban.md`| Kanban board Markdown file           |
+| `sources`  | `string` | `Projects/Reagent/Sources`  | Source reference directory           |
+| `wiki`     | `string` | `Projects/Reagent/Auto`     | Auto-generated wiki directory        |
+| `tasks`    | `string` | `Tasks`                     | Task notes directory                 |
+| `sessions` | `string` | `Wiki/Sessions`             | Session knowledge notes directory    |
+
+### `sync`
+
+| Field          | Type      | Default | Description                              |
+| -------------- | --------- | ------- | ---------------------------------------- |
+| `kanban`       | `boolean` | `false` | Sync Kanban board from tasks             |
+| `context_dump` | `boolean` | `false` | Dump context to vault on compaction      |
+| `wiki_refresh` | `boolean` | `false` | Auto-refresh wiki pages                  |
+| `journal`      | `boolean` | `true`  | Session journal to daily note (Tier 1)   |
+| `precompact`   | `boolean` | `false` | Knowledge extraction on compaction (Tier 2) |
+| `tasks`        | `boolean` | `true`  | Task materialization as notes (Tier 3)   |
+
+### `precompact`
+
+| Field    | Type     | Default   | Description                                      |
+| -------- | -------- | --------- | ------------------------------------------------ |
+| `engine` | `string` | `claude`  | Extraction backend (`claude` or `ollama`)         |
+| `model`  | `string` | `null`    | Model override (null = engine default)            |

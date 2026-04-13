@@ -3,6 +3,7 @@ import path from 'node:path';
 import { PKG_ROOT, getPkgVersion } from '../utils.js';
 import type { InstallResult } from './init/types.js';
 import { installHuskyHook } from './init/husky-hooks.js';
+import { installPackageDep } from './init/package-dep.js';
 import { mergePolicy } from './upgrade-policy.js';
 
 // All hook names managed by reagent, mapped to their source file names
@@ -64,7 +65,10 @@ export function runUpgrade(args: string[]): void {
   });
   results.push(...policyResults);
 
-  // Step 3: Fix .mcp.json if it uses the broken npx pattern.
+  // Step 3: Ensure @bookedsolid/reagent is a devDependency
+  results.push(...installPackageDep(targetDir, dryRun));
+
+  // Step 4: Fix .mcp.json if it uses the broken npx pattern.
   // pnpm projects don't get node_modules/.bin/reagent, so npx fails.
   // Migrate to the direct node path which works across all package managers.
   const mcpResults = upgradeMcpJson(targetDir, dryRun);
@@ -159,9 +163,9 @@ function printSummary(results: InstallResult[], dryRun: boolean): void {
 
   if (!dryRun) {
     console.log('\nreagent upgrade complete');
-    console.log('\nCommit the updated hooks to keep the team in sync:');
+    console.log('\nCommit the updated files to keep the team in sync:');
     console.log(
-      '  git add .husky/ .reagent/policy.yaml && git commit -m "chore: upgrade reagent hooks"'
+      '  git add .husky/ .reagent/policy.yaml package.json *lock* && git commit -m "chore: upgrade reagent"'
     );
     console.log('');
   }

@@ -13,10 +13,13 @@ export interface ManagedClient {
 /**
  * Build a clean env record: merge process.env (filtering out undefined) with config env.
  */
+/** Keys that should never leak to downstream MCP servers. */
+const STRIP_FROM_DOWNSTREAM = ['CLAUDE_CODE_OAUTH_TOKEN', 'CLAUDE_CODE_OAUTH_REFRESH_TOKEN'];
+
 function buildEnv(configEnv?: Record<string, string>): Record<string, string> {
   const base: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) {
-    if (v !== undefined) base[k] = v;
+    if (v !== undefined && !STRIP_FROM_DOWNSTREAM.includes(k)) base[k] = v;
   }
   if (configEnv) Object.assign(base, configEnv);
   return base;

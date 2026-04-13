@@ -56,6 +56,15 @@ The `secret-scanner.sh` hook prevents secrets from being written to files. The `
 
 `reagent freeze` creates a `.reagent/HALT` file that immediately blocks all tool calls across every connected MCP server. The file is validated as a regular file (symlinks outside `.reagent/` are rejected). Reads are capped at 1024 bytes.
 
+## Multi-credential security
+
+The [account security model](/architecture/account-security-model/) documents the threat model and defense-in-depth architecture for reagent's multi-credential management system. Key properties:
+
+- Tokens are stored exclusively in macOS Keychain — never in files
+- The config loader rejects YAML containing inline token patterns (`sk-ant-*`)
+- OAuth tokens are stripped from child process environments when proxying to downstream MCP servers
+- The secret scanner hook blocks file writes containing Anthropic OAuth token patterns
+
 ## Attribution control
 
 When `block_ai_attribution` is enabled, the system prevents AI attribution markers from appearing in commits, PRs, or code. This is enforced by both the commit-msg hook and the `attribution-advisory.sh` Claude Code hook.

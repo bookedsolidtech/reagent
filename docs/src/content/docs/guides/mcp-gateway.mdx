@@ -31,12 +31,15 @@ rate-limiting, and the kill switch all apply.
   "mcpServers": {
     "reagent": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["reagent", "serve"]
+      "command": "node",
+      "args": ["node_modules/@bookedsolid/reagent/dist/cli/index.js", "serve"]
     }
   }
 }
 ```
+
+The direct `node` path works across npm, yarn, pnpm, and bun. Legacy projects using the
+`npx reagent serve` pattern can migrate by running `reagent upgrade`.
 
 Do not add downstream servers directly to `.mcp.json`. Add them to `.reagent/gateway.yaml`
 so they are proxied through reagent's middleware.

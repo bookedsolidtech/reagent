@@ -9,6 +9,7 @@ export interface AuditRecord {
   status: InvocationStatus;
   autonomy_level: string;
   duration_ms: number;
+  account_name?: string;
   error?: string;
   redacted_fields?: string[];
   hash: string;

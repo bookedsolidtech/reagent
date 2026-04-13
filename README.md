@@ -2,7 +2,7 @@
 
 Governance layer for Claude Code — policy enforcement, hook-based safety gates, and audit logging for AI-assisted projects.
 
-reagent enforces policy, prevents dangerous operations, and audits AI agent activity in Claude Code projects. One command (`reagent init`) installs 23 safety hooks and a full engineering team of AI specialists into your project. Every tool call — from every AI agent — is governed by your `policy.yaml`. It's Claude Code + accountability.
+reagent enforces policy, prevents dangerous operations, and audits AI agent activity in Claude Code projects. One command (`reagent init`) installs 26 safety hooks and a full engineering team of AI specialists into your project. Every tool call — from every AI agent — is governed by your `policy.yaml`. It's Claude Code + accountability.
 
 ## What it is
 
@@ -35,19 +35,24 @@ cd your-project
 reagent init
 ```
 
-That's it. `reagent init` writes `.mcp.json` to your project root:
+That's it. `reagent init` installs reagent as a devDependency (detecting your package manager
+automatically) and writes `.mcp.json` to your project root:
 
 ```json
 {
   "mcpServers": {
     "reagent": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["reagent", "serve"]
+      "command": "node",
+      "args": ["node_modules/@bookedsolid/reagent/dist/cli/index.js", "serve"]
     }
   }
 }
 ```
+
+The direct `node` path works across npm, yarn, pnpm, and bun. If reagent is not yet installed
+locally, init falls back to `npx @bookedsolid/reagent serve`; run `reagent upgrade` after
+installing the package to migrate.
 
 Restart Claude Code. It will pick up `.mcp.json` and spawn `reagent serve` automatically.
 reagent loads your `.reagent/policy.yaml` and `.reagent/gateway.yaml`, connects to any
@@ -162,6 +167,17 @@ notification_channel: ''
 
 quality_gates:
   push_review: false
+
+# Prompt injection detection for proxied tool results
+injection_detection: block # 'block' (default) or 'warn'
+
+# Context protection — delegate expensive commands to subagents
+context_protection:
+  delegate_to_subagent:
+    - 'pnpm run preflight'
+    - 'pnpm run test'
+    - 'pnpm run build'
+  max_bash_output_lines: 100
 ```
 
 The `autonomy_level` controls what tier of tools an agent can call. Raise it to give
@@ -284,7 +300,7 @@ The `client-engagement` profile installs:
 
 ## Hooks
 
-reagent installs 23 Claude Code hooks into `.claude/hooks/`. Every hook checks for
+reagent installs 26 Claude Code hooks into `.claude/hooks/`. Every hook checks for
 `.reagent/HALT` at the top — if it exists, the hook returns exit code 2 (hard block)
 immediately.
 
@@ -326,6 +342,17 @@ immediately.
 - `architecture-review-gate` — After significant file edits, checks the change against
   the project's architecture plan and flags deviations.
 
+**Integration hooks:**
+
+- `reagent-notify` — Sends Discord notifications on significant events (commits, PR
+  creation, pushes). Requires `discord_ops` in `gateway.yaml`.
+- `reagent-obsidian-journal` — Fires on session end. Appends a session summary to the
+  daily note in your Obsidian vault.
+- `reagent-obsidian-precompact` — Fires before context compaction. Creates a knowledge
+  extraction note in the vault's sessions directory.
+- `reagent-obsidian-tasks` — Fires after `task_create`/`task_update`. Materializes tasks
+  as individual Obsidian notes with typed frontmatter.
+
 **Additional hooks installed by tech stack profiles:**
 
 - `commit-msg` (husky) — Enforces commit message format and rejects AI attribution
@@ -363,8 +390,17 @@ are stored as append-only JSONL in `.reagent/tasks.jsonl`. Each line is a JSON e
 All native tools go through the same middleware chain as proxied tools — the kill switch,
 policy, blocked paths, redaction, and audit all apply.
 
-The `/tasks` slash command and the `pm-status` agent provide a product-owner view of
-the task board from within Claude Code conversations.
+Slash commands provide quick access to the task board and team orchestration from within
+Claude Code conversations:
+
+| Command      | Description                                                                   |
+| ------------ | ----------------------------------------------------------------------------- |
+| `/tasks`     | Render a markdown table of current tasks from tasks.jsonl                     |
+| `/plan-work` | Invoke the product-owner agent to propose and create tasks for a goal         |
+| `/restart`   | Session handoff — save state on spin-down, orient from saved state on spin-up |
+| `/rea`       | Invoke the REA (Reactive Execution Agent) for autonomous team orchestration   |
+| `/pm-status` | Scan open PRs, report pipeline state, merge ready work, staging promotion     |
+| `/review-pr` | Fetch a PR diff, run code-reviewer analysis, post findings in owner voice     |
 
 **Example `tasks.jsonl` entries:**
 
@@ -548,11 +584,27 @@ reagent catalyze [targetDir]
   --dry-run Print analysis without writing files
 
 reagent upgrade [--dry-run] [--clean-blocked-paths]
-  Re-syncs installed hooks from the current package version and updates the
-  version stamp in policy.yaml. Run after upgrading the reagent package.
+  Re-syncs husky hooks, merges new policy fields into policy.yaml, ensures
+  reagent is a devDependency, and migrates .mcp.json from the legacy npx
+  pattern to the direct node path (for pnpm compatibility).
   --clean-blocked-paths replaces the blanket '.reagent/' blocked path with
   granular entries, allowing agents to write to operational files (tasks,
   review cache) while keeping policy and audit files protected.
+
+reagent account <subcommand>
+  Multi-credential management. Switch between Claude billing accounts by
+  storing OAuth tokens in macOS Keychain and exporting CLAUDE_CODE_OAUTH_TOKEN.
+
+  Subcommands:
+    add <name>        Register a new account via OAuth login
+    list              Show all registered accounts and active status
+    env <name>        Output shell export commands (for eval/rswitch)
+    env --clear       Output shell unset commands
+    check [--all]     Validate token health (expiry, keychain access)
+    whoami            Show active account details
+    rotate <name>     Re-authenticate and store new token
+    remove <name>     Delete keychain entry and remove from config
+    setup-shell       Print shell function and completions for rswitch
 
 reagent cache <set|get|del> <key> [value]
   Manages the review cache used by commit-review-gate and push-review-gate.

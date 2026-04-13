@@ -261,6 +261,49 @@ if printf '%s' "$CMD" | grep -qiE '(alias|function)[[:space:]]+[a-zA-Z_]+.*(--(n
     "Alt: Do not wrap bypass patterns in aliases or functions."
 fi
 
+# H17: context_protection — block commands that should be delegated to subagents
+# Reads context_protection.delegate_to_subagent from .reagent/policy.yaml.
+# These commands produce excessive output that exhausts coordinator context windows.
+POLICY_FILE="${REAGENT_ROOT}/.reagent/policy.yaml"
+if [[ -f "$POLICY_FILE" ]]; then
+  DELEGATE_PATTERNS=()
+  IN_DELEGATE_BLOCK=0
+  while IFS= read -r line; do
+    if printf '%s' "$line" | grep -qE '^[[:space:]]*delegate_to_subagent:'; then
+      # Check for inline empty array
+      if printf '%s' "$line" | grep -qE 'delegate_to_subagent:[[:space:]]*\[\]'; then
+        break
+      fi
+      IN_DELEGATE_BLOCK=1
+      continue
+    fi
+    if [[ $IN_DELEGATE_BLOCK -eq 1 ]]; then
+      # Block sequence items start with "  - "
+      if printf '%s' "$line" | grep -qE '^[[:space:]]*-[[:space:]]'; then
+        pattern=$(printf '%s' "$line" | sed "s/^[[:space:]]*-[[:space:]]*//; s/^[\"']//; s/[\"']$//")
+        if [[ -n "$pattern" ]]; then
+          DELEGATE_PATTERNS+=("$pattern")
+        fi
+      else
+        # Non-continuation line = end of block
+        break
+      fi
+    fi
+  done < "$POLICY_FILE"
+
+  for pattern in "${DELEGATE_PATTERNS[@]+"${DELEGATE_PATTERNS[@]}"}"; do
+    # Use fixed-string match — these are command prefixes, not regex
+    if printf '%s' "$CMD" | grep -qF "$pattern"; then
+      add_high \
+        "Context protection — command must run in a subagent" \
+        "This command produces excessive output that will exhaust the coordinator context window. Delegate it to a subagent instead of running it directly." \
+        "Alt: Use the Agent tool to delegate: Agent(subagent_type: 'qa-engineer-automation', prompt: 'Run $pattern and report pass/fail summary only.')" \
+        "Alt: The context_protection policy in .reagent/policy.yaml lists commands that must be delegated."
+      break
+    fi
+  done
+fi
+
 # ── 10. MEDIUM severity checks ────────────────────────────────────────────────
 
 # M1: npm install --force

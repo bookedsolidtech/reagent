@@ -64,7 +64,72 @@ export function runUpgrade(args: string[]): void {
   });
   results.push(...policyResults);
 
+  // Step 3: Fix .mcp.json if it uses the broken npx pattern.
+  // pnpm projects don't get node_modules/.bin/reagent, so npx fails.
+  // Migrate to the direct node path which works across all package managers.
+  const mcpResults = upgradeMcpJson(targetDir, dryRun);
+  results.push(...mcpResults);
+
   printSummary(results, dryRun);
+}
+
+/**
+ * Fix .mcp.json if it uses the broken npx pattern.
+ * Migrates to `node node_modules/@bookedsolid/reagent/dist/cli/index.js serve`
+ * which works across npm, yarn, pnpm, and bun.
+ */
+function upgradeMcpJson(targetDir: string, dryRun: boolean): InstallResult[] {
+  const mcpPath = path.join(targetDir, '.mcp.json');
+  if (!fs.existsSync(mcpPath)) {
+    return [];
+  }
+
+  let config: { mcpServers?: Record<string, { command?: string; args?: string[] }> };
+  try {
+    config = JSON.parse(fs.readFileSync(mcpPath, 'utf8')) as typeof config;
+  } catch {
+    return [{ file: '.mcp.json', status: 'warn' }];
+  }
+
+  const entry = config.mcpServers?.reagent;
+  if (!entry) return [];
+
+  // Check if it's using the broken npx pattern
+  const isNpx =
+    entry.command === 'npx' &&
+    Array.isArray(entry.args) &&
+    entry.args.some((a) => a === 'reagent' || a === '@bookedsolid/reagent');
+
+  if (!isNpx) return [{ file: '.mcp.json', status: 'skipped' }];
+
+  // Check if the local dist CLI exists
+  const localCli = path.join(
+    targetDir,
+    'node_modules',
+    '@bookedsolid',
+    'reagent',
+    'dist',
+    'cli',
+    'index.js'
+  );
+  if (!fs.existsSync(localCli)) {
+    return [{ file: '.mcp.json', status: 'skipped' }];
+  }
+
+  // Migrate to node direct path
+  entry.command = 'node';
+  entry.args = ['node_modules/@bookedsolid/reagent/dist/cli/index.js', 'serve'];
+
+  if (!dryRun) {
+    fs.writeFileSync(mcpPath, JSON.stringify(config, null, 2) + '\n');
+  }
+
+  return [
+    {
+      file: '.mcp.json (migrated npx → node for pnpm compatibility)',
+      status: 'updated',
+    },
+  ];
 }
 
 function printSummary(results: InstallResult[], dryRun: boolean): void {

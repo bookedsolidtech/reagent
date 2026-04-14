@@ -67,42 +67,38 @@ describe('reagent init', () => {
   // ── Fresh install ──────────────────────────────────────────────────
 
   describe('fresh install', () => {
-    it(
-      'creates all expected artifacts',
-      () => {
-        runInit();
+    it('creates all expected artifacts', () => {
+      runInit();
 
-        // Policy
-        expect(fs.existsSync(path.join(tmpDir, '.reagent', 'policy.yaml'))).toBe(true);
+      // Policy
+      expect(fs.existsSync(path.join(tmpDir, '.reagent', 'policy.yaml'))).toBe(true);
 
-        // Gateway config
-        expect(fs.existsSync(path.join(tmpDir, '.reagent', 'gateway.yaml'))).toBe(true);
+      // Gateway config
+      expect(fs.existsSync(path.join(tmpDir, '.reagent', 'gateway.yaml'))).toBe(true);
 
-        // CLAUDE.md
-        expect(fs.existsSync(path.join(tmpDir, 'CLAUDE.md'))).toBe(true);
+      // CLAUDE.md
+      expect(fs.existsSync(path.join(tmpDir, 'CLAUDE.md'))).toBe(true);
 
-        // Claude hooks directory
-        expect(fs.existsSync(path.join(tmpDir, '.claude', 'hooks'))).toBe(true);
+      // Claude hooks directory
+      expect(fs.existsSync(path.join(tmpDir, '.claude', 'hooks'))).toBe(true);
 
-        // Claude settings
-        expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(true);
+      // Claude settings
+      expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(true);
 
-        // Husky hooks
-        expect(fs.existsSync(path.join(tmpDir, '.husky', 'commit-msg'))).toBe(true);
-        expect(fs.existsSync(path.join(tmpDir, '.husky', 'pre-commit'))).toBe(true);
-        expect(fs.existsSync(path.join(tmpDir, '.husky', 'pre-push'))).toBe(true);
+      // Husky hooks
+      expect(fs.existsSync(path.join(tmpDir, '.husky', 'commit-msg'))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, '.husky', 'pre-commit'))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, '.husky', 'pre-push'))).toBe(true);
 
-        // Cursor rules
-        expect(fs.existsSync(path.join(tmpDir, '.cursor', 'rules'))).toBe(true);
+      // Cursor rules
+      expect(fs.existsSync(path.join(tmpDir, '.cursor', 'rules'))).toBe(true);
 
-        // Agents
-        expect(fs.existsSync(path.join(tmpDir, '.claude', 'agents'))).toBe(true);
+      // Agents
+      expect(fs.existsSync(path.join(tmpDir, '.claude', 'agents'))).toBe(true);
 
-        // Commands
-        expect(fs.existsSync(path.join(tmpDir, '.claude', 'commands'))).toBe(true);
-      },
-      16_000
-    );
+      // Commands
+      expect(fs.existsSync(path.join(tmpDir, '.claude', 'commands'))).toBe(true);
+    }, 16_000);
 
     it('prints "reagent init complete" on success', () => {
       const { stdout } = runInit();

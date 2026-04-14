@@ -744,6 +744,29 @@ describe('runAccount', () => {
       expect(() => runAccount(['add', 'existing'])).toThrow('process.exit(1)');
       expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('already exists'));
     });
+
+    it('strips OAuth env vars from the env passed to claude auth login', () => {
+      process.env.CLAUDE_CODE_OAUTH_TOKEN = 'stale-token';
+      process.env.CLAUDE_CODE_OAUTH_REFRESH_TOKEN = 'stale-refresh';
+      process.env.CLAUDE_CODE_OAUTH_SCOPES = 'user:inference';
+
+      mockLoadAccounts.mockReturnValue({ version: '1', accounts: {} });
+      mockExecFileSync.mockReturnValue('{"claudeAiOauth":{}}');
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      mockReadClaudeCodeCredential.mockReturnValue({ accessToken: 'new-tok' });
+      mockKeychainSet.mockReturnValue(undefined);
+      mockUpsertAccount.mockReturnValue(undefined);
+
+      runAccount(['add', 'new-acct']);
+
+      const spawnCall = mockSpawnSync.mock.calls[0];
+      const passedEnv = spawnCall[2].env as NodeJS.ProcessEnv;
+      expect(passedEnv.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
+      expect(passedEnv.CLAUDE_CODE_OAUTH_REFRESH_TOKEN).toBeUndefined();
+      expect(passedEnv.CLAUDE_CODE_OAUTH_SCOPES).toBeUndefined();
+      // process.env itself must not be mutated
+      expect(process.env.CLAUDE_CODE_OAUTH_REFRESH_TOKEN).toBe('stale-refresh');
+    });
   });
 
   // --- rotate (input validation) ---
@@ -759,6 +782,33 @@ describe('runAccount', () => {
 
       expect(() => runAccount(['rotate', 'ghost'])).toThrow('process.exit(1)');
       expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('not found'));
+    });
+
+    it('strips OAuth env vars from the env passed to claude auth login', () => {
+      process.env.CLAUDE_CODE_OAUTH_TOKEN = 'stale-token';
+      process.env.CLAUDE_CODE_OAUTH_REFRESH_TOKEN = 'stale-refresh';
+      process.env.CLAUDE_CODE_OAUTH_SCOPES = 'user:inference';
+
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          personal: { credential_store: 'keychain', keychain_service: 'reagent-personal' },
+        },
+      });
+      mockExecFileSync.mockReturnValue('{"claudeAiOauth":{}}');
+      mockSpawnSync.mockReturnValue({ status: 0 });
+      mockReadClaudeCodeCredential.mockReturnValue({ accessToken: 'rotated-tok' });
+      mockKeychainSet.mockReturnValue(undefined);
+
+      runAccount(['rotate', 'personal']);
+
+      const spawnCall = mockSpawnSync.mock.calls[0];
+      const passedEnv = spawnCall[2].env as NodeJS.ProcessEnv;
+      expect(passedEnv.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
+      expect(passedEnv.CLAUDE_CODE_OAUTH_REFRESH_TOKEN).toBeUndefined();
+      expect(passedEnv.CLAUDE_CODE_OAUTH_SCOPES).toBeUndefined();
+      // process.env itself must not be mutated
+      expect(process.env.CLAUDE_CODE_OAUTH_REFRESH_TOKEN).toBe('stale-refresh');
     });
   });
 

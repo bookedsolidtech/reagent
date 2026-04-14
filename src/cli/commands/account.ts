@@ -149,9 +149,10 @@ function accountAdd(args: string[]): void {
     // Non-interactive — proceed anyway
   }
 
-  // Run claude auth login
+  // Run claude auth login with a clean env (no stale OAuth vars)
   const loginResult = spawnSync('claude', ['auth', 'login'], {
     stdio: 'inherit',
+    env: buildLoginEnv(),
   });
 
   if (loginResult.status !== 0) {
@@ -497,6 +498,7 @@ function accountRotate(args: string[]): void {
 
   const loginResult = spawnSync('claude', ['auth', 'login'], {
     stdio: 'inherit',
+    env: buildLoginEnv(),
   });
 
   if (loginResult.status !== 0) {
@@ -772,4 +774,13 @@ async function accountVerify(args: string[]): Promise<void> {
 
 function escapeShellSingleQuote(s: string): string {
   return s.replace(/'/g, "'\\''");
+}
+
+/** Strip inherited OAuth env vars so `claude auth login` always starts a fresh flow. */
+function buildLoginEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  delete env.CLAUDE_CODE_OAUTH_TOKEN;
+  delete env.CLAUDE_CODE_OAUTH_REFRESH_TOKEN;
+  delete env.CLAUDE_CODE_OAUTH_SCOPES;
+  return env;
 }

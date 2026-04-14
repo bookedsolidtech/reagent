@@ -14,7 +14,7 @@ import {
   writeClaudeCodeCredential as writeClaudeCredential,
 } from '../../platform/keychain.js';
 
-export function runAccount(args: string[]): void {
+export function runAccount(args: string[]): void | Promise<void> {
   const [subcommand, ...rest] = args;
 
   if (!subcommand || subcommand === 'help' || subcommand === '--help') {
@@ -35,6 +35,8 @@ export function runAccount(args: string[]): void {
     case 'check':
       accountCheck(rest);
       break;
+    case 'verify':
+      return accountVerify(rest);
     case 'whoami':
       accountWhoami();
       break;
@@ -64,6 +66,7 @@ Subcommands:
   env <name>          Output shell export commands (for rswitch/eval)
   env --clear         Output shell unset commands
   check [--all]       Validate token health (expiry, keychain access)
+  verify [--all]      Verify account identity via Anthropic API (proves billing)
   whoami              Show active account details
   rotate <name>       Re-authenticate and store new token
   remove <name>       Delete keychain entry + remove from accounts.yaml
@@ -79,6 +82,7 @@ Examples:
   eval "$(npx @bookedsolid/reagent@latest account env --clear)"
   npx @bookedsolid/reagent@latest account whoami
   npx @bookedsolid/reagent@latest account check --all
+  npx @bookedsolid/reagent@latest account verify --all
   npx @bookedsolid/reagent@latest account rotate personal
   npx @bookedsolid/reagent@latest account remove huge-inc
   npx @bookedsolid/reagent@latest account setup-shell >> ~/.zshrc
@@ -225,7 +229,6 @@ function accountEnv(args: string[]): void {
   if (clearFlag) {
     // Output unset commands
     console.log('unset CLAUDE_CODE_OAUTH_TOKEN');
-    console.log('unset CLAUDE_CODE_OAUTH_REFRESH_TOKEN');
     console.log('unset REAGENT_ACCOUNT');
     return;
   }
@@ -255,13 +258,28 @@ function accountEnv(args: string[]): void {
   }
 
   // Output shell export commands — safe for eval
+  // Note: CLAUDE_CODE_OAUTH_REFRESH_TOKEN is intentionally NOT exported.
+  // Claude Code ignores it when CLAUDE_CODE_OAUTH_TOKEN is set via env var.
   console.log(`export CLAUDE_CODE_OAUTH_TOKEN='${escapeShellSingleQuote(credential.accessToken)}'`);
-  if (credential.refreshToken) {
-    console.log(
-      `export CLAUDE_CODE_OAUTH_REFRESH_TOKEN='${escapeShellSingleQuote(credential.refreshToken)}'`
-    );
-  }
   console.log(`export REAGENT_ACCOUNT='${escapeShellSingleQuote(name)}'`);
+
+  // Warn on stderr (not stdout — stdout is for eval) if token is near expiry
+  if (credential.expiresAt) {
+    const expiresAt =
+      typeof credential.expiresAt === 'number'
+        ? credential.expiresAt
+        : Date.parse(credential.expiresAt);
+    const minutesLeft = Math.floor((expiresAt - Date.now()) / 60000);
+    if (minutesLeft < 0) {
+      console.error(
+        `\u26A0 Token for "${name}" is EXPIRED. Run: npx @bookedsolid/reagent@latest account rotate ${name}`
+      );
+    } else if (minutesLeft < 30) {
+      console.error(
+        `\u26A0 Token for "${name}" expires in ${minutesLeft}m. Refresh not supported via env var.`
+      );
+    }
+  }
 }
 
 // --- check ---
@@ -312,6 +330,11 @@ function accountCheck(args: string[]): void {
     console.log(`    Refresh: ${hasRefresh ? 'present' : 'none'}`);
     if (expiry) {
       console.log(`    Expires: ${expiry.toISOString()}${isExpired ? ' (EXPIRED)' : ''}`);
+    }
+    if (credential.subscriptionType) {
+      console.log(
+        `    Plan:    ${credential.subscriptionType}${credential.rateLimitTier ? ` (${credential.rateLimitTier})` : ''}`
+      );
     }
   }
   console.log('');
@@ -540,6 +563,121 @@ end
 complete -c rswitch -f -a '(npx @bookedsolid/reagent@latest account list 2>/dev/null | grep "^ " | sed "s/^[* ] //" | awk "{print \\$1}")'
 complete -c rswitch -f -a '--clear'
 `);
+}
+
+// --- verify ---
+
+interface OAuthProfile {
+  account?: { email?: string; display_name?: string; uuid?: string };
+  organization?: {
+    uuid?: string;
+    organization_type?: string;
+    rate_limit_tier?: string;
+    billing_type?: string;
+    has_extra_usage_enabled?: boolean;
+  };
+}
+
+async function fetchOAuthProfile(accessToken: string): Promise<OAuthProfile | null> {
+  const { request } = await import('node:https');
+  return new Promise((resolve) => {
+    const req = request(
+      'https://api.anthropic.com/api/oauth/profile',
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      },
+      (res) => {
+        let data = '';
+        res.on('data', (chunk: Buffer) => {
+          data += chunk.toString();
+        });
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(data) as OAuthProfile);
+          } catch {
+            resolve(null);
+          }
+        });
+      }
+    );
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(null);
+    });
+    req.end();
+  });
+}
+
+function formatOrgType(orgType: string | undefined): string {
+  switch (orgType) {
+    case 'claude_max':
+      return 'Max';
+    case 'claude_pro':
+      return 'Pro';
+    case 'claude_team':
+      return 'Team';
+    case 'claude_enterprise':
+      return 'Enterprise';
+    default:
+      return orgType || 'unknown';
+  }
+}
+
+async function accountVerify(args: string[]): Promise<void> {
+  const allFlag = args.includes('--all');
+  const config = loadAccounts();
+  const activeAccount = process.env.REAGENT_ACCOUNT;
+
+  const names = allFlag ? Object.keys(config.accounts) : activeAccount ? [activeAccount] : [];
+
+  if (names.length === 0) {
+    if (allFlag) {
+      console.log('\nNo accounts registered.\n');
+    } else {
+      console.log('\nNo active account. Use --all to verify all accounts.\n');
+    }
+    return;
+  }
+
+  console.log('\nAccount verification (via Anthropic API):\n');
+
+  for (const name of names) {
+    const account = config.accounts[name];
+    if (!account) {
+      console.log(`  ! ${name}: not found in accounts.yaml`);
+      continue;
+    }
+
+    const credential = keychainGet(account.keychain_service);
+    if (!credential) {
+      console.log(`  ! ${name}: keychain entry MISSING`);
+      continue;
+    }
+
+    const profile = await fetchOAuthProfile(credential.accessToken);
+    if (!profile) {
+      console.log(`  ! ${name}: API request failed (token may be expired)`);
+      console.log(`    Run: npx @bookedsolid/reagent@latest account rotate ${name}`);
+      continue;
+    }
+
+    const acct = profile.account || {};
+    const org = profile.organization || {};
+
+    console.log(`  + ${name}: VERIFIED`);
+    console.log(`    Email:   ${acct.email || '?'}`);
+    console.log(`    Name:    ${acct.display_name || '?'}`);
+    console.log(`    Plan:    ${formatOrgType(org.organization_type)}`);
+    console.log(`    Tier:    ${org.rate_limit_tier || '?'}`);
+    console.log(`    Billing: ${org.billing_type || '?'}`);
+  }
+  console.log('');
 }
 
 // --- helpers ---

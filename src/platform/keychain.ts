@@ -81,7 +81,7 @@ export function readClaudeCodeCredential(): AccountCredential | null {
       { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
     );
     const parsed = JSON.parse(raw.trim());
-    // Claude Code stores {claudeAiOauth: {accessToken, refreshToken, expiresAt, ...}}
+    // Claude Code stores {claudeAiOauth: {accessToken, refreshToken, expiresAt, subscriptionType, rateLimitTier, ...}}
     // Unwrap the outer envelope if present, then normalize field names
     const inner = parsed.claudeAiOauth || parsed;
     return {
@@ -89,6 +89,8 @@ export function readClaudeCodeCredential(): AccountCredential | null {
       refreshToken: inner.refreshToken || inner.refresh_token,
       expiresAt: inner.expiresAt || inner.expiry,
       scopes: inner.scopes,
+      subscriptionType: inner.subscriptionType,
+      rateLimitTier: inner.rateLimitTier,
     };
   } catch {
     return null;

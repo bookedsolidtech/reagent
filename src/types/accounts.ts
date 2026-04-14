@@ -19,6 +19,8 @@ export interface AccountsConfig {
 export interface AccountCredential {
   accessToken: string;
   refreshToken?: string;
-  expiresAt?: string;
+  expiresAt?: string | number;
   scopes?: string[];
+  subscriptionType?: string;
+  rateLimitTier?: string;
 }

@@ -73,15 +73,15 @@ Options for setup-shell:
   --shell <zsh|bash|fish>   Target shell (default: zsh)
 
 Examples:
-  reagent account add clarity-house
-  reagent account list
-  eval "$(reagent account env clarity-house)"
-  eval "$(reagent account env --clear)"
-  reagent account whoami
-  reagent account check --all
-  reagent account rotate personal
-  reagent account remove huge-inc
-  reagent account setup-shell >> ~/.zshrc
+  npx @bookedsolid/reagent@latest account add clarity-house
+  npx @bookedsolid/reagent@latest account list
+  eval "$(npx @bookedsolid/reagent@latest account env clarity-house)"
+  eval "$(npx @bookedsolid/reagent@latest account env --clear)"
+  npx @bookedsolid/reagent@latest account whoami
+  npx @bookedsolid/reagent@latest account check --all
+  npx @bookedsolid/reagent@latest account rotate personal
+  npx @bookedsolid/reagent@latest account remove huge-inc
+  npx @bookedsolid/reagent@latest account setup-shell >> ~/.zshrc
 `);
 }
 
@@ -182,7 +182,7 @@ function accountAdd(args: string[]): void {
   });
 
   console.log(`\nAccount "${name}" registered successfully.`);
-  console.log(`\nTo switch: eval "$(reagent account env ${name})"`);
+  console.log(`\nTo switch: eval "$(npx @bookedsolid/reagent@latest account env ${name})"`);
   console.log(`Or use:    rswitch ${name}  (after running 'reagent account setup-shell')\n`);
 }
 
@@ -232,14 +232,16 @@ function accountEnv(args: string[]): void {
 
   const name = args.find((a) => !a.startsWith('--'));
   if (!name) {
-    console.error('Usage: reagent account env <name> | reagent account env --clear');
+    console.error(
+      'Usage: npx @bookedsolid/reagent@latest account env <name> | npx @bookedsolid/reagent@latest account env --clear'
+    );
     process.exit(1);
   }
 
   const config = loadAccounts();
   const account = config.accounts[name];
   if (!account) {
-    console.error(`Account "${name}" not found. Run: reagent account list`);
+    console.error(`Account "${name}" not found. Run: npx @bookedsolid/reagent@latest account list`);
     process.exit(1);
   }
 
@@ -362,7 +364,7 @@ function accountRotate(args: string[]): void {
   const config = loadAccounts();
   const account = config.accounts[name];
   if (!account) {
-    console.error(`Account "${name}" not found. Run: reagent account list`);
+    console.error(`Account "${name}" not found. Run: npx @bookedsolid/reagent@latest account list`);
     process.exit(1);
   }
 
@@ -442,7 +444,7 @@ function accountRemove(args: string[]): void {
 
   if (process.env.REAGENT_ACCOUNT === name) {
     console.log(`\nNote: "${name}" is currently active in this shell.`);
-    console.log(`Run: eval "$(reagent account env --clear)"\n`);
+    console.log(`Run: eval "$(npx @bookedsolid/reagent@latest account env --clear)"\n`);
   }
 }
 
@@ -471,16 +473,16 @@ function printBashZshSetup(): void {
 
 rswitch() {
   if [ -z "$1" ]; then
-    reagent account list
+    npx @bookedsolid/reagent@latest account list
     return
   fi
   if [ "$1" = "--clear" ]; then
-    eval "$(reagent account env --clear)"
+    eval "$(npx @bookedsolid/reagent@latest account env --clear)"
     printf 'Cleared reagent account override.\\n' >&2
     return
   fi
   local output
-  output="$(reagent account env "$1" 2>/dev/null)"
+  output="$(npx @bookedsolid/reagent@latest account env "$1" 2>/dev/null)"
   if [[ $? -ne 0 || -z "$output" ]]; then
     printf 'rswitch: failed to load account "%s"\\n' "$1" >&2
     return 1
@@ -493,14 +495,14 @@ rswitch() {
 if [ -n "$ZSH_VERSION" ]; then
   _rswitch() {
     local accounts
-    accounts=(\${(f)"$(reagent account list 2>/dev/null | grep '^ ' | sed 's/^[* ] //' | awk '{print $1}')"})
+    accounts=(\${(f)"$(npx @bookedsolid/reagent@latest account list 2>/dev/null | grep '^ ' | sed 's/^[* ] //' | awk '{print $1}')"})
     compadd -- "\${accounts[@]}" --clear
   }
   compdef _rswitch rswitch
 elif [ -n "$BASH_VERSION" ]; then
   _rswitch() {
     local accounts
-    accounts=$(reagent account list 2>/dev/null | grep '^ ' | sed 's/^[* ] //' | awk '{print $1}')
+    accounts=$(npx @bookedsolid/reagent@latest account list 2>/dev/null | grep '^ ' | sed 's/^[* ] //' | awk '{print $1}')
     COMPREPLY=( $(compgen -W "$accounts --clear" -- "\${COMP_WORDS[COMP_CWORD]}") )
   }
   complete -F _rswitch rswitch
@@ -517,15 +519,15 @@ function printFishSetup(): void {
 
 function rswitch
   if test (count $argv) -eq 0
-    reagent account list
+    npx @bookedsolid/reagent@latest account list
     return
   end
   if test "$argv[1]" = "--clear"
-    eval (reagent account env --clear)
+    eval (npx @bookedsolid/reagent@latest account env --clear)
     echo "Cleared reagent account override." >&2
     return
   end
-  set -l output (reagent account env $argv[1] 2>/dev/null)
+  set -l output (npx @bookedsolid/reagent@latest account env $argv[1] 2>/dev/null)
   if test $status -ne 0; or test -z "$output"
     echo "rswitch: failed to load account \\"$argv[1]\\"" >&2
     return 1
@@ -535,7 +537,7 @@ function rswitch
 end
 
 # Tab completion
-complete -c rswitch -f -a '(reagent account list 2>/dev/null | grep "^ " | sed "s/^[* ] //" | awk "{print \\$1}")'
+complete -c rswitch -f -a '(npx @bookedsolid/reagent@latest account list 2>/dev/null | grep "^ " | sed "s/^[* ] //" | awk "{print \\$1}")'
 complete -c rswitch -f -a '--clear'
 `);
 }

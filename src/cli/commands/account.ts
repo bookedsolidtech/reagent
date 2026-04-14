@@ -1,5 +1,13 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync, unlinkSync, statSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  openSync,
+  closeSync,
+  unlinkSync,
+  statSync,
+} from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { parseFlag } from '../utils.js';
@@ -322,8 +330,7 @@ function accountSwitch(args: string[]): void {
         ).trim();
         const parsed = JSON.parse(currentRaw) as Record<string, unknown>;
         const inner =
-          (parsed.claudeAiOauth as AccountCredential) ??
-          (parsed as unknown as AccountCredential);
+          (parsed.claudeAiOauth as AccountCredential) ?? (parsed as unknown as AccountCredential);
         keychainSet('reagent-__default__', inner);
       } catch {
         // No existing Claude Code credential — nothing to save
@@ -857,8 +864,16 @@ function acquireSwitchLock(): (() => void) | null {
   try {
     const fd = openSync(SWITCH_LOCK_PATH, 'wx');
     return () => {
-      try { closeSync(fd); } catch { /* already closed */ }
-      try { unlinkSync(SWITCH_LOCK_PATH); } catch { /* already removed */ }
+      try {
+        closeSync(fd);
+      } catch {
+        /* already closed */
+      }
+      try {
+        unlinkSync(SWITCH_LOCK_PATH);
+      } catch {
+        /* already removed */
+      }
     };
   } catch {
     return null;
@@ -891,8 +906,7 @@ function syncBackActiveCredential(): 'synced' | 'no-op' | 'skipped' {
 
   // Sync when Claude Code has a refresh token that differs from (or is absent in) our stored copy.
   const needsSync =
-    current.refreshToken &&
-    (!stored?.refreshToken || stored.refreshToken !== current.refreshToken);
+    current.refreshToken && (!stored?.refreshToken || stored.refreshToken !== current.refreshToken);
 
   if (needsSync) {
     keychainSet(prevAccount.keychain_service, current);

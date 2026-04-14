@@ -292,7 +292,8 @@ function accountSwitch(args: string[]): void {
         { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
       ).trim();
       const parsed = JSON.parse(currentRaw) as Record<string, unknown>;
-      const inner = (parsed.claudeAiOauth as AccountCredential) ?? (parsed as unknown as AccountCredential);
+      const inner =
+        (parsed.claudeAiOauth as AccountCredential) ?? (parsed as unknown as AccountCredential);
       keychainSet('reagent-__default__', inner);
     } catch {
       // No existing Claude Code credential — nothing to save

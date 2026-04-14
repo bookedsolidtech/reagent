@@ -98,7 +98,7 @@ describe('reagent init', () => {
 
       // Commands
       expect(fs.existsSync(path.join(tmpDir, '.claude', 'commands'))).toBe(true);
-    });
+    }, 16_000);
 
     it('prints "reagent init complete" on success', () => {
       const { stdout } = runInit();

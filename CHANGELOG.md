@@ -1,5 +1,34 @@
 # @bookedsolid/reagent
 
+## 0.15.6
+
+### Patch Changes
+
+- 4dad2f7: fix(account): strip inherited OAuth env vars before claude auth login
+
+  When `CLAUDE_CODE_OAUTH_REFRESH_TOKEN` is set in the shell without
+  `CLAUDE_CODE_OAUTH_SCOPES`, Claude Code rejects the `auth login` invocation
+  with an error. `account add` and `account rotate` now build a clean env that
+  strips `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_OAUTH_REFRESH_TOKEN`, and
+  `CLAUDE_CODE_OAUTH_SCOPES` before spawning the subprocess so the login flow
+  always starts fresh regardless of parent shell state.
+
+- 4dad2f7: fix(account): sync refreshed OAuth tokens back before keychain switch
+
+  Claude Code refreshes access tokens in-place (rotating the refresh token),
+  but only updates its own keychain slot. `account switch` was always writing
+  the original stored credential — which contained a stale, already-rotated
+  refresh token — causing 401 errors when Claude Code next attempted a refresh.
+
+  The switch command now:
+  - Tracks the active account in `~/.reagent/active-account`
+  - Syncs Claude Code's current credential back to the previously active
+    account's keychain entry before overwriting
+  - Uses an advisory file lock to prevent concurrent switches from corrupting
+    credential entries
+  - Validates the active-account file contents on read
+  - Warns when sync-back is expected but cannot complete
+
 ## 0.15.5
 
 ### Patch Changes

@@ -1,4 +1,15 @@
 import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  openSync,
+  closeSync,
+  unlinkSync,
+  statSync,
+} from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { parseFlag } from '../utils.js';
 import {
   loadAccounts,
@@ -233,80 +244,110 @@ function accountList(): void {
 function accountSwitch(args: string[]): void {
   const clearFlag = args.includes('--clear');
 
-  if (clearFlag) {
-    const defaultCred = keychainGet('reagent-__default__');
-    if (!defaultCred) {
-      console.error('No saved default credential found.');
-      console.error('Run: claude auth login  to establish a default session.');
-      process.exit(1);
+  // Acquire advisory lock to prevent concurrent switches from corrupting
+  // credential entries (two terminals running rswitch at the same time).
+  const releaseLock = acquireSwitchLock();
+  if (!releaseLock) {
+    console.error('Another account switch is in progress. Try again in a moment.');
+    process.exit(1);
+  }
+
+  try {
+    if (clearFlag) {
+      const syncResult = syncBackActiveCredential();
+      if (syncResult === 'skipped') {
+        console.error('Warning: could not sync credential for previously active account.');
+      }
+      setActiveAccount(null);
+
+      const defaultCred = keychainGet('reagent-__default__');
+      if (!defaultCred) {
+        console.error('No saved default credential found.');
+        console.error('Run: claude auth login  to establish a default session.');
+        process.exit(1);
+      }
+      writeClaudeCredential(JSON.stringify({ claudeAiOauth: defaultCred }));
+      console.log('Restored default Claude Code credential.');
+      console.log('Restart any active Claude Code sessions to pick up the change.');
+      return;
     }
-    writeClaudeCredential(JSON.stringify({ claudeAiOauth: defaultCred }));
-    console.log('Restored default Claude Code credential.');
-    console.log('Restart any active Claude Code sessions to pick up the change.');
-    return;
-  }
 
-  const name = args.find((a) => !a.startsWith('--'));
-  if (!name) {
-    console.error(
-      'Usage: npx @bookedsolid/reagent@latest account switch <name> | account switch --clear'
-    );
-    process.exit(1);
-  }
-
-  const config = loadAccounts();
-  const account = config.accounts[name];
-  if (!account) {
-    console.error(`Account "${name}" not found. Run: npx @bookedsolid/reagent@latest account list`);
-    process.exit(1);
-  }
-
-  const credential = keychainGet(account.keychain_service);
-  if (!credential) {
-    console.error(
-      `No credential found for "${name}". Run: npx @bookedsolid/reagent@latest account rotate ${name}`
-    );
-    process.exit(1);
-  }
-
-  if (credential.expiresAt) {
-    const expiresAt =
-      typeof credential.expiresAt === 'number'
-        ? credential.expiresAt
-        : Date.parse(String(credential.expiresAt));
-    if (expiresAt < Date.now()) {
+    const name = args.find((a) => !a.startsWith('--'));
+    if (!name) {
       console.error(
-        `\u26A0 Token for "${name}" is EXPIRED. Run: npx @bookedsolid/reagent@latest account rotate ${name}`
+        'Usage: npx @bookedsolid/reagent@latest account switch <name> | account switch --clear'
       );
       process.exit(1);
     }
-  }
 
-  // Save current Claude Code credential as default — but only when we're
-  // not already switched (i.e. REAGENT_ACCOUNT is unset in the shell).
-  // This ensures --clear always restores the real original, not an intermediate.
-  if (!process.env.REAGENT_ACCOUNT) {
-    try {
-      const currentRaw = execFileSync(
-        'security',
-        ['find-generic-password', '-s', 'Claude Code-credentials', '-w'],
-        { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
-      ).trim();
-      const parsed = JSON.parse(currentRaw) as Record<string, unknown>;
-      const inner =
-        (parsed.claudeAiOauth as AccountCredential) ?? (parsed as unknown as AccountCredential);
-      keychainSet('reagent-__default__', inner);
-    } catch {
-      // No existing Claude Code credential — nothing to save
+    const config = loadAccounts();
+    const account = config.accounts[name];
+    if (!account) {
+      console.error(
+        `Account "${name}" not found. Run: npx @bookedsolid/reagent@latest account list`
+      );
+      process.exit(1);
     }
+
+    // Sync any refreshed tokens back to the previously active account
+    // before we read or overwrite anything.  This ensures that if Claude Code
+    // refreshed the token since the last switch, our stored copy is up-to-date.
+    const syncResult = syncBackActiveCredential();
+    if (syncResult === 'skipped') {
+      console.error('Warning: could not sync credential for previously active account.');
+    }
+
+    const credential = keychainGet(account.keychain_service);
+    if (!credential) {
+      console.error(
+        `No credential found for "${name}". Run: npx @bookedsolid/reagent@latest account rotate ${name}`
+      );
+      process.exit(1);
+    }
+
+    if (credential.expiresAt) {
+      const expiresAt =
+        typeof credential.expiresAt === 'number'
+          ? credential.expiresAt
+          : Date.parse(String(credential.expiresAt));
+      if (expiresAt < Date.now()) {
+        console.error(
+          `\u26A0 Token for "${name}" is EXPIRED. Run: npx @bookedsolid/reagent@latest account rotate ${name}`
+        );
+        process.exit(1);
+      }
+    }
+
+    // Save current Claude Code credential as default — but only when we're
+    // not already switched (i.e. REAGENT_ACCOUNT is unset in the shell).
+    // This ensures --clear always restores the real original, not an intermediate.
+    if (!process.env.REAGENT_ACCOUNT) {
+      try {
+        const currentRaw = execFileSync(
+          'security',
+          ['find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+          { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
+        ).trim();
+        const parsed = JSON.parse(currentRaw) as Record<string, unknown>;
+        const inner =
+          (parsed.claudeAiOauth as AccountCredential) ?? (parsed as unknown as AccountCredential);
+        keychainSet('reagent-__default__', inner);
+      } catch {
+        // No existing Claude Code credential — nothing to save
+      }
+    }
+
+    // Write target credential into Claude Code's keychain slot.
+    // Claude Code reads from here with its normal refresh path — sessions survive overnight.
+    writeClaudeCredential(JSON.stringify({ claudeAiOauth: credential }));
+
+    setActiveAccount(name);
+
+    console.log(`Switched to account: ${name}`);
+    console.log('Restart any active Claude Code sessions to pick up the change.');
+  } finally {
+    releaseLock();
   }
-
-  // Write target credential into Claude Code's keychain slot.
-  // Claude Code reads from here with its normal refresh path — sessions survive overnight.
-  writeClaudeCredential(JSON.stringify({ claudeAiOauth: credential }));
-
-  console.log(`Switched to account: ${name}`);
-  console.log('Restart any active Claude Code sessions to pick up the change.');
 }
 
 // --- env ---
@@ -771,6 +812,109 @@ async function accountVerify(args: string[]): Promise<void> {
 }
 
 // --- helpers ---
+
+const REAGENT_DIR = join(homedir(), '.reagent');
+const ACTIVE_ACCOUNT_PATH = join(REAGENT_DIR, 'active-account');
+const SWITCH_LOCK_PATH = join(REAGENT_DIR, 'account-switch.lock');
+const LOCK_STALE_MS = 30_000;
+
+/** Read which account was last activated via `account switch`. */
+function getActiveAccount(): string | null {
+  try {
+    const name = readFileSync(ACTIVE_ACCOUNT_PATH, 'utf8').trim();
+    if (!name || !/^[a-z0-9][a-z0-9-]*$/.test(name)) return null;
+    return name;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist which account is currently active (null to clear).
+ * Best-effort — a failure here means the next sync-back will be a no-op,
+ * not that the switch itself fails.
+ */
+function setActiveAccount(name: string | null): void {
+  try {
+    mkdirSync(REAGENT_DIR, { recursive: true });
+    writeFileSync(ACTIVE_ACCOUNT_PATH, name || '', 'utf8');
+  } catch {
+    // Best-effort — don't block the switch
+  }
+}
+
+/**
+ * Acquire an advisory file lock for the switch operation.
+ * Uses O_EXCL (exclusive create) so a second concurrent switch gets EEXIST.
+ * Returns a release function, or null if the lock could not be acquired.
+ */
+function acquireSwitchLock(): (() => void) | null {
+  mkdirSync(REAGENT_DIR, { recursive: true });
+
+  // Clean up stale locks from crashed processes
+  try {
+    const st = statSync(SWITCH_LOCK_PATH);
+    if (Date.now() - st.mtimeMs > LOCK_STALE_MS) {
+      unlinkSync(SWITCH_LOCK_PATH);
+    }
+  } catch {
+    // No lock file or stat failed — fine
+  }
+
+  try {
+    const fd = openSync(SWITCH_LOCK_PATH, 'wx');
+    return () => {
+      try {
+        closeSync(fd);
+      } catch {
+        /* already closed */
+      }
+      try {
+        unlinkSync(SWITCH_LOCK_PATH);
+      } catch {
+        /* already removed */
+      }
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sync Claude Code's current keychain credential back to the previously
+ * active reagent account.  Claude Code refreshes tokens in-place (new
+ * access token + rotated refresh token) but only updates its own keychain
+ * slot.  Without this sync, reagent's stored copy goes stale and the next
+ * `account switch` writes a dead refresh token.
+ *
+ * Returns 'synced' if the credential was updated, 'no-op' if no active
+ * account or no change detected, or 'skipped' if sync was expected but
+ * could not complete (caller should warn).
+ */
+function syncBackActiveCredential(): 'synced' | 'no-op' | 'skipped' {
+  const prevName = getActiveAccount();
+  if (!prevName) return 'no-op';
+
+  const config = loadAccounts();
+  const prevAccount = config.accounts[prevName];
+  if (!prevAccount) return 'skipped';
+
+  const current = readClaudeCodeCredential();
+  if (!current?.accessToken) return 'skipped';
+
+  const stored = keychainGet(prevAccount.keychain_service);
+
+  // Sync when Claude Code has a refresh token that differs from (or is absent in) our stored copy.
+  const needsSync =
+    current.refreshToken && (!stored?.refreshToken || stored.refreshToken !== current.refreshToken);
+
+  if (needsSync) {
+    keychainSet(prevAccount.keychain_service, current);
+    return 'synced';
+  }
+
+  return 'no-op';
+}
 
 function escapeShellSingleQuote(s: string): string {
   return s.replace(/'/g, "'\\''");

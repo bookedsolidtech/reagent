@@ -340,7 +340,7 @@ describe('runAccount', () => {
       const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
       expect(output).toContain('Account:  clarity-house');
       expect(output).toContain('Billing:  Clarity House org');
-      expect(output).toContain('abcdefghijkl...1234');
+      expect(output).toContain('sk-ant-...1234');
       expect(output).toContain('Active');
     });
 

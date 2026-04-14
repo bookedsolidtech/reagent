@@ -300,7 +300,7 @@ function accountCheck(args: string[]): void {
     const expiry = credential.expiresAt ? new Date(credential.expiresAt) : null;
     const isExpired = expiry ? expiry < new Date() : false;
     const tokenPreview = credential.accessToken
-      ? `${credential.accessToken.slice(0, 12)}...${credential.accessToken.slice(-4)}`
+      ? `sk-ant-...${credential.accessToken.slice(-4)}`
       : 'none';
 
     const status = !hasAccess ? 'NO TOKEN' : isExpired ? 'EXPIRED' : 'ok';
@@ -338,7 +338,7 @@ function accountWhoami(): void {
 
     if (hasEnvToken) {
       const token = process.env.CLAUDE_CODE_OAUTH_TOKEN!;
-      const preview = `${token.slice(0, 12)}...${token.slice(-4)}`;
+      const preview = `sk-ant-...${token.slice(-4)}`;
       console.log(`Token:    ${preview}`);
     }
 

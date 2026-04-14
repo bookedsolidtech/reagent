@@ -1,5 +1,14 @@
 # @bookedsolid/reagent
 
+## 0.15.3
+
+### Patch Changes
+
+- 05de850: fix(account): obscure more of the token in check/whoami output
+
+  Token preview now shows `sk-ant-...xxxx` (last 4 chars only) instead
+  of exposing the first 12 characters.
+
 ## 0.15.2
 
 ### Patch Changes

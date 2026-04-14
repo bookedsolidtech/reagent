@@ -168,6 +168,7 @@ Multi-credential management for switching between Claude billing accounts. See
 | `reagent account env <name>` | Output shell export commands for `eval` |
 | `reagent account env --clear` | Output shell unset commands to clear override |
 | `reagent account check [--all]` | Validate token health (expiry, keychain access) |
+| `reagent account verify [--all]` | Verify account identity via Anthropic API (email, plan, billing) |
 | `reagent account whoami` | Show active account details |
 | `reagent account rotate <name>` | Re-authenticate and store new token |
 | `reagent account remove <name>` | Delete keychain entry and remove from config |
@@ -176,7 +177,7 @@ Multi-credential management for switching between Claude billing accounts. See
 | Flag | Description | Default |
 |---|---|---|
 | `--shell <zsh\|bash\|fish>` | Target shell for `setup-shell` | `zsh` |
-| `--all` | Check all accounts (for `check` subcommand) | Active only |
+| `--all` | Apply to all accounts (for `check` and `verify` subcommands) | Active only |
 
 ## Slash commands
 

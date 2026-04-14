@@ -57,14 +57,18 @@ The stored JSON blob conforms to the `AccountCredential` interface:
 
 ```typescript
 interface AccountCredential {
-  accessToken: string;     // The OAuth access token (sk-ant-oat01-...)
-  refreshToken?: string;   // Optional refresh token for token renewal
-  expiresAt?: string;      // ISO 8601 expiry timestamp
-  scopes?: string[];       // OAuth scopes granted
+  accessToken: string;        // The OAuth access token (sk-ant-oat01-...)
+  refreshToken?: string;      // Optional refresh token for token renewal
+  expiresAt?: string | number; // Expiry timestamp (ISO 8601 string or Unix ms)
+  scopes?: string[];          // OAuth scopes granted
+  subscriptionType?: string;  // Plan type (e.g., "claude_max")
+  rateLimitTier?: string;     // Rate limit tier for the subscription
 }
 ```
 
 When reading from Claude Code's own keychain entry (`Claude Code-credentials`), the fields are normalized from Claude Code's internal format (`oauth_token` to `accessToken`, `refresh_token` to `refreshToken`, `expiry` to `expiresAt`).
+
+When activated via `CLAUDE_CODE_OAUTH_TOKEN`, Claude Code ignores `refreshToken`, `subscriptionType`, and `rateLimitTier`. These fields are stored for reagent's own health checks and display, not consumed by Claude Code.
 
 ### Keychain operations
 
@@ -103,7 +107,7 @@ This "borrow and restore" pattern ensures that Claude Code's own credential is n
 
 1. User runs `rswitch <name>` or `eval "$(reagent account env <name>)"`
 2. reagent reads the credential from `reagent-<name>` in Keychain
-3. Shell `export` commands are output for `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_OAUTH_REFRESH_TOKEN`, and `REAGENT_ACCOUNT`
+3. Shell `export` commands are output for `CLAUDE_CODE_OAUTH_TOKEN` and `REAGENT_ACCOUNT`
 4. The shell evaluates these commands, setting the variables in the current process
 5. Any `claude` process started from this shell inherits the token via standard Unix environment inheritance
 
@@ -121,7 +125,7 @@ This "borrow and restore" pattern ensures that Claude Code's own credential is n
 ### Deactivation
 
 1. User runs `rswitch --clear` or `eval "$(reagent account env --clear)"`
-2. `unset` commands remove `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_OAUTH_REFRESH_TOKEN`, and `REAGENT_ACCOUNT`
+2. `unset` commands remove `CLAUDE_CODE_OAUTH_TOKEN` and `REAGENT_ACCOUNT`
 3. Claude Code falls back to its keychain default (priority 5 in the auth chain)
 
 ### Deletion

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { EventEmitter } from 'node:events';
 
 // --- Mock dependencies ---
 
@@ -37,6 +38,50 @@ vi.mock('node:child_process', () => ({
   spawnSync: (...args: unknown[]) => mockSpawnSync(...args),
 }));
 
+// --- Mock node:https for fetchOAuthProfile ---
+
+// Controls what the mocked https.request will do in each test.
+// Set mockHttpsResponse before calling runAccount(['verify', ...]).
+let mockHttpsResponse: {
+  statusCode?: number;
+  body?: string;
+  networkError?: boolean;
+  timeout?: boolean;
+} = {};
+
+vi.mock('node:https', () => {
+  return {
+    request: (
+      _url: string,
+      _options: unknown,
+      callback: (res: EventEmitter & { statusCode?: number }) => void
+    ) => {
+      const req = new EventEmitter() as EventEmitter & {
+        end: () => void;
+        destroy: () => void;
+      };
+      req.end = () => {
+        if (mockHttpsResponse.networkError) {
+          req.emit('error', new Error('network failure'));
+          return;
+        }
+        if (mockHttpsResponse.timeout) {
+          req.emit('timeout');
+          return;
+        }
+        const res = new EventEmitter() as EventEmitter & { statusCode?: number };
+        res.statusCode = mockHttpsResponse.statusCode ?? 200;
+        callback(res);
+        const body = mockHttpsResponse.body ?? '{}';
+        res.emit('data', Buffer.from(body));
+        res.emit('end');
+      };
+      req.destroy = () => {};
+      return req;
+    },
+  };
+});
+
 const { runAccount } = await import('../../cli/commands/account.js');
 
 describe('runAccount', () => {
@@ -51,6 +96,7 @@ describe('runAccount', () => {
     exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
       throw new Error(`process.exit(${code})`);
     }) as any);
+    mockHttpsResponse = {};
   });
 
   afterEach(() => {
@@ -59,6 +105,7 @@ describe('runAccount', () => {
     exitSpy.mockRestore();
     vi.resetAllMocks();
     process.env = { ...originalEnv };
+    mockHttpsResponse = {};
   });
 
   // --- help ---
@@ -111,7 +158,7 @@ describe('runAccount', () => {
 
       const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
       expect(output).toContain("export CLAUDE_CODE_OAUTH_TOKEN='tok-abc-123'");
-      expect(output).toContain("export CLAUDE_CODE_OAUTH_REFRESH_TOKEN='ref-xyz'");
+      expect(output).not.toContain('CLAUDE_CODE_OAUTH_REFRESH_TOKEN');
       expect(output).toContain("export REAGENT_ACCOUNT='my-acct'");
     });
 
@@ -140,7 +187,7 @@ describe('runAccount', () => {
 
       const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
       expect(output).toContain('unset CLAUDE_CODE_OAUTH_TOKEN');
-      expect(output).toContain('unset CLAUDE_CODE_OAUTH_REFRESH_TOKEN');
+      expect(output).not.toContain('CLAUDE_CODE_OAUTH_REFRESH_TOKEN');
       expect(output).toContain('unset REAGENT_ACCOUNT');
     });
 
@@ -712,6 +759,422 @@ describe('runAccount', () => {
 
       expect(() => runAccount(['rotate', 'ghost'])).toThrow('process.exit(1)');
       expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('not found'));
+    });
+  });
+
+  // --- verify ---
+
+  describe('verify', () => {
+    const validProfile = JSON.stringify({
+      account: {
+        email: 'user@example.com',
+        display_name: 'Test User',
+        uuid: 'acct-uuid-1234',
+      },
+      organization: {
+        uuid: 'org-uuid-5678',
+        organization_type: 'claude_max',
+        rate_limit_tier: 'max_5',
+        billing_type: 'subscription',
+      },
+    });
+
+    it('shows no active account when no REAGENT_ACCOUNT and no --all', async () => {
+      delete process.env.REAGENT_ACCOUNT;
+      mockLoadAccounts.mockReturnValue({ version: '1', accounts: {} });
+
+      await runAccount(['verify']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).toContain('No active account');
+    });
+
+    it('shows no accounts registered when --all and none exist', async () => {
+      mockLoadAccounts.mockReturnValue({ version: '1', accounts: {} });
+
+      await runAccount(['verify', '--all']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).toContain('No accounts registered');
+    });
+
+    it('happy path: displays email, plan, tier, and billing for active account', async () => {
+      process.env.REAGENT_ACCOUNT = 'personal';
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          personal: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-personal',
+          },
+        },
+      });
+      mockKeychainGet.mockReturnValue({ accessToken: 'tok-abc-1234' });
+      mockHttpsResponse = { statusCode: 200, body: validProfile };
+
+      await runAccount(['verify']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).toContain('+ personal: VERIFIED');
+      expect(output).toContain('Email:   user@example.com');
+      expect(output).toContain('Plan:    Max');
+      expect(output).toContain('Tier:    max_5');
+      expect(output).toContain('Billing: subscription');
+    });
+
+    it('shows keychain MISSING when no credential found', async () => {
+      process.env.REAGENT_ACCOUNT = 'personal';
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          personal: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-personal',
+          },
+        },
+      });
+      mockKeychainGet.mockReturnValue(null);
+
+      await runAccount(['verify']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).toContain('! personal: keychain entry MISSING');
+    });
+
+    it('reports API failure when network error occurs', async () => {
+      process.env.REAGENT_ACCOUNT = 'personal';
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          personal: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-personal',
+          },
+        },
+      });
+      mockKeychainGet.mockReturnValue({ accessToken: 'tok-abc-1234' });
+      mockHttpsResponse = { networkError: true };
+
+      await runAccount(['verify']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).toContain('! personal: API request failed');
+      expect(output).toContain('rotate');
+    });
+
+    it('reports API failure when response body is not valid JSON', async () => {
+      process.env.REAGENT_ACCOUNT = 'personal';
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          personal: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-personal',
+          },
+        },
+      });
+      mockKeychainGet.mockReturnValue({ accessToken: 'tok-abc-1234' });
+      mockHttpsResponse = { statusCode: 401, body: 'Unauthorized' };
+
+      await runAccount(['verify']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).toContain('! personal: API request failed');
+    });
+
+    it('--all iterates every registered account and verifies each', async () => {
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          alpha: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-alpha',
+          },
+          beta: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-beta',
+          },
+        },
+      });
+      mockKeychainGet.mockReturnValue({ accessToken: 'tok-abc-1234' });
+      mockHttpsResponse = { statusCode: 200, body: validProfile };
+
+      await runAccount(['verify', '--all']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).toContain('+ alpha: VERIFIED');
+      expect(output).toContain('+ beta: VERIFIED');
+    });
+
+    it('--all shows per-account failure when one token is invalid', async () => {
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          good: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-good',
+          },
+          bad: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-bad',
+          },
+        },
+      });
+      // good returns a valid profile, bad returns null (missing keychain)
+      mockKeychainGet.mockReturnValueOnce({ accessToken: 'tok-good' }).mockReturnValueOnce(null);
+      mockHttpsResponse = { statusCode: 200, body: validProfile };
+
+      await runAccount(['verify', '--all']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).toContain('+ good: VERIFIED');
+      expect(output).toContain('! bad: keychain entry MISSING');
+    });
+
+    it('shows not found for account in env but not in config', async () => {
+      process.env.REAGENT_ACCOUNT = 'phantom';
+      mockLoadAccounts.mockReturnValue({ version: '1', accounts: {} });
+
+      await runAccount(['verify']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).toContain('! phantom: not found in accounts.yaml');
+    });
+
+    it('formats organization_type correctly for known plan types', async () => {
+      const plans: Array<[string, string]> = [
+        ['claude_max', 'Max'],
+        ['claude_pro', 'Pro'],
+        ['claude_team', 'Team'],
+        ['claude_enterprise', 'Enterprise'],
+      ];
+
+      for (const [orgType, expectedLabel] of plans) {
+        process.env.REAGENT_ACCOUNT = 'acct';
+        mockLoadAccounts.mockReturnValue({
+          version: '1',
+          accounts: {
+            acct: {
+              credential_store: 'keychain',
+              keychain_service: 'reagent-acct',
+            },
+          },
+        });
+        mockKeychainGet.mockReturnValue({ accessToken: 'tok-abc-1234' });
+        mockHttpsResponse = {
+          statusCode: 200,
+          body: JSON.stringify({
+            account: { email: 'x@x.com', display_name: 'X', uuid: 'u1' },
+            organization: { organization_type: orgType },
+          }),
+        };
+
+        await runAccount(['verify']);
+
+        const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+        expect(output).toContain(`Plan:    ${expectedLabel}`);
+
+        logSpy.mockClear();
+        vi.resetAllMocks();
+        mockHttpsResponse = {};
+      }
+    });
+  });
+
+  // --- env expiry warnings ---
+
+  describe('env expiry warnings', () => {
+    it('emits EXPIRED warning on stderr when token is past expiresAt', () => {
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          stale: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-stale',
+          },
+        },
+      });
+      const pastTs = Date.now() - 60 * 60 * 1000; // 1 hour ago
+      mockKeychainGet.mockReturnValue({
+        accessToken: 'tok-stale',
+        expiresAt: pastTs,
+      });
+
+      runAccount(['env', 'stale']);
+
+      const stderr = errorSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(stderr).toContain('EXPIRED');
+      expect(stderr).toContain('rotate');
+    });
+
+    it('emits expiry warning on stderr when token expires within 30 minutes', () => {
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          soon: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-soon',
+          },
+        },
+      });
+      const soonTs = Date.now() + 5 * 60 * 1000; // 5 minutes from now
+      mockKeychainGet.mockReturnValue({
+        accessToken: 'tok-soon',
+        expiresAt: soonTs,
+      });
+
+      runAccount(['env', 'soon']);
+
+      const stderr = errorSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(stderr).toContain('expires in');
+    });
+
+    it('does not emit any warning when token has plenty of time remaining', () => {
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          fresh: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-fresh',
+          },
+        },
+      });
+      const futureTs = Date.now() + 60 * 60 * 1000; // 60 minutes from now
+      mockKeychainGet.mockReturnValue({
+        accessToken: 'tok-fresh',
+        expiresAt: futureTs,
+      });
+
+      runAccount(['env', 'fresh']);
+
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not emit warning when expiresAt is not set', () => {
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          noexpiry: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-noexpiry',
+          },
+        },
+      });
+      mockKeychainGet.mockReturnValue({
+        accessToken: 'tok-noexpiry',
+      });
+
+      runAccount(['env', 'noexpiry']);
+
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // --- check shows Plan: field ---
+
+  describe('check Plan field', () => {
+    it('displays Plan field when subscriptionType is present', () => {
+      process.env.REAGENT_ACCOUNT = 'max-user';
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          'max-user': {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-max-user',
+          },
+        },
+      });
+      mockKeychainGet.mockReturnValue({
+        accessToken: 'tok-max',
+        expiresAt: '2099-12-31T00:00:00Z',
+        subscriptionType: 'claude_max',
+        rateLimitTier: 'max_5',
+      });
+
+      runAccount(['check']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).toContain('Plan:    claude_max');
+      expect(output).toContain('(max_5)');
+    });
+
+    it('omits Plan field when subscriptionType is absent', () => {
+      process.env.REAGENT_ACCOUNT = 'no-plan';
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          'no-plan': {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-no-plan',
+          },
+        },
+      });
+      mockKeychainGet.mockReturnValue({
+        accessToken: 'tok-no-plan',
+        expiresAt: '2099-12-31T00:00:00Z',
+      });
+
+      runAccount(['check']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).not.toContain('Plan:');
+    });
+
+    it('displays Plan without tier when rateLimitTier is absent', () => {
+      process.env.REAGENT_ACCOUNT = 'plan-only';
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          'plan-only': {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-plan-only',
+          },
+        },
+      });
+      mockKeychainGet.mockReturnValue({
+        accessToken: 'tok-plan-only',
+        expiresAt: '2099-12-31T00:00:00Z',
+        subscriptionType: 'claude_pro',
+      });
+
+      runAccount(['check']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).toContain('Plan:    claude_pro');
+      expect(output).not.toContain('(undefined)');
+    });
+  });
+
+  // --- readClaudeCodeCredential preserves subscriptionType and rateLimitTier ---
+  // These tests verify that the fields survive the JSON round-trip through the
+  // mock, confirming that the AccountCredential type supports them and that
+  // account check passes them through to output.
+
+  describe('subscriptionType and rateLimitTier preserved in credential', () => {
+    it('passes subscriptionType and rateLimitTier from keychainGet to check output', () => {
+      process.env.REAGENT_ACCOUNT = 'preserved';
+      mockLoadAccounts.mockReturnValue({
+        version: '1',
+        accounts: {
+          preserved: {
+            credential_store: 'keychain',
+            keychain_service: 'reagent-preserved',
+          },
+        },
+      });
+      mockKeychainGet.mockReturnValue({
+        accessToken: 'tok-preserved',
+        refreshToken: 'ref-preserved',
+        expiresAt: '2099-12-31T00:00:00Z',
+        subscriptionType: 'claude_max',
+        rateLimitTier: 'max_5',
+      });
+
+      runAccount(['check']);
+
+      const output = logSpy.mock.calls.map((c) => c[0]).join('\n');
+      expect(output).toContain('claude_max');
+      expect(output).toContain('max_5');
     });
   });
 });

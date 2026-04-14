@@ -93,7 +93,7 @@ Separately, `ANTHROPIC_API_KEY` is resolved by a different function (`hw()`) for
 
 **For multi-token workstreams, `CLAUDE_CODE_OAUTH_TOKEN` is the correct lever.** It takes precedence over any cached keychain credential without requiring you to clear local auth state. The spawner must **explicitly delete** `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` from the child env to prevent accidental per-token billing.
 
-Additionally, `CLAUDE_CODE_OAUTH_REFRESH_TOKEN` (paired with `CLAUDE_CODE_OAUTH_SCOPES`) enables auto-refreshing for long-running sessions.
+**Note:** `CLAUDE_CODE_OAUTH_REFRESH_TOKEN` is NOT consumed by Claude Code when `CLAUDE_CODE_OAUTH_TOKEN` is set. Token refresh does not work via env var — tokens expire after ~1 hour. For long-running workstreams, implement pre-flight token validation and re-authentication on auth failure.
 
 **`--bare` flag warning:** The `--bare` flag "skips OAuth and keychain reads" and requires `ANTHROPIC_API_KEY` or `apiKeyHelper`. If your workstreams use `CLAUDE_CODE_OAUTH_TOKEN` (subscription billing), you **cannot** use `--bare`. Omit it and accept slightly slower startup.
 

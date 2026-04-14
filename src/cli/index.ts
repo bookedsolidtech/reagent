@@ -47,9 +47,15 @@ switch (cmd) {
   case 'obsidian':
     runObsidian(rest);
     break;
-  case 'account':
-    runAccount(rest);
+  case 'account': {
+    const result = runAccount(rest);
+    if (result instanceof Promise)
+      result.catch((e: Error) => {
+        console.error(e.message);
+        process.exit(1);
+      });
     break;
+  }
   default:
     console.error(`\nUnknown command: ${cmd}`);
     printHelp();

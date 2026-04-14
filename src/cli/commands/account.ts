@@ -13,6 +13,7 @@ import {
   readClaudeCodeCredential,
   writeClaudeCodeCredential as writeClaudeCredential,
 } from '../../platform/keychain.js';
+import type { AccountCredential } from '../../types/accounts.js';
 
 export function runAccount(args: string[]): void | Promise<void> {
   const [subcommand, ...rest] = args;
@@ -46,6 +47,9 @@ export function runAccount(args: string[]): void | Promise<void> {
     case 'remove':
       accountRemove(rest);
       break;
+    case 'switch':
+      accountSwitch(rest);
+      break;
     case 'setup-shell':
       accountSetupShell(rest);
       break;
@@ -63,7 +67,9 @@ reagent account — Multi-credential management
 Subcommands:
   add <name>          Register new account (OAuth login + keychain store)
   list                Show all accounts + which is active
-  env <name>          Output shell export commands (for rswitch/eval)
+  switch <name>       Write account credential into Claude Code keychain slot (survives overnight)
+  switch --clear      Restore original Claude Code credential
+  env <name>          Output shell export commands (env var path — expires in ~1h, no refresh)
   env --clear         Output shell unset commands
   check [--all]       Validate token health (expiry, keychain access)
   verify [--all]      Verify account identity via Anthropic API (proves billing)
@@ -221,6 +227,86 @@ function accountList(): void {
   console.log('');
 }
 
+// --- switch ---
+
+function accountSwitch(args: string[]): void {
+  const clearFlag = args.includes('--clear');
+
+  if (clearFlag) {
+    const defaultCred = keychainGet('reagent-__default__');
+    if (!defaultCred) {
+      console.error('No saved default credential found.');
+      console.error('Run: claude auth login  to establish a default session.');
+      process.exit(1);
+    }
+    writeClaudeCredential(JSON.stringify({ claudeAiOauth: defaultCred }));
+    console.log('Restored default Claude Code credential.');
+    console.log('Restart any active Claude Code sessions to pick up the change.');
+    return;
+  }
+
+  const name = args.find((a) => !a.startsWith('--'));
+  if (!name) {
+    console.error(
+      'Usage: npx @bookedsolid/reagent@latest account switch <name> | account switch --clear'
+    );
+    process.exit(1);
+  }
+
+  const config = loadAccounts();
+  const account = config.accounts[name];
+  if (!account) {
+    console.error(`Account "${name}" not found. Run: npx @bookedsolid/reagent@latest account list`);
+    process.exit(1);
+  }
+
+  const credential = keychainGet(account.keychain_service);
+  if (!credential) {
+    console.error(
+      `No credential found for "${name}". Run: npx @bookedsolid/reagent@latest account rotate ${name}`
+    );
+    process.exit(1);
+  }
+
+  if (credential.expiresAt) {
+    const expiresAt =
+      typeof credential.expiresAt === 'number'
+        ? credential.expiresAt
+        : Date.parse(String(credential.expiresAt));
+    if (expiresAt < Date.now()) {
+      console.error(
+        `\u26A0 Token for "${name}" is EXPIRED. Run: npx @bookedsolid/reagent@latest account rotate ${name}`
+      );
+      process.exit(1);
+    }
+  }
+
+  // Save current Claude Code credential as default — but only when we're
+  // not already switched (i.e. REAGENT_ACCOUNT is unset in the shell).
+  // This ensures --clear always restores the real original, not an intermediate.
+  if (!process.env.REAGENT_ACCOUNT) {
+    try {
+      const currentRaw = execFileSync(
+        'security',
+        ['find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+        { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
+      ).trim();
+      const parsed = JSON.parse(currentRaw) as Record<string, unknown>;
+      const inner = (parsed.claudeAiOauth as AccountCredential) ?? (parsed as unknown as AccountCredential);
+      keychainSet('reagent-__default__', inner);
+    } catch {
+      // No existing Claude Code credential — nothing to save
+    }
+  }
+
+  // Write target credential into Claude Code's keychain slot.
+  // Claude Code reads from here with its normal refresh path — sessions survive overnight.
+  writeClaudeCredential(JSON.stringify({ claudeAiOauth: credential }));
+
+  console.log(`Switched to account: ${name}`);
+  console.log('Restart any active Claude Code sessions to pick up the change.');
+}
+
 // --- env ---
 
 function accountEnv(args: string[]): void {
@@ -367,10 +453,10 @@ function accountWhoami(): void {
       console.log(`Token:    ${preview}`);
     }
 
-    console.log(`Status:   Active (via CLAUDE_CODE_OAUTH_TOKEN env var)`);
+    console.log(`Status:   Active (keychain swap via account switch)`);
   } else {
     console.log(`Token:    CLAUDE_CODE_OAUTH_TOKEN is set but REAGENT_ACCOUNT is not.`);
-    console.log(`Status:   Using env var override (unknown account)`);
+    console.log(`Status:   Using env var override (unknown account — token expires in ~1h)`);
   }
   console.log('');
 }
@@ -500,18 +586,18 @@ rswitch() {
     return
   fi
   if [ "$1" = "--clear" ]; then
-    eval "$(npx @bookedsolid/reagent@latest account env --clear)"
+    npx @bookedsolid/reagent@latest account switch --clear || return 1
+    unset REAGENT_ACCOUNT
     printf 'Cleared reagent account override.\\n' >&2
     return
   fi
-  local output
-  output="$(npx @bookedsolid/reagent@latest account env "$1" 2>/dev/null)"
-  if [[ $? -ne 0 || -z "$output" ]]; then
-    printf 'rswitch: failed to load account "%s"\\n' "$1" >&2
+  if npx @bookedsolid/reagent@latest account switch "$1"; then
+    export REAGENT_ACCOUNT="$1"
+    printf 'Switched to: %s\\n' "$REAGENT_ACCOUNT" >&2
+  else
+    printf 'rswitch: failed to switch to account "%s"\\n' "$1" >&2
     return 1
   fi
-  eval "$output"
-  printf 'Switched to: %s\\n' "$REAGENT_ACCOUNT" >&2
 }
 
 # Tab completion
@@ -546,17 +632,18 @@ function rswitch
     return
   end
   if test "$argv[1]" = "--clear"
-    eval (npx @bookedsolid/reagent@latest account env --clear)
+    npx @bookedsolid/reagent@latest account switch --clear; or return 1
+    set -e REAGENT_ACCOUNT
     echo "Cleared reagent account override." >&2
     return
   end
-  set -l output (npx @bookedsolid/reagent@latest account env $argv[1] 2>/dev/null)
-  if test $status -ne 0; or test -z "$output"
-    echo "rswitch: failed to load account \\"$argv[1]\\"" >&2
+  if npx @bookedsolid/reagent@latest account switch $argv[1]
+    set -x REAGENT_ACCOUNT $argv[1]
+    echo "Switched to: $REAGENT_ACCOUNT" >&2
+  else
+    echo "rswitch: failed to switch to account \\"$argv[1]\\"" >&2
     return 1
   end
-  eval $output
-  echo "Switched to: $REAGENT_ACCOUNT" >&2
 end
 
 # Tab completion

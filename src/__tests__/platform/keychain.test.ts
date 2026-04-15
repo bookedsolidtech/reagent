@@ -28,7 +28,7 @@ describe('keychain', () => {
   // --- keychainSet ---
 
   describe('keychainSet', () => {
-    it('deletes existing entry then adds new one with correct args', () => {
+    it('adds entry with -U flag for atomic upsert', () => {
       mockExecFileSync.mockReturnValue('');
 
       const credential = {
@@ -38,17 +38,8 @@ describe('keychain', () => {
       };
       keychainSet('reagent-test', credential);
 
-      // First call: delete existing
-      expect(mockExecFileSync).toHaveBeenNthCalledWith(
-        1,
-        'security',
-        ['delete-generic-password', '-s', 'reagent-test', '-a', 'reagent'],
-        { stdio: 'pipe' }
-      );
-
-      // Second call: add new
-      expect(mockExecFileSync).toHaveBeenNthCalledWith(
-        2,
+      expect(mockExecFileSync).toHaveBeenCalledTimes(1);
+      expect(mockExecFileSync).toHaveBeenCalledWith(
         'security',
         [
           'add-generic-password',
@@ -64,26 +55,10 @@ describe('keychain', () => {
       );
     });
 
-    it('ignores error when deleting non-existent entry', () => {
-      mockExecFileSync
-        .mockImplementationOnce(() => {
-          throw new Error(
-            'security: SecKeychainSearchCopyNext: The specified item could not be found in the keychain.'
-          );
-        })
-        .mockReturnValueOnce('');
-
-      const credential = { accessToken: 'tok-abc' };
-      expect(() => keychainSet('reagent-new', credential)).not.toThrow();
-      expect(mockExecFileSync).toHaveBeenCalledTimes(2);
-    });
-
     it('throws when add-generic-password fails', () => {
-      mockExecFileSync
-        .mockReturnValueOnce('') // delete succeeds
-        .mockImplementationOnce(() => {
-          throw new Error('security: add failed');
-        });
+      mockExecFileSync.mockImplementationOnce(() => {
+        throw new Error('security: add failed');
+      });
 
       expect(() => keychainSet('reagent-test', { accessToken: 'tok' })).toThrow(
         'security: add failed'
@@ -205,7 +180,7 @@ describe('keychain', () => {
 
       expect(mockExecFileSync).toHaveBeenCalledWith(
         'security',
-        ['find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+        ['find-generic-password', '-s', 'Claude Code-credentials', '-a', 'testuser', '-w'],
         { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
       );
     });
@@ -259,32 +234,26 @@ describe('keychain', () => {
       expect(readClaudeCodeCredential()).toBeNull();
     });
 
-    it('does not include -a flag (Claude Code uses default account)', () => {
+    it('includes -a flag with OS username for consistent keychain lookup', () => {
       mockExecFileSync.mockReturnValue(JSON.stringify({ oauth_token: 'x' }));
       readClaudeCodeCredential();
 
       const args = mockExecFileSync.mock.calls[0][1] as string[];
-      expect(args).not.toContain('-a');
+      expect(args).toContain('-a');
+      expect(args[args.indexOf('-a') + 1]).toBe('testuser');
     });
   });
 
   // --- writeClaudeCodeCredential ---
 
   describe('writeClaudeCodeCredential', () => {
-    it('deletes existing and writes new entry', () => {
+    it('writes entry with -U flag for atomic upsert', () => {
       mockExecFileSync.mockReturnValue('');
 
       writeClaudeCodeCredential('{"oauth_token":"new"}');
 
-      expect(mockExecFileSync).toHaveBeenNthCalledWith(
-        1,
-        'security',
-        ['delete-generic-password', '-s', 'Claude Code-credentials'],
-        { stdio: 'pipe' }
-      );
-
-      expect(mockExecFileSync).toHaveBeenNthCalledWith(
-        2,
+      expect(mockExecFileSync).toHaveBeenCalledTimes(1);
+      expect(mockExecFileSync).toHaveBeenCalledWith(
         'security',
         [
           'add-generic-password',
@@ -300,23 +269,10 @@ describe('keychain', () => {
       );
     });
 
-    it('proceeds when delete fails (entry did not exist)', () => {
-      mockExecFileSync
-        .mockImplementationOnce(() => {
-          throw new Error('not found');
-        })
-        .mockReturnValueOnce('');
-
-      expect(() => writeClaudeCodeCredential('data')).not.toThrow();
-      expect(mockExecFileSync).toHaveBeenCalledTimes(2);
-    });
-
     it('throws when add-generic-password fails', () => {
-      mockExecFileSync
-        .mockReturnValueOnce('') // delete ok
-        .mockImplementationOnce(() => {
-          throw new Error('write failed');
-        });
+      mockExecFileSync.mockImplementationOnce(() => {
+        throw new Error('write failed');
+      });
 
       expect(() => writeClaudeCodeCredential('data')).toThrow('write failed');
     });

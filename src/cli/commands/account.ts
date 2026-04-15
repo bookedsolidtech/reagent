@@ -24,6 +24,7 @@ import {
   readClaudeCodeCredentialRaw,
   parseCredentialForDisplay,
   rawCredentialHasToken,
+  ensureClaudeCodeWrapper,
   writeClaudeCodeCredential as writeClaudeCredential,
 } from '../../platform/keychain.js';
 
@@ -340,9 +341,9 @@ function accountSwitch(args: string[]): void {
       }
     }
 
-    // Write the stored raw blob directly into Claude Code's keychain slot.
-    // No parse/re-wrap — preserves all fields needed for token refresh.
-    writeClaudeCredential(credentialRaw);
+    // Write the stored raw blob into Claude Code's keychain slot, ensuring
+    // the claudeAiOauth wrapper is present so token refresh works.
+    writeClaudeCredential(ensureClaudeCodeWrapper(credentialRaw));
 
     setActiveAccount(name);
 

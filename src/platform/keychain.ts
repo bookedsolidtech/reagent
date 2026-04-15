@@ -17,15 +17,7 @@ export function keychainSet(service: string, credential: AccountCredential): voi
  * so that Claude Code's token refresh flow continues to work.
  */
 export function keychainSetRaw(service: string, data: string): void {
-  // Delete existing entry first (ignore errors if it doesn't exist)
-  try {
-    execFileSync('security', ['delete-generic-password', '-s', service, '-a', KEYCHAIN_ACCOUNT], {
-      stdio: 'pipe',
-    });
-  } catch {
-    // Entry doesn't exist yet — that's fine
-  }
-
+  // -U provides atomic upsert — no need to delete first (avoids race window)
   execFileSync(
     'security',
     ['add-generic-password', '-s', service, '-a', KEYCHAIN_ACCOUNT, '-w', data, '-U'],
@@ -119,7 +111,7 @@ export function readClaudeCodeCredentialRaw(): string | null {
   try {
     const raw = execFileSync(
       'security',
-      ['find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+      ['find-generic-password', '-s', 'Claude Code-credentials', '-a', userInfo().username, '-w'],
       { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
     );
     return raw.trim();
@@ -182,6 +174,24 @@ export function rawCredentialHasToken(raw: string): boolean {
 }
 
 /**
+ * Ensure a raw credential string has the `claudeAiOauth` wrapper that
+ * Claude Code expects. Pre-fix keychain entries may store the bare inner
+ * object — this re-wraps them so token refresh works.
+ */
+export function ensureClaudeCodeWrapper(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.claudeAiOauth) return raw;
+    if (parsed.accessToken || parsed.oauth_token) {
+      return JSON.stringify({ claudeAiOauth: parsed });
+    }
+    return raw;
+  } catch {
+    return raw;
+  }
+}
+
+/**
  * Normalize any credential-like object into the known AccountCredential fields.
  * Used for display, health checks, and env output — NOT for storage.
  */
@@ -205,13 +215,7 @@ function normalizeCredential(inner: Record<string, unknown>): AccountCredential 
  */
 export function writeClaudeCodeCredential(data: string): void {
   const account = userInfo().username;
-  try {
-    execFileSync('security', ['delete-generic-password', '-s', 'Claude Code-credentials'], {
-      stdio: 'pipe',
-    });
-  } catch {
-    // Doesn't exist yet
-  }
+  // -U provides atomic upsert — no need to delete first (avoids race window)
   execFileSync(
     'security',
     ['add-generic-password', '-s', 'Claude Code-credentials', '-a', account, '-w', data, '-U'],

@@ -8,8 +8,15 @@ const KEYCHAIN_ACCOUNT = 'reagent';
  * Store a credential blob in macOS Keychain under a reagent-namespaced service.
  */
 export function keychainSet(service: string, credential: AccountCredential): void {
-  const data = JSON.stringify(credential);
+  keychainSetRaw(service, JSON.stringify(credential));
+}
 
+/**
+ * Store a raw JSON string in macOS Keychain under a reagent-namespaced service.
+ * Use this to preserve the full credential blob (including fields beyond AccountCredential)
+ * so that Claude Code's token refresh flow continues to work.
+ */
+export function keychainSetRaw(service: string, data: string): void {
   // Delete existing entry first (ignore errors if it doesn't exist)
   try {
     execFileSync('security', ['delete-generic-password', '-s', service, '-a', KEYCHAIN_ACCOUNT], {
@@ -28,15 +35,31 @@ export function keychainSet(service: string, credential: AccountCredential): voi
 
 /**
  * Retrieve a credential blob from macOS Keychain.
+ * Returns the normalized AccountCredential (6 known fields only).
+ * For the full blob, use keychainGetRaw().
  */
 export function keychainGet(service: string): AccountCredential | null {
+  const raw = keychainGetRaw(service);
+  if (!raw) return null;
+  try {
+    return normalizeCredential(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Retrieve the raw JSON string from macOS Keychain.
+ * Preserves all fields, including those needed for OAuth refresh.
+ */
+export function keychainGetRaw(service: string): string | null {
   try {
     const raw = execFileSync(
       'security',
       ['find-generic-password', '-s', service, '-a', KEYCHAIN_ACCOUNT, '-w'],
       { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
     );
-    return JSON.parse(raw.trim()) as AccountCredential;
+    return raw.trim();
   } catch {
     return null;
   }
@@ -71,30 +94,106 @@ export function keychainExists(service: string): boolean {
 }
 
 /**
- * Read Claude Code's own keychain credential.
+ * Read Claude Code's own keychain credential as a normalized AccountCredential.
+ * This extracts only the 6 known fields — suitable for display and health checks.
+ * For storing/switching, use readClaudeCodeCredentialRaw() to preserve all fields.
  */
 export function readClaudeCodeCredential(): AccountCredential | null {
+  try {
+    const raw = readClaudeCodeCredentialRaw();
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const inner = parsed.claudeAiOauth || parsed;
+    return normalizeCredential(inner);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read the raw JSON string from Claude Code's keychain entry.
+ * Returns the full blob (e.g., `{"claudeAiOauth": {...all fields...}}`)
+ * so that token refresh metadata (tokenEndpoint, clientId, etc.) is preserved.
+ */
+export function readClaudeCodeCredentialRaw(): string | null {
   try {
     const raw = execFileSync(
       'security',
       ['find-generic-password', '-s', 'Claude Code-credentials', '-w'],
       { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
     );
-    const parsed = JSON.parse(raw.trim());
-    // Claude Code stores {claudeAiOauth: {accessToken, refreshToken, expiresAt, subscriptionType, rateLimitTier, ...}}
-    // Unwrap the outer envelope if present, then normalize field names
-    const inner = parsed.claudeAiOauth || parsed;
-    return {
-      accessToken: inner.accessToken || inner.oauth_token,
-      refreshToken: inner.refreshToken || inner.refresh_token,
-      expiresAt: inner.expiresAt || inner.expiry,
-      scopes: inner.scopes,
-      subscriptionType: inner.subscriptionType,
-      rateLimitTier: inner.rateLimitTier,
-    };
+    return raw.trim();
   } catch {
     return null;
   }
+}
+
+/**
+ * Extract the claudeAiOauth inner object from a raw Claude Code credential string.
+ * Returns the full inner object as a JSON string, preserving all fields.
+ *
+ * @deprecated Use the raw blob directly — extracting strips sibling fields.
+ */
+export function extractOAuthBlob(rawCredential: string): string | null {
+  try {
+    const parsed = JSON.parse(rawCredential);
+    const inner = parsed.claudeAiOauth || parsed;
+    if (!inner || typeof inner !== 'object') return null;
+    // Verify it has at least an access token
+    if (!inner.accessToken && !inner.oauth_token) return null;
+    return JSON.stringify(inner);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parse a raw credential string (which may be a full Claude Code blob
+ * like `{ claudeAiOauth: { ... } }` or a bare inner object) into an
+ * AccountCredential suitable for display, health checks, and env output.
+ *
+ * Returns null if the string cannot be parsed or lacks an access token.
+ */
+export function parseCredentialForDisplay(raw: string): AccountCredential | null {
+  try {
+    const parsed = JSON.parse(raw);
+    const inner = parsed.claudeAiOauth || parsed;
+    if (!inner || typeof inner !== 'object') return null;
+    const cred = normalizeCredential(inner as Record<string, unknown>);
+    if (!cred.accessToken) return null;
+    return cred;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate that a raw credential string contains an access token.
+ * Does not extract or transform — just confirms viability.
+ */
+export function rawCredentialHasToken(raw: string): boolean {
+  try {
+    const parsed = JSON.parse(raw);
+    const inner = parsed.claudeAiOauth || parsed;
+    return !!(inner?.accessToken || inner?.oauth_token);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Normalize any credential-like object into the known AccountCredential fields.
+ * Used for display, health checks, and env output — NOT for storage.
+ */
+function normalizeCredential(inner: Record<string, unknown>): AccountCredential {
+  return {
+    accessToken: (inner.accessToken || inner.oauth_token) as string,
+    refreshToken: (inner.refreshToken || inner.refresh_token) as string | undefined,
+    expiresAt: (inner.expiresAt || inner.expiry) as string | number | undefined,
+    scopes: inner.scopes as string[] | undefined,
+    subscriptionType: inner.subscriptionType as string | undefined,
+    rateLimitTier: inner.rateLimitTier as string | undefined,
+  };
 }
 
 /**

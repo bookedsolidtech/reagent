@@ -1,5 +1,19 @@
 # @bookedsolid/reagent
 
+## 0.15.8
+
+### Patch Changes
+
+- e1b31be: fix(account): preserve full OAuth credential blob to fix token refresh after ~2 hours
+
+  Previously, `readClaudeCodeCredential()` extracted only 6 known fields from Claude Code's keychain entry, stripping OAuth metadata (tokenEndpoint, clientId, etc.) needed for token refresh. After the access token expired (~1-2 hours), Claude Code could not refresh it, causing persistent 401 errors.
+
+  All credential storage and restoration now uses raw blob passthrough — no field extraction or re-wrapping. Existing accounts must be rotated once (`reagent account rotate <name>`) to re-capture the full credential blob.
+
+- 0087674: fix(account): wrap credentials with claudeAiOauth envelope during switch to prevent 401 mid-session token death
+
+  Account switch now calls `ensureClaudeCodeWrapper()` before writing to Claude Code's keychain slot, ensuring bare credential blobs are wrapped as `{"claudeAiOauth":{...}}` so Claude Code's token refresh flow can locate `refreshToken`. Also updates keychain tests to match atomic `-U` upsert and consistent `-a` username patterns.
+
 ## 0.15.7
 
 ### Patch Changes

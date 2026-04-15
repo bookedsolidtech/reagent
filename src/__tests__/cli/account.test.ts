@@ -14,18 +14,30 @@ vi.mock('../../config/accounts.js', () => ({
 }));
 
 const mockKeychainSet = vi.fn();
+const mockKeychainSetRaw = vi.fn();
 const mockKeychainGet = vi.fn();
+const mockKeychainGetRaw = vi.fn();
 const mockKeychainDelete = vi.fn();
 const mockKeychainExists = vi.fn();
 const mockReadClaudeCodeCredential = vi.fn();
+const mockReadClaudeCodeCredentialRaw = vi.fn();
+const mockExtractOAuthBlob = vi.fn();
+const mockParseCredentialForDisplay = vi.fn();
+const mockRawCredentialHasToken = vi.fn();
 const mockWriteClaudeCodeCredential = vi.fn();
 
 vi.mock('../../platform/keychain.js', () => ({
   keychainSet: (...args: unknown[]) => mockKeychainSet(...args),
+  keychainSetRaw: (...args: unknown[]) => mockKeychainSetRaw(...args),
   keychainGet: (...args: unknown[]) => mockKeychainGet(...args),
+  keychainGetRaw: (...args: unknown[]) => mockKeychainGetRaw(...args),
   keychainDelete: (...args: unknown[]) => mockKeychainDelete(...args),
   keychainExists: (...args: unknown[]) => mockKeychainExists(...args),
   readClaudeCodeCredential: (...args: unknown[]) => mockReadClaudeCodeCredential(...args),
+  readClaudeCodeCredentialRaw: (...args: unknown[]) => mockReadClaudeCodeCredentialRaw(...args),
+  extractOAuthBlob: (...args: unknown[]) => mockExtractOAuthBlob(...args),
+  parseCredentialForDisplay: (...args: unknown[]) => mockParseCredentialForDisplay(...args),
+  rawCredentialHasToken: (...args: unknown[]) => mockRawCredentialHasToken(...args),
   writeClaudeCodeCredential: (...args: unknown[]) => mockWriteClaudeCodeCredential(...args),
 }));
 
@@ -149,7 +161,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue('{"accessToken":"tok-abc-123","refreshToken":"ref-xyz"}');
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'tok-abc-123',
         refreshToken: 'ref-xyz',
       });
@@ -172,7 +185,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue('{"accessToken":"tok-only"}');
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'tok-only',
       });
 
@@ -213,7 +227,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue(null);
+      mockKeychainGetRaw.mockReturnValue(null);
+      mockParseCredentialForDisplay.mockReturnValue(null);
 
       expect(() => runAccount(['env', 'broken'])).toThrow('process.exit(1)');
       expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('No credential found'));
@@ -229,7 +244,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue('{"accessToken":"tok\'with\'quotes"}');
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: "tok'with'quotes",
       });
 
@@ -458,7 +474,10 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue(
+        '{"accessToken":"abcdefghijklmnop1234","refreshToken":"ref-tok","expiresAt":"2099-12-31T00:00:00Z"}'
+      );
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'abcdefghijklmnop1234',
         refreshToken: 'ref-tok',
         expiresAt: '2099-12-31T00:00:00Z',
@@ -482,7 +501,10 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue(
+        '{"accessToken":"abcdefghijklmnop1234","expiresAt":"2020-01-01T00:00:00Z"}'
+      );
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'abcdefghijklmnop1234',
         expiresAt: '2020-01-01T00:00:00Z',
       });
@@ -505,7 +527,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue(null);
+      mockKeychainGetRaw.mockReturnValue(null);
+      mockParseCredentialForDisplay.mockReturnValue(null);
 
       runAccount(['check']);
 
@@ -527,7 +550,10 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue(
+        '{"accessToken":"abcdefghijklmnop1234","refreshToken":"ref","expiresAt":"2099-12-31T00:00:00Z"}'
+      );
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'abcdefghijklmnop1234',
         refreshToken: 'ref',
         expiresAt: '2099-12-31T00:00:00Z',
@@ -561,7 +587,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue('{"accessToken":""}');
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: '',
       });
 
@@ -582,7 +609,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue('{"accessToken":"abcdefghijklmnop1234"}');
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'abcdefghijklmnop1234',
       });
 
@@ -753,8 +781,10 @@ describe('runAccount', () => {
       mockLoadAccounts.mockReturnValue({ version: '1', accounts: {} });
       mockExecFileSync.mockReturnValue('{"claudeAiOauth":{}}');
       mockSpawnSync.mockReturnValue({ status: 0 });
-      mockReadClaudeCodeCredential.mockReturnValue({ accessToken: 'new-tok' });
-      mockKeychainSet.mockReturnValue(undefined);
+      const rawBlob = '{"claudeAiOauth":{"accessToken":"new-tok"}}';
+      mockReadClaudeCodeCredentialRaw.mockReturnValue(rawBlob);
+      mockRawCredentialHasToken.mockReturnValue(true);
+      mockKeychainSetRaw.mockReturnValue(undefined);
       mockUpsertAccount.mockReturnValue(undefined);
 
       runAccount(['add', 'new-acct']);
@@ -797,8 +827,10 @@ describe('runAccount', () => {
       });
       mockExecFileSync.mockReturnValue('{"claudeAiOauth":{}}');
       mockSpawnSync.mockReturnValue({ status: 0 });
-      mockReadClaudeCodeCredential.mockReturnValue({ accessToken: 'rotated-tok' });
-      mockKeychainSet.mockReturnValue(undefined);
+      const rawBlob = '{"claudeAiOauth":{"accessToken":"rotated-tok"}}';
+      mockReadClaudeCodeCredentialRaw.mockReturnValue(rawBlob);
+      mockRawCredentialHasToken.mockReturnValue(true);
+      mockKeychainSetRaw.mockReturnValue(undefined);
 
       runAccount(['rotate', 'personal']);
 
@@ -859,7 +891,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({ accessToken: 'tok-abc-1234' });
+      mockKeychainGetRaw.mockReturnValue('{"accessToken":"tok-abc-1234"}');
+      mockParseCredentialForDisplay.mockReturnValue({ accessToken: 'tok-abc-1234' });
       mockHttpsResponse = { statusCode: 200, body: validProfile };
 
       await runAccount(['verify']);
@@ -883,7 +916,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue(null);
+      mockKeychainGetRaw.mockReturnValue(null);
+      mockParseCredentialForDisplay.mockReturnValue(null);
 
       await runAccount(['verify']);
 
@@ -902,7 +936,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({ accessToken: 'tok-abc-1234' });
+      mockKeychainGetRaw.mockReturnValue('{"accessToken":"tok-abc-1234"}');
+      mockParseCredentialForDisplay.mockReturnValue({ accessToken: 'tok-abc-1234' });
       mockHttpsResponse = { networkError: true };
 
       await runAccount(['verify']);
@@ -923,7 +958,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({ accessToken: 'tok-abc-1234' });
+      mockKeychainGetRaw.mockReturnValue('{"accessToken":"tok-abc-1234"}');
+      mockParseCredentialForDisplay.mockReturnValue({ accessToken: 'tok-abc-1234' });
       mockHttpsResponse = { statusCode: 401, body: 'Unauthorized' };
 
       await runAccount(['verify']);
@@ -946,7 +982,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({ accessToken: 'tok-abc-1234' });
+      mockKeychainGetRaw.mockReturnValue('{"accessToken":"tok-abc-1234"}');
+      mockParseCredentialForDisplay.mockReturnValue({ accessToken: 'tok-abc-1234' });
       mockHttpsResponse = { statusCode: 200, body: validProfile };
 
       await runAccount(['verify', '--all']);
@@ -970,8 +1007,13 @@ describe('runAccount', () => {
           },
         },
       });
-      // good returns a valid profile, bad returns null (missing keychain)
-      mockKeychainGet.mockReturnValueOnce({ accessToken: 'tok-good' }).mockReturnValueOnce(null);
+      // good returns a valid raw blob, bad returns null (missing keychain)
+      mockKeychainGetRaw
+        .mockReturnValueOnce('{"accessToken":"tok-good"}')
+        .mockReturnValueOnce(null);
+      mockParseCredentialForDisplay
+        .mockReturnValueOnce({ accessToken: 'tok-good' })
+        .mockReturnValueOnce(null);
       mockHttpsResponse = { statusCode: 200, body: validProfile };
 
       await runAccount(['verify', '--all']);
@@ -1010,7 +1052,8 @@ describe('runAccount', () => {
             },
           },
         });
-        mockKeychainGet.mockReturnValue({ accessToken: 'tok-abc-1234' });
+        mockKeychainGetRaw.mockReturnValue('{"accessToken":"tok-abc-1234"}');
+        mockParseCredentialForDisplay.mockReturnValue({ accessToken: 'tok-abc-1234' });
         mockHttpsResponse = {
           statusCode: 200,
           body: JSON.stringify({
@@ -1045,7 +1088,8 @@ describe('runAccount', () => {
         },
       });
       const pastTs = Date.now() - 60 * 60 * 1000; // 1 hour ago
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue(`{"accessToken":"tok-stale","expiresAt":${pastTs}}`);
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'tok-stale',
         expiresAt: pastTs,
       });
@@ -1068,7 +1112,8 @@ describe('runAccount', () => {
         },
       });
       const soonTs = Date.now() + 5 * 60 * 1000; // 5 minutes from now
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue(`{"accessToken":"tok-soon","expiresAt":${soonTs}}`);
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'tok-soon',
         expiresAt: soonTs,
       });
@@ -1090,7 +1135,8 @@ describe('runAccount', () => {
         },
       });
       const futureTs = Date.now() + 60 * 60 * 1000; // 60 minutes from now
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue(`{"accessToken":"tok-fresh","expiresAt":${futureTs}}`);
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'tok-fresh',
         expiresAt: futureTs,
       });
@@ -1110,7 +1156,8 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue('{"accessToken":"tok-noexpiry"}');
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'tok-noexpiry',
       });
 
@@ -1134,7 +1181,10 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue(
+        '{"accessToken":"tok-max","expiresAt":"2099-12-31T00:00:00Z","subscriptionType":"claude_max","rateLimitTier":"max_5"}'
+      );
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'tok-max',
         expiresAt: '2099-12-31T00:00:00Z',
         subscriptionType: 'claude_max',
@@ -1159,7 +1209,10 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue(
+        '{"accessToken":"tok-no-plan","expiresAt":"2099-12-31T00:00:00Z"}'
+      );
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'tok-no-plan',
         expiresAt: '2099-12-31T00:00:00Z',
       });
@@ -1181,7 +1234,10 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue(
+        '{"accessToken":"tok-plan-only","expiresAt":"2099-12-31T00:00:00Z","subscriptionType":"claude_pro"}'
+      );
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'tok-plan-only',
         expiresAt: '2099-12-31T00:00:00Z',
         subscriptionType: 'claude_pro',
@@ -1201,7 +1257,7 @@ describe('runAccount', () => {
   // account check passes them through to output.
 
   describe('subscriptionType and rateLimitTier preserved in credential', () => {
-    it('passes subscriptionType and rateLimitTier from keychainGet to check output', () => {
+    it('passes subscriptionType and rateLimitTier from keychainGetRaw to check output', () => {
       process.env.REAGENT_ACCOUNT = 'preserved';
       mockLoadAccounts.mockReturnValue({
         version: '1',
@@ -1212,7 +1268,10 @@ describe('runAccount', () => {
           },
         },
       });
-      mockKeychainGet.mockReturnValue({
+      mockKeychainGetRaw.mockReturnValue(
+        '{"accessToken":"tok-preserved","refreshToken":"ref-preserved","expiresAt":"2099-12-31T00:00:00Z","subscriptionType":"claude_max","rateLimitTier":"max_5"}'
+      );
+      mockParseCredentialForDisplay.mockReturnValue({
         accessToken: 'tok-preserved',
         refreshToken: 'ref-preserved',
         expiresAt: '2099-12-31T00:00:00Z',

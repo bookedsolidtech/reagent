@@ -17,14 +17,15 @@ import {
   removeAccount as removeAccountConfig,
 } from '../../config/accounts.js';
 import {
-  keychainSet,
-  keychainGet,
+  keychainSetRaw,
+  keychainGetRaw,
   keychainDelete,
   keychainExists,
-  readClaudeCodeCredential,
+  readClaudeCodeCredentialRaw,
+  parseCredentialForDisplay,
+  rawCredentialHasToken,
   writeClaudeCodeCredential as writeClaudeCredential,
 } from '../../platform/keychain.js';
-import type { AccountCredential } from '../../types/accounts.js';
 
 export function runAccount(args: string[]): void | Promise<void> {
   const [subcommand, ...rest] = args;
@@ -176,8 +177,8 @@ function accountAdd(args: string[]): void {
   }
 
   console.log('\nStep 3: Reading new credential from keychain...');
-  const newCredential = readClaudeCodeCredential();
-  if (!newCredential || !newCredential.accessToken) {
+  const newCredentialRaw = readClaudeCodeCredentialRaw();
+  if (!newCredentialRaw || !rawCredentialHasToken(newCredentialRaw)) {
     console.error('Failed to read new credential from Claude Code keychain entry.');
     if (backupRaw) {
       console.log('Restoring original credential...');
@@ -187,7 +188,9 @@ function accountAdd(args: string[]): void {
   }
 
   console.log('Step 4: Storing under reagent keychain entry...');
-  keychainSet(keychainService, newCredential);
+  // Store the complete raw blob (including wrapper) so all OAuth metadata
+  // needed for token refresh (tokenEndpoint, clientId, etc.) is preserved.
+  keychainSetRaw(keychainService, newCredentialRaw);
 
   console.log('Step 5: Restoring original Claude Code credential...');
   if (backupRaw) {
@@ -260,13 +263,14 @@ function accountSwitch(args: string[]): void {
       }
       setActiveAccount(null);
 
-      const defaultCred = keychainGet('reagent-__default__');
-      if (!defaultCred) {
+      const defaultCredRaw = keychainGetRaw('reagent-__default__');
+      if (!defaultCredRaw) {
         console.error('No saved default credential found.');
         console.error('Run: claude auth login  to establish a default session.');
         process.exit(1);
       }
-      writeClaudeCredential(JSON.stringify({ claudeAiOauth: defaultCred }));
+      // Write back the raw blob exactly as stored — no parse/re-wrap
+      writeClaudeCredential(defaultCredRaw);
       console.log('Restored default Claude Code credential.');
       console.log('Restart any active Claude Code sessions to pick up the change.');
       return;
@@ -297,19 +301,22 @@ function accountSwitch(args: string[]): void {
       console.error('Warning: could not sync credential for previously active account.');
     }
 
-    const credential = keychainGet(account.keychain_service);
-    if (!credential) {
+    // Read the full raw blob for writing to Claude Code, and parse for expiry check.
+    const credentialRaw = keychainGetRaw(account.keychain_service);
+    if (!credentialRaw || !rawCredentialHasToken(credentialRaw)) {
       console.error(
         `No credential found for "${name}". Run: npx @bookedsolid/reagent@latest account rotate ${name}`
       );
       process.exit(1);
     }
 
-    if (credential.expiresAt) {
+    // Parse on-the-fly for expiry check only
+    const credentialForDisplay = parseCredentialForDisplay(credentialRaw);
+    if (credentialForDisplay?.expiresAt) {
       const expiresAt =
-        typeof credential.expiresAt === 'number'
-          ? credential.expiresAt
-          : Date.parse(String(credential.expiresAt));
+        typeof credentialForDisplay.expiresAt === 'number'
+          ? credentialForDisplay.expiresAt
+          : Date.parse(String(credentialForDisplay.expiresAt));
       if (expiresAt < Date.now()) {
         console.error(
           `\u26A0 Token for "${name}" is EXPIRED. Run: npx @bookedsolid/reagent@latest account rotate ${name}`
@@ -323,23 +330,19 @@ function accountSwitch(args: string[]): void {
     // This ensures --clear always restores the real original, not an intermediate.
     if (!process.env.REAGENT_ACCOUNT) {
       try {
-        const currentRaw = execFileSync(
-          'security',
-          ['find-generic-password', '-s', 'Claude Code-credentials', '-w'],
-          { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
-        ).trim();
-        const parsed = JSON.parse(currentRaw) as Record<string, unknown>;
-        const inner =
-          (parsed.claudeAiOauth as AccountCredential) ?? (parsed as unknown as AccountCredential);
-        keychainSet('reagent-__default__', inner);
+        const currentRaw = readClaudeCodeCredentialRaw();
+        if (currentRaw && rawCredentialHasToken(currentRaw)) {
+          // Store the complete raw blob so --clear restores it exactly
+          keychainSetRaw('reagent-__default__', currentRaw);
+        }
       } catch {
         // No existing Claude Code credential — nothing to save
       }
     }
 
-    // Write target credential into Claude Code's keychain slot.
-    // Claude Code reads from here with its normal refresh path — sessions survive overnight.
-    writeClaudeCredential(JSON.stringify({ claudeAiOauth: credential }));
+    // Write the stored raw blob directly into Claude Code's keychain slot.
+    // No parse/re-wrap — preserves all fields needed for token refresh.
+    writeClaudeCredential(credentialRaw);
 
     setActiveAccount(name);
 
@@ -377,7 +380,8 @@ function accountEnv(args: string[]): void {
     process.exit(1);
   }
 
-  const credential = keychainGet(account.keychain_service);
+  const credRaw = keychainGetRaw(account.keychain_service);
+  const credential = credRaw ? parseCredentialForDisplay(credRaw) : null;
   if (!credential) {
     console.error(
       `No credential found in keychain for "${name}" (service: ${account.keychain_service})`
@@ -438,7 +442,8 @@ function accountCheck(args: string[]): void {
       continue;
     }
 
-    const credential = keychainGet(account.keychain_service);
+    const credRaw = keychainGetRaw(account.keychain_service);
+    const credential = credRaw ? parseCredentialForDisplay(credRaw) : null;
     if (!credential) {
       console.log(`  ! ${name}: keychain entry MISSING (${account.keychain_service})`);
       continue;
@@ -548,15 +553,16 @@ function accountRotate(args: string[]): void {
     process.exit(1);
   }
 
-  const newCredential = readClaudeCodeCredential();
-  if (!newCredential || !newCredential.accessToken) {
+  const newCredentialRaw = readClaudeCodeCredentialRaw();
+  if (!newCredentialRaw || !rawCredentialHasToken(newCredentialRaw)) {
     console.error('Failed to read new credential.');
     if (backupRaw) writeClaudeCredential(backupRaw);
     process.exit(1);
   }
 
   console.log('Step 3: Updating keychain entry...');
-  keychainSet(account.keychain_service, newCredential);
+  // Store the complete raw blob so all OAuth metadata is preserved
+  keychainSetRaw(account.keychain_service, newCredentialRaw);
 
   if (backupRaw) {
     console.log('Step 4: Restoring original credential...');
@@ -785,7 +791,8 @@ async function accountVerify(args: string[]): Promise<void> {
       continue;
     }
 
-    const credential = keychainGet(account.keychain_service);
+    const credRaw = keychainGetRaw(account.keychain_service);
+    const credential = credRaw ? parseCredentialForDisplay(credRaw) : null;
     if (!credential) {
       console.log(`  ! ${name}: keychain entry MISSING`);
       continue;
@@ -899,17 +906,17 @@ function syncBackActiveCredential(): 'synced' | 'no-op' | 'skipped' {
   const prevAccount = config.accounts[prevName];
   if (!prevAccount) return 'skipped';
 
-  const current = readClaudeCodeCredential();
-  if (!current?.accessToken) return 'skipped';
+  // Read the full raw credential from Claude Code's keychain — this contains
+  // refreshed tokens and all OAuth metadata that Claude Code may have updated.
+  const currentRaw = readClaudeCodeCredentialRaw();
+  if (!currentRaw) return 'skipped';
 
-  const stored = keychainGet(prevAccount.keychain_service);
+  // Compare raw strings — if Claude Code refreshed the token, the blob will differ.
+  const storedRaw = keychainGetRaw(prevAccount.keychain_service);
 
-  // Sync when Claude Code has a refresh token that differs from (or is absent in) our stored copy.
-  const needsSync =
-    current.refreshToken && (!stored?.refreshToken || stored.refreshToken !== current.refreshToken);
-
-  if (needsSync) {
-    keychainSet(prevAccount.keychain_service, current);
+  if (currentRaw !== storedRaw) {
+    // Store the complete raw blob so all OAuth metadata is preserved
+    keychainSetRaw(prevAccount.keychain_service, currentRaw);
     return 'synced';
   }
 

@@ -1,5 +1,5 @@
 ---
-"@bookedsolid/reagent": patch
+'@bookedsolid/reagent': patch
 ---
 
 fix(account): preserve full OAuth credential blob to fix token refresh after ~2 hours

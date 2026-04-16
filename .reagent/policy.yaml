@@ -4,7 +4,7 @@
 
 version: '1'
 profile: 'bst-internal'
-installed_by: 'reagent@0.1.0'
+installed_by: 'reagent@0.15.9'
 installed_at: '2026-04-09T04:34:24.864Z'
 
 # Autonomy levels:

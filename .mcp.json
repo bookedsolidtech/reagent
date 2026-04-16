@@ -12,6 +12,14 @@
         "BOOKED_DISCORD_BOT_TOKEN": "${BOOKED_DISCORD_BOT_TOKEN}",
         "CLARITY_DISCORD_BOT_TOKEN": "${CLARITY_DISCORD_BOT_TOKEN}"
       }
+    },
+    "obsidian": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "node_modules/obsidian-mcp/build/main.js",
+        "/Volumes/Development/booked/data/bst"
+      ]
     }
   }
 }

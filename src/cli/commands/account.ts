@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync, spawn } from 'node:child_process';
 import {
   readFileSync,
   writeFileSync,
@@ -24,7 +24,8 @@ import {
   readClaudeCodeCredentialRaw,
   parseCredentialForDisplay,
   rawCredentialHasToken,
-  ensureClaudeCodeWrapper,
+  extractRefreshToken,
+  mergeIntoClaudeCodeSlot,
   writeClaudeCodeCredential as writeClaudeCredential,
 } from '../../platform/keychain.js';
 
@@ -258,6 +259,7 @@ function accountSwitch(args: string[]): void {
 
   try {
     if (clearFlag) {
+      stopCredentialSyncDaemon();
       const syncResult = syncBackActiveCredential();
       if (syncResult === 'skipped') {
         console.error('Warning: could not sync credential for previously active account.');
@@ -326,10 +328,12 @@ function accountSwitch(args: string[]): void {
       }
     }
 
-    // Save current Claude Code credential as default — but only when we're
-    // not already switched (i.e. REAGENT_ACCOUNT is unset in the shell).
-    // This ensures --clear always restores the real original, not an intermediate.
-    if (!process.env.REAGENT_ACCOUNT) {
+    // Save current Claude Code credential as default — but only when:
+    // 1. REAGENT_ACCOUNT is unset in the shell (not already switched), AND
+    // 2. active-account file is empty (no previous switch left CC in a switched state)
+    // This double-check prevents saving a switched account's credential as the default
+    // when a new terminal runs rswitch without having run --clear first.
+    if (!process.env.REAGENT_ACCOUNT && !getActiveAccount()) {
       try {
         const currentRaw = readClaudeCodeCredentialRaw();
         if (currentRaw && rawCredentialHasToken(currentRaw)) {
@@ -341,11 +345,23 @@ function accountSwitch(args: string[]): void {
       }
     }
 
-    // Write the stored raw blob into Claude Code's keychain slot, ensuring
-    // the claudeAiOauth wrapper is present so token refresh works.
-    writeClaudeCredential(ensureClaudeCodeWrapper(credentialRaw));
+    // Merge into Claude Code's keychain slot: overlay claudeAiOauth while
+    // preserving sibling keys (mcpOAuth, etc.) and injecting our marker.
+    mergeIntoClaudeCodeSlot(credentialRaw, name);
 
     setActiveAccount(name);
+
+    // Record the refresh token we just wrote so the sync daemon can detect
+    // when Claude Code has refreshed it (rotating refresh tokens).
+    const writtenRefreshToken = extractRefreshToken(credentialRaw);
+    if (writtenRefreshToken) {
+      saveWrittenRefreshToken(writtenRefreshToken);
+    }
+
+    // Start the background credential sync daemon.  It will periodically
+    // read Claude Code's keychain and write refreshed tokens back to the
+    // reagent account store, preventing stale refresh token buildup.
+    startCredentialSyncDaemon();
 
     console.log(`Switched to account: ${name}`);
     console.log('Restart any active Claude Code sessions to pick up the change.');
@@ -824,7 +840,12 @@ async function accountVerify(args: string[]): Promise<void> {
 const REAGENT_DIR = join(homedir(), '.reagent');
 const ACTIVE_ACCOUNT_PATH = join(REAGENT_DIR, 'active-account');
 const SWITCH_LOCK_PATH = join(REAGENT_DIR, 'account-switch.lock');
+const SYNC_PID_PATH = join(REAGENT_DIR, 'credential-sync.pid');
 const LOCK_STALE_MS = 30_000;
+/** How often the background sync daemon checks for refreshed tokens. */
+const SYNC_INTERVAL_MS = 45_000;
+/** How long the daemon runs before auto-exiting (8 hours). */
+const SYNC_MAX_LIFETIME_MS = 8 * 60 * 60 * 1000;
 
 /** Read which account was last activated via `account switch`. */
 function getActiveAccount(): string | null {
@@ -895,6 +916,11 @@ function acquireSwitchLock(): (() => void) | null {
  * slot.  Without this sync, reagent's stored copy goes stale and the next
  * `account switch` writes a dead refresh token.
  *
+ * Identity guard: To prevent cross-account corruption, this function
+ * verifies that the credential in CC's keychain actually descended from
+ * the one we wrote (by checking the recorded refresh token fingerprint).
+ * If CC was restarted with the default credential, sync is skipped.
+ *
  * Returns 'synced' if the credential was updated, 'no-op' if no active
  * account or no change detected, or 'skipped' if sync was expected but
  * could not complete (caller should warn).
@@ -912,16 +938,264 @@ function syncBackActiveCredential(): 'synced' | 'no-op' | 'skipped' {
   const currentRaw = readClaudeCodeCredentialRaw();
   if (!currentRaw) return 'skipped';
 
-  // Compare raw strings — if Claude Code refreshed the token, the blob will differ.
+  // Identity guard: verify the credential in CC's keychain belongs to the
+  // previously active account, not the default or another account.
+  try {
+    const currentParsed = JSON.parse(currentRaw);
+
+    // Primary check: if we injected a _reagentAccount marker, verify it matches
+    if (currentParsed._reagentAccount && currentParsed._reagentAccount !== prevName) {
+      return 'no-op';
+    }
+
+    // Fallback check: if CC has the default credential's refresh token, skip
+    if (!currentParsed._reagentAccount) {
+      const defaultRaw = keychainGetRaw('reagent-__default__');
+      if (defaultRaw) {
+        const defaultRT = extractRefreshToken(defaultRaw);
+        const currentRT = extractRefreshToken(currentRaw);
+        if (defaultRT && currentRT && defaultRT === currentRT) {
+          return 'no-op';
+        }
+      }
+    }
+  } catch {
+    return 'skipped';
+  }
+
+  // Strip our marker before storing — reagent's copy shouldn't have it
+  let cleanRaw = currentRaw;
+  try {
+    const parsed = JSON.parse(currentRaw);
+    if (parsed._reagentAccount) {
+      delete parsed._reagentAccount;
+      cleanRaw = JSON.stringify(parsed);
+    }
+  } catch {
+    // Use as-is
+  }
+
+  // Compare — if Claude Code refreshed the token, the blob will differ.
   const storedRaw = keychainGetRaw(prevAccount.keychain_service);
 
-  if (currentRaw !== storedRaw) {
-    // Store the complete raw blob so all OAuth metadata is preserved
-    keychainSetRaw(prevAccount.keychain_service, currentRaw);
+  if (cleanRaw !== storedRaw) {
+    keychainSetRaw(prevAccount.keychain_service, cleanRaw);
     return 'synced';
   }
 
   return 'no-op';
+}
+
+// --- credential sync daemon ---
+
+const WRITTEN_RT_PATH = join(REAGENT_DIR, 'written-refresh-token');
+
+/**
+ * Record which refresh token we wrote to CC's keychain at switch time.
+ * The sync daemon uses this to detect when CC has refreshed (the RT changes).
+ */
+function saveWrittenRefreshToken(rt: string): void {
+  try {
+    mkdirSync(REAGENT_DIR, { recursive: true });
+    writeFileSync(WRITTEN_RT_PATH, rt, 'utf8');
+  } catch {
+    // Best-effort
+  }
+}
+
+/**
+ * Start a background daemon that periodically syncs Claude Code's
+ * keychain credential back to the active reagent account.
+ *
+ * This is critical because Claude Code uses rotating refresh tokens —
+ * each refresh consumes the old token and issues a new one.  Without
+ * periodic sync-back, reagent's stored copy becomes permanently stale
+ * after the first CC refresh (~1 hour after switch).
+ *
+ * The daemon is a detached Node process that auto-exits when:
+ * - The active-account file is cleared (switch --clear)
+ * - The max lifetime is reached (8 hours)
+ * - The PID file is removed
+ */
+function startCredentialSyncDaemon(): void {
+  // Kill any existing daemon first
+  stopCredentialSyncDaemon();
+
+  try {
+    mkdirSync(REAGENT_DIR, { recursive: true });
+
+    // The daemon is a simple inline Node script.  We embed it as a string
+    // to avoid needing a separate file that might not exist at the expected path.
+    const daemonScript = buildDaemonScript();
+
+    const child = spawn(process.execPath, ['--eval', daemonScript], {
+      detached: true,
+      stdio: 'ignore',
+      env: {
+        ...process.env,
+        // Pass paths so the daemon doesn't depend on import resolution
+        REAGENT_DIR,
+        ACTIVE_ACCOUNT_PATH,
+        SYNC_PID_PATH,
+        SYNC_INTERVAL_MS: String(SYNC_INTERVAL_MS),
+        SYNC_MAX_LIFETIME_MS: String(SYNC_MAX_LIFETIME_MS),
+      },
+    });
+
+    child.unref();
+
+    if (child.pid) {
+      writeFileSync(SYNC_PID_PATH, String(child.pid), 'utf8');
+    }
+  } catch {
+    // Non-fatal — sync just won't happen in the background
+  }
+}
+
+/** Stop the background credential sync daemon if running. */
+function stopCredentialSyncDaemon(): void {
+  try {
+    const pid = parseInt(readFileSync(SYNC_PID_PATH, 'utf8').trim(), 10);
+    if (!isNaN(pid) && pid > 0) {
+      try {
+        process.kill(pid, 'SIGTERM');
+      } catch {
+        // Process already exited
+      }
+    }
+    unlinkSync(SYNC_PID_PATH);
+  } catch {
+    // No PID file or already cleaned up
+  }
+}
+
+/**
+ * Build the inline Node script for the credential sync daemon.
+ *
+ * This runs as a detached process with no dependencies beyond Node builtins
+ * and the macOS `security` command.  It periodically reads CC's keychain
+ * credential and writes it back to the active reagent account's keychain entry.
+ */
+function buildDaemonScript(): string {
+  // The script is a self-contained Node program that uses only builtins.
+  // It exits cleanly when active-account is cleared or max lifetime is reached.
+  return `
+'use strict';
+const { execFileSync } = require('node:child_process');
+const { readFileSync, unlinkSync, existsSync } = require('node:fs');
+const { userInfo } = require('node:os');
+
+const REAGENT_DIR = process.env.REAGENT_DIR;
+const ACTIVE_ACCOUNT_PATH = process.env.ACTIVE_ACCOUNT_PATH;
+const SYNC_PID_PATH = process.env.SYNC_PID_PATH;
+const SYNC_INTERVAL = parseInt(process.env.SYNC_INTERVAL_MS || '45000', 10);
+const MAX_LIFETIME = parseInt(process.env.SYNC_MAX_LIFETIME_MS || '28800000', 10);
+const startTime = Date.now();
+
+function readCC() {
+  try {
+    const raw = execFileSync(
+      'security',
+      ['find-generic-password', '-s', 'Claude Code-credentials', '-a', userInfo().username, '-w'],
+      { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
+    );
+    return raw.trim();
+  } catch { return null; }
+}
+
+function readReagent(service) {
+  try {
+    const raw = execFileSync(
+      'security',
+      ['find-generic-password', '-s', service, '-a', 'reagent', '-w'],
+      { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' }
+    );
+    return raw.trim();
+  } catch { return null; }
+}
+
+function writeReagent(service, data) {
+  execFileSync(
+    'security',
+    ['add-generic-password', '-s', service, '-a', 'reagent', '-w', data, '-U'],
+    { stdio: 'pipe' }
+  );
+}
+
+function getActiveAccount() {
+  try {
+    const name = readFileSync(ACTIVE_ACCOUNT_PATH, 'utf8').trim();
+    if (!name || !/^[a-z0-9][a-z0-9-]*$/.test(name)) return null;
+    return name;
+  } catch { return null; }
+}
+
+function getKeychainService(accountName) {
+  // The keychain service is always 'reagent-' + accountName by convention.
+  // This avoids fragile YAML parsing in the daemon.
+  return 'reagent-' + accountName;
+}
+
+function extractRT(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    const inner = parsed.claudeAiOauth || parsed;
+    return inner?.refreshToken || null;
+  } catch { return null; }
+}
+
+function sync() {
+  const name = getActiveAccount();
+  if (!name) { cleanup(); return; }
+  if (Date.now() - startTime > MAX_LIFETIME) { cleanup(); return; }
+  if (!existsSync(SYNC_PID_PATH)) { process.exit(0); }
+
+  const service = getKeychainService(name);
+  const ccRaw = readCC();
+  if (!ccRaw) return;
+
+  const storedRaw = readReagent(service);
+  if (ccRaw === storedRaw) return;
+
+  // Verify CC's credential belongs to the active account
+  try {
+    const ccParsed = JSON.parse(ccRaw);
+    // If our marker is present and doesn't match, skip
+    if (ccParsed._reagentAccount && ccParsed._reagentAccount !== name) return;
+    // Fallback: check against default's refresh token
+    if (!ccParsed._reagentAccount) {
+      const defaultRaw = readReagent('reagent-__default__');
+      if (defaultRaw) {
+        const defaultRT = extractRT(defaultRaw);
+        const ccRT = extractRT(ccRaw);
+        if (defaultRT && ccRT && defaultRT === ccRT) return;
+      }
+    }
+    // Strip our marker before storing — reagent's copy shouldn't have it
+    delete ccParsed._reagentAccount;
+    writeReagent(service, JSON.stringify(ccParsed));
+  } catch { /* best-effort */ }
+}
+
+function cleanup() {
+  try { unlinkSync(SYNC_PID_PATH); } catch {}
+  process.exit(0);
+}
+
+// Run initial sync after a short delay (let CC pick up the new credential)
+setTimeout(() => {
+  sync();
+  // Then run periodically
+  const interval = setInterval(() => {
+    try { sync(); } catch { cleanup(); }
+  }, SYNC_INTERVAL);
+  interval.unref();
+}, 10000);
+
+// Handle signals
+process.on('SIGTERM', cleanup);
+process.on('SIGINT', cleanup);
+`.trim();
 }
 
 function escapeShellSingleQuote(s: string): string {

@@ -207,6 +207,52 @@ function normalizeCredential(inner: Record<string, unknown>): AccountCredential 
 }
 
 /**
+ * Extract the refresh token from a raw credential blob.
+ * Used to detect whether Claude Code has refreshed since the last sync.
+ */
+export function extractRefreshToken(raw: string): string | null {
+  try {
+    const parsed = JSON.parse(raw);
+    const inner = parsed.claudeAiOauth || parsed;
+    return (inner?.refreshToken as string) || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Merge a reagent account credential into Claude Code's keychain slot,
+ * preserving sibling keys like `mcpOAuth` that Claude Code maintains.
+ *
+ * Claude Code's blob looks like `{claudeAiOauth: {...}, mcpOAuth: {...}}`.
+ * We overlay `claudeAiOauth` (and optionally inject `_reagentAccount`)
+ * while keeping everything else intact.
+ */
+export function mergeIntoClaudeCodeSlot(accountCred: string, accountName: string): void {
+  const incoming = JSON.parse(ensureClaudeCodeWrapper(accountCred));
+
+  // Read what's currently in CC's slot to preserve sibling keys
+  let existing: Record<string, unknown> = {};
+  const currentRaw = readClaudeCodeCredentialRaw();
+  if (currentRaw) {
+    try {
+      existing = JSON.parse(currentRaw);
+    } catch {
+      existing = {};
+    }
+  }
+
+  // Merge: incoming claudeAiOauth wins, everything else preserved
+  const merged = {
+    ...existing,
+    claudeAiOauth: incoming.claudeAiOauth,
+    _reagentAccount: accountName,
+  };
+
+  writeClaudeCodeCredential(JSON.stringify(merged));
+}
+
+/**
  * Write back a credential to Claude Code's own keychain entry.
  *
  * Claude Code stores its credential with `-a <os-username>`.

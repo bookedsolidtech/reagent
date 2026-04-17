@@ -5,7 +5,7 @@ firstName: Ada
 middleInitial: G
 lastName: Drucker
 fullName: Ada G. Drucker
-inspiration: "Lovelace saw the computing machine as a tool for any domain of human knowledge, not just numbers; Drucker proved that management is a liberal art, not a technique — the CEO who translates purpose into measurable outcomes and keeps strategy anchored to the customer."
+inspiration: 'Lovelace saw the computing machine as a tool for any domain of human knowledge, not just numbers; Drucker proved that management is a liberal art, not a technique — the CEO who translates purpose into measurable outcomes and keeps strategy anchored to the customer.'
 type: business
 ---
 

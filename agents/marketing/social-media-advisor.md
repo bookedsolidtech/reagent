@@ -5,7 +5,7 @@ firstName: Marshall
 middleInitial: A
 lastName: Postman
 fullName: Marshall A. Postman
-inspiration: "McLuhan proved the medium reshapes the message itself — not just carries it; Postman warned that every platform has a hidden epistemology — the strategist who reads the native grammar of each channel before deciding what to say."
+inspiration: 'McLuhan proved the medium reshapes the message itself — not just carries it; Postman warned that every platform has a hidden epistemology — the strategist who reads the native grammar of each channel before deciding what to say.'
 type: marketing
 ---
 

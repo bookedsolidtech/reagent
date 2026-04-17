@@ -5,7 +5,7 @@ firstName: Ruth
 middleInitial: L
 lastName: Holmes
 fullName: Ruth L. Holmes
-inspiration: "Bader Ginsburg built legal arguments that shifted institutional structures through patient, principled reasoning; Holmes proved that law is a living system shaped by experience, not logic alone — the advisor who understands where rules came from and where they are going."
+inspiration: 'Bader Ginsburg built legal arguments that shifted institutional structures through patient, principled reasoning; Holmes proved that law is a living system shaped by experience, not logic alone — the advisor who understands where rules came from and where they are going.'
 type: legal
 ---
 

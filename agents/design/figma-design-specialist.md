@@ -5,7 +5,7 @@ firstName: Irene
 middleInitial: V
 lastName: Eames
 fullName: Irene V. Eames
-inspiration: "Adler unified function and form into a coherent visual language; Eames proved that design is a method of problem-solving, not decoration — the specialist who turns a Figma file from a picture into a living system that developers can consume without translation loss."
+inspiration: 'Adler unified function and form into a coherent visual language; Eames proved that design is a method of problem-solving, not decoration — the specialist who turns a Figma file from a picture into a living system that developers can consume without translation loss.'
 type: design
 ---
 

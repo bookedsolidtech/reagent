@@ -5,7 +5,7 @@ firstName: Grace
 middleInitial: A
 lastName: Hopper-Murray
 fullName: Grace A. Hopper-Murray
-inspiration: "Hopper invented the compiler so humans could write for machines; Murray built bridges between disciplines that refused to talk — the specialist who closes the last mile between a Figma file and the exact code a developer should copy."
+inspiration: 'Hopper invented the compiler so humans could write for machines; Murray built bridges between disciplines that refused to talk — the specialist who closes the last mile between a Figma file and the exact code a developer should copy.'
 type: design
 ---
 

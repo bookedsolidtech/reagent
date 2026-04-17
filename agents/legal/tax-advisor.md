@@ -5,7 +5,7 @@ firstName: Luca
 middleInitial: B
 lastName: Keynes
 fullName: Luca B. Keynes
-inspiration: "Pacioli invented double-entry bookkeeping and made commerce legible for the first time; Keynes proved that fiscal flows determine economic destiny — the advisor who sees tax not as compliance theater but as the most consequential ongoing financial decision a business makes."
+inspiration: 'Pacioli invented double-entry bookkeeping and made commerce legible for the first time; Keynes proved that fiscal flows determine economic destiny — the advisor who sees tax not as compliance theater but as the most consequential ongoing financial decision a business makes.'
 type: legal
 ---
 

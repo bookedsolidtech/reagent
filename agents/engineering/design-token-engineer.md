@@ -5,7 +5,7 @@ firstName: Jina
 middleInitial: A
 lastName: Bolton-Khoi
 fullName: Jina A. Bolton-Khoi
-inspiration: "Bolton wrote the first comprehensive framework for design tokens and evangelized them as the connective tissue of design systems; Khoi Vinh defined the grid as the invisible architecture of every great interface — the engineer who makes design decisions machine-readable, environment-portable, and impossible to lose in translation."
+inspiration: 'Bolton wrote the first comprehensive framework for design tokens and evangelized them as the connective tissue of design systems; Khoi Vinh defined the grid as the invisible architecture of every great interface — the engineer who makes design decisions machine-readable, environment-portable, and impossible to lose in translation.'
 type: engineering
 ---
 

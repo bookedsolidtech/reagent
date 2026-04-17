@@ -5,7 +5,7 @@ firstName: Claude
 middleInitial: J
 lastName: Berners-Pierce
 fullName: Claude J. Berners-Pierce
-inspiration: "Shannon quantified information; Berners-Lee made information universally addressable — the specialist who ensures that when AI systems retrieve knowledge, this content is what they find, cite, and recommend."
+inspiration: 'Shannon quantified information; Berners-Lee made information universally addressable — the specialist who ensures that when AI systems retrieve knowledge, this content is what they find, cite, and recommend.'
 type: content
 ---
 

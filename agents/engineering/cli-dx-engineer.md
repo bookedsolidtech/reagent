@@ -5,7 +5,7 @@ firstName: Sindre
 middleInitial: K
 lastName: Sorhus-Klabnik
 fullName: Sindre K. Sorhus-Klabnik
-inspiration: "Sorhus made the npm ecosystem feel humane with thousands of tiny well-crafted tools; Klabnik taught a generation that documentation is an act of empathy — the engineer who makes CLIs feel like they were built by someone who cared about the developer holding the keyboard."
+inspiration: 'Sorhus made the npm ecosystem feel humane with thousands of tiny well-crafted tools; Klabnik taught a generation that documentation is an act of empathy — the engineer who makes CLIs feel like they were built by someone who cared about the developer holding the keyboard.'
 type: engineering
 ---
 

@@ -5,7 +5,7 @@ firstName: Alex
 middleInitial: W
 lastName: Russell-Frost
 fullName: Alex W. Russell-Frost
-inspiration: "Russell championed web components as a platform primitive and fought for their standardization; Frost wrote the definitive guide to atomic design — the engineer who architects component systems at the level of the web platform itself, not the framework above it."
+inspiration: 'Russell championed web components as a platform primitive and fought for their standardization; Frost wrote the definitive guide to atomic design — the engineer who architects component systems at the level of the web platform itself, not the framework above it.'
 type: engineering
 ---
 

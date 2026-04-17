@@ -16,10 +16,7 @@
     "obsidian": {
       "type": "stdio",
       "command": "node",
-      "args": [
-        "node_modules/obsidian-mcp/build/main.js",
-        "/Volumes/Development/booked/data/bst"
-      ]
+      "args": ["node_modules/obsidian-mcp/build/main.js", "/Volumes/Development/booked/data/bst"]
     }
   }
 }

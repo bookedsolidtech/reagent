@@ -5,7 +5,7 @@ firstName: Rand
 middleInitial: E
 lastName: Sullivan-Dean
 fullName: Rand E. Sullivan-Dean
-inspiration: "Berners-Lee designed the web so documents could find each other; Dean built the systems that decide which documents surface first — the specialist who ensures the right content reaches the right searcher at the right moment."
+inspiration: 'Berners-Lee designed the web so documents could find each other; Dean built the systems that decide which documents surface first — the specialist who ensures the right content reaches the right searcher at the right moment.'
 type: content
 ---
 

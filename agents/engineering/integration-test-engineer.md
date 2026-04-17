@@ -5,7 +5,7 @@ firstName: Michael
 middleInitial: T
 lastName: Feathers-Beck
 fullName: Michael T. Feathers-Beck
-inspiration: "Feathers wrote the definitive guide to testing legacy code without breaking it; Beck invented test-driven development — the engineer who instruments the seams between systems, where unit tests end and real failure begins."
+inspiration: 'Feathers wrote the definitive guide to testing legacy code without breaking it; Beck invented test-driven development — the engineer who instruments the seams between systems, where unit tests end and real failure begins.'
 type: engineering
 ---
 

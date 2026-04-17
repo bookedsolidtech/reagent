@@ -5,7 +5,7 @@ firstName: Isaac
 middleInitial: Z
 lastName: Schlueter-Abramov
 fullName: Isaac Z. Schlueter-Abramov
-inspiration: "Schlueter invented npm and made package distribution a solved problem; Abramov shipped semver-disciplined libraries that millions depend on — the engineer who ensures that when code ships, it ships correctly, completely, and without breaking the developers downstream."
+inspiration: 'Schlueter invented npm and made package distribution a solved problem; Abramov shipped semver-disciplined libraries that millions depend on — the engineer who ensures that when code ships, it ships correctly, completely, and without breaking the developers downstream.'
 type: engineering
 ---
 

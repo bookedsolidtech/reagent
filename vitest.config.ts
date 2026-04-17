@@ -5,6 +5,8 @@ export default defineConfig({
     globals: true,
     root: 'src',
     include: ['**/*.test.ts'],
+    pool: 'threads',
+    teardownTimeout: 30_000,
     // In CI: emit JUnit XML for test result upload + annotations
     // Locally: verbose only (no file output)
     reporters: process.env.CI

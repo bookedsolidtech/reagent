@@ -1,8 +1,13 @@
-name: Publish
+name: Publish (DISABLED — package deprecated)
 
+# @bookedsolid/reagent is DEPRECATED and replaced by @bookedsolid/rea.
+# This package is no longer published. Auto-publish on push to main has
+# been removed so no new versions can ship from this repository. The job
+# body is retained for history only; it runs solely on manual dispatch
+# and should not be used. See README.md and
+# https://github.com/bookedsolidtech/rea/blob/main/MIGRATING.md
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

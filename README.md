@@ -1,5 +1,12 @@
 # @bookedsolid/reagent
 
+> [!WARNING]
+> **`@bookedsolid/reagent` is deprecated and is no longer maintained or published.**
+> It has been replaced by **[`@bookedsolid/rea`](https://www.npmjs.com/package/@bookedsolid/rea)**, a clean-start rewrite of the same governance primitives.
+>
+> **Migrate:** see [MIGRATING.md in the rea repo](https://github.com/bookedsolidtech/rea/blob/main/MIGRATING.md).
+> No further releases will be published from this repository.
+
 Governance layer for Claude Code — policy enforcement, hook-based safety gates, and audit logging for AI-assisted projects.
 
 reagent enforces policy, prevents dangerous operations, and audits AI agent activity in Claude Code projects. One command (`reagent init`) installs 26 safety hooks and a full engineering team of AI specialists into your project. Every tool call — from every AI agent — is governed by your `policy.yaml`. It's Claude Code + accountability.
